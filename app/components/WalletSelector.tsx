@@ -14,7 +14,7 @@ import { usePrivy } from "@privy-io/react-auth";
 import { base } from "wagmi/chains";
 import { Name } from "@coinbase/onchainkit/identity";
 import { getBasename } from "../utils/getBaseName";
-import { useUserSync } from "../hooks/useUserSync";
+// import { useUserSync } from "../hooks/useUserSync";
 import { useLinkAccount } from "@privy-io/react-auth";
 import { useFarcasterProfile } from "../hooks/useFarcasterProfile";
 import AuthenticationModal from "./AuthenticationModal";
@@ -175,13 +175,6 @@ const WalletSelector = forwardRef<
   const router = useRouter();
   const pathname = usePathname();
 
-  // Email sync and update
-  const {
-    userData,
-    isLoading: userLoading,
-    addEmail,
-    hasEmail,
-  } = useUserSync();
 
   // Privy hooks
   const { authenticated, user, connectWallet, logout, ready, login } =
@@ -660,30 +653,6 @@ const WalletSelector = forwardRef<
               </div>
             )}
           </div>
-
-          {!hasEmail && walletAddress && (
-            <div className="p-4 border-b border-gray-100">
-              <button
-                onClick={handleLinkEmail}
-                className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-blue-50 hover:bg-blue-100 text-blue-600 hover:text-blue-700 transition-all duration-200 rounded-xl border border-blue-200/50"
-              >
-                <svg
-                  className="w-4 h-4"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-                  />
-                </svg>
-                <span className="font-medium">Add Email Address</span>
-              </button>
-            </div>
-          )}
 
           {user?.wallet?.walletClientType === 'privy' && (
             <div className="p-4 border-b border-gray-100">
