@@ -6,7 +6,6 @@ import './components/name-fallback.css';
 import { Providers } from './providers';
 import AppToaster from './components/Toaster';
 import { ReadyState } from './components/ReadyState';
-import { MiniKitProvider } from './components/MiniKitProvider';
 import {Analytics} from '@vercel/analytics/next';
 
 const URL = process.env.NEXT_PUBLIC_URL || 'https://nedapayminiapp.vercel.app';
@@ -78,16 +77,13 @@ export default function RootLayout({
           rel="stylesheet"
         />
         <link rel="icon" type="image/png" href="/favicon.png" />
-        <script src="https://cdn.jsdelivr.net/npm/@farcaster/frame-sdk/dist/index.min.js" defer></script>
       </head>
       <body className="bg-slate-900 text-white">
         <div className="flex flex-col min-h-screen">
           <Providers>
-            <MiniKitProvider>
-              <AppToaster />
-              <ReadyState />
-              <main className="flex-grow">{children}</main>
-            </MiniKitProvider>
+            <AppToaster />
+            <ReadyState />
+            <main className="flex-grow">{children}</main>
           </Providers>
         </div>
         <Analytics />

@@ -38,7 +38,9 @@ const nextConfig = {
     '@biconomy/mexa',
     '@walletconnect/ethereum-provider',
     '@walletconnect/web3-provider',
-    '@walletconnect/modal'
+    '@walletconnect/modal',
+    '@farcaster/miniapp-sdk',
+    '@farcaster/miniapp-wagmi-connector'
   ],
   // Headers for Farcaster compatibility
   async headers() {

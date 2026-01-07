@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, createContext, useContext } from 'react';
-import sdk from '@farcaster/frame-sdk';
+import { sdk } from '@farcaster/miniapp-sdk';
 
 interface MiniKitContextType {
   isReady: boolean;
@@ -35,6 +35,9 @@ export function MiniKitProvider({ children }: { children: React.ReactNode }) {
       console.log('📊 User custody address:', ctx?.user?.custodyAddress);
       
       setContext(ctx);
+      
+      // Call sdk.actions.ready() to dismiss the splash screen
+      sdk.actions.ready();
       setIsReady(true);
 
       let fid = ctx?.user?.fid || null;

@@ -198,7 +198,7 @@ export async function PUT(req: NextRequest) {
     const pendingTransactions = await prisma.transaction.findMany({
       where: {
         txHash,
-        status: 'Pending',
+        status: 'PENDING',
       },
     });
 
@@ -220,7 +220,7 @@ export async function PUT(req: NextRequest) {
     const updatedTransaction = await prisma.transaction.updateMany({
       where: {
         txHash,
-        status: 'Pending',
+        status: 'PENDING',
       },
       data: {
         merchantId,

@@ -21,6 +21,7 @@ import { useTranslation } from 'react-i18next';
 import LanguageSwitcher from '../components/LanguageSwitcher';
 import { useFarcasterProfile } from './hooks/useFarcasterProfile';
 import Sidebar from './components/Sidebar';
+import PretiumOnRampFlow from './components/PretiumOnRampFlow';
 import { usePrivy } from '@privy-io/react-auth';
 import '../lib/i18n';
 
@@ -505,6 +506,24 @@ export default function FarcasterMiniApp() {
   const [showPayTokenDropdown, setShowPayTokenDropdown] = useState(false);
   const [showDepositTokenDropdown, setShowDepositTokenDropdown] = useState(false);
   const [showProviderDropdown, setShowProviderDropdown] = useState(false);
+  
+  // Deposit (On-Ramp) state variables
+  const [depositStep, setDepositStep] = useState<1 | 2 | 3 | 4>(1);
+  const [depositAmount, setDepositAmount] = useState('100');
+  const [depositCountry, setDepositCountry] = useState('');
+  const [depositNetwork, setDepositNetwork] = useState('');
+  const [depositPhone, setDepositPhone] = useState('');
+  const [depositChain, setDepositChain] = useState<'BASE' | 'POLYGON' | 'CELO' | 'SCROLL'>('BASE');
+  const [depositAsset, setDepositAsset] = useState<'USDC' | 'USDT'>('USDC');
+  const [depositLoading, setDepositLoading] = useState(false);
+  const [depositStatus, setDepositStatus] = useState<string | null>(null);
+  const [depositTransactionCode, setDepositTransactionCode] = useState<string | null>(null);
+  const [depositPolling, setDepositPolling] = useState(false);
+  const [depositExchangeRate, setDepositExchangeRate] = useState<number | null>(null);
+  const [depositLoadingRate, setDepositLoadingRate] = useState(false);
+  const [pretiumNetworks, setPretiumNetworks] = useState<Record<string, Array<{ code: string; name: string }>>>({});
+  const [pretiumCountries, setPretiumCountries] = useState<Record<string, string>>({});
+  const [pretiumCurrencies, setPretiumCurrencies] = useState<Array<{ country: string; currency_code: string }>>([]);
   const [isSwipeComplete, setIsSwipeComplete] = useState(false);
   const [swipeProgress, setSwipeProgress] = useState(0);
   const [walletBalance, setWalletBalance] = useState('0.00');
@@ -2729,6 +2748,188 @@ export default function FarcasterMiniApp() {
     }
   }, [swapAmount, swapFromToken, swapToToken, fetchSwapQuote]);
 
+  // Fetch Pretium networks and countries for deposit tab
+  useEffect(() => {
+    const fetchPretiumNetworks = async () => {
+      try {
+        const apiKey = process.env.NEXT_PUBLIC_NEDAPAY_API_KEY;
+        const response = await fetch('https://api.nedapay.xyz/api/v1/ramp/pretium/networks', {
+          headers: {
+            'x-api-key': apiKey || '',
+          },
+        });
+        const data = await response.json();
+        if (data.status === 'success' && data.data) {
+          setPretiumNetworks(data.data.networks || {});
+          setPretiumCountries(data.data.countries || {});
+          setPretiumCurrencies(data.data.currencies || []);
+        }
+      } catch (error) {
+        console.error('Failed to fetch Pretium networks:', error);
+      }
+    };
+
+    fetchPretiumNetworks();
+  }, []);
+
+  // Fetch exchange rate when country changes
+  useEffect(() => {
+    if (!depositCountry) return;
+
+    const fetchExchangeRate = async () => {
+      setDepositLoadingRate(true);
+      try {
+        const currencyMapping: Record<string, string> = {
+          'MW': 'MWK',
+          'CD': 'CDF',
+          'ET': 'ETB',
+          'KE': 'KES',
+          'GH': 'GHS',
+          'UG': 'UGX',
+        };
+        const currencyCode = currencyMapping[depositCountry];
+        
+        const apiKey = process.env.NEXT_PUBLIC_NEDAPAY_API_KEY;
+        const response = await fetch('https://api.nedapay.xyz/api/v1/ramp/pretium/exchange-rate', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': apiKey || '',
+          },
+          body: JSON.stringify({ currency_code: currencyCode }),
+        });
+
+        const data = await response.json();
+        if (data.status === 'success' && data.data) {
+          setDepositExchangeRate(data.data.quoted_rate || null);
+        }
+      } catch (error) {
+        console.error('Failed to fetch exchange rate:', error);
+      } finally {
+        setDepositLoadingRate(false);
+      }
+    };
+
+    fetchExchangeRate();
+  }, [depositCountry]);
+
+  // Handle deposit (on-ramp) submission
+  const handleDeposit = async () => {
+    if (!depositAmount || !depositCountry || !depositNetwork || !depositPhone || !walletAddress) {
+      alert('Please fill in all fields and connect your wallet');
+      return;
+    }
+
+    setDepositLoading(true);
+    setDepositStatus(null);
+
+    try {
+      // Get currency code for the selected country
+      const currencyMapping: Record<string, string> = {
+        'MW': 'MWK',
+        'CD': 'CDF',
+        'ET': 'ETB',
+        'KE': 'KES',
+        'GH': 'GHS',
+        'UG': 'UGX',
+      };
+      const currencyCode = currencyMapping[depositCountry] || 'KES';
+
+      const apiKey = process.env.NEXT_PUBLIC_NEDAPAY_API_KEY;
+      const response = await fetch('https://api.nedapay.xyz/api/v1/ramp/pretium/onramp', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey || '',
+        },
+        body: JSON.stringify({
+          currency_code: currencyCode,
+          shortcode: depositPhone,
+          amount: Number(depositAmount),
+          mobile_network: depositNetwork,
+          chain: depositChain,
+          asset: depositAsset,
+          address: walletAddress,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.status === 'success' && data.data) {
+        setDepositTransactionCode(data.data.transaction_code);
+        setDepositStatus('STK push sent! Check your phone to complete the payment.');
+        setDepositStep(4);
+      } else {
+        setDepositStatus(data.message || 'Failed to initiate deposit');
+      }
+    } catch (error: any) {
+      console.error('Deposit error:', error);
+      setDepositStatus(error.message || 'Network error occurred');
+    } finally {
+      setDepositLoading(false);
+    }
+  };
+
+  // Poll deposit status
+  const pollDepositStatus = useCallback(async () => {
+    if (!depositTransactionCode || !depositCountry) return;
+
+    setDepositPolling(true);
+    try {
+      const currencyMapping: Record<string, string> = {
+        'MW': 'MWK',
+        'CD': 'CDF',
+        'ET': 'ETB',
+        'KE': 'KES',
+        'GH': 'GHS',
+        'UG': 'UGX',
+      };
+      const currencyCode = currencyMapping[depositCountry];
+
+      const apiKey = process.env.NEXT_PUBLIC_NEDAPAY_API_KEY;
+      const response = await fetch('https://api.nedapay.xyz/api/v1/ramp/pretium/status', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey || '',
+        },
+        body: JSON.stringify({
+          currency_code: currencyCode,
+          transaction_code: depositTransactionCode,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.status === 'success' && data.data) {
+        const statusUpper = String(data.data.status || '').toUpperCase();
+        
+        if (statusUpper === 'COMPLETE' || statusUpper === 'COMPLETED' || statusUpper === 'SUCCESS') {
+          setDepositStatus('✅ Deposit completed! Your crypto has been sent to your wallet.');
+        } else if (statusUpper === 'FAILED' || statusUpper === 'FAIL') {
+          setDepositStatus('❌ Payment failed. Please try again.');
+        } else {
+          setDepositStatus(`Status: ${data.data.status}`);
+        }
+      }
+    } catch (error: any) {
+      console.error('Status polling error:', error);
+    } finally {
+      setDepositPolling(false);
+    }
+  }, [depositTransactionCode, depositCountry]);
+
+  // Auto-poll status when transaction code exists
+  useEffect(() => {
+    if (!depositTransactionCode) return;
+
+    const interval = setInterval(() => {
+      pollDepositStatus();
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [depositTransactionCode, pollDepositStatus]);
+
   const handleGeneratePaymentLink = useCallback(async () => {
     if (!linkAmount || !isWalletConnected || !walletAddress) {
       alert('Please connect wallet and enter amount');
@@ -4458,150 +4659,14 @@ export default function FarcasterMiniApp() {
     </div>
   );
 
-  const renderDepositTab = () => (
-    <div className="space-y-4 relative">
-      {/* Lock Overlay */}
-      <div className="absolute inset-0 bg-slate-900/90 backdrop-blur-md rounded-xl z-10 flex items-center justify-center">
-        <div className="text-center space-y-10 p-8">
-          {/* Bold Premium Lock Icon */}
-          <div className="relative mx-auto flex items-center justify-center">
-            {/* Enhanced outer glow rings */}
-            <div className="absolute w-40 h-40 bg-gradient-to-r from-blue-400/40 via-purple-500/40 to-pink-500/40 rounded-full blur-3xl animate-pulse"></div>
-            <div className="absolute w-32 h-32 bg-gradient-to-r from-blue-500/50 via-purple-600/50 to-pink-600/50 rounded-full blur-2xl animate-pulse delay-75"></div>
-            <div className="absolute w-28 h-28 bg-gradient-to-r from-cyan-400/60 via-blue-500/60 to-purple-600/60 rounded-full blur-xl animate-pulse delay-150"></div>
-            
-            {/* Main lock container - Much bolder */}
-            <div className="relative w-28 h-28 bg-gradient-to-br from-slate-600 via-slate-700 to-slate-900 rounded-3xl flex items-center justify-center shadow-[0_0_50px_rgba(0,0,0,0.8)] border-2 border-slate-400/40">
-              {/* Enhanced inner highlight */}
-              <div className="absolute inset-1 bg-gradient-to-br from-white/20 via-white/5 to-transparent rounded-3xl"></div>
-              <div className="absolute inset-2 bg-gradient-to-tl from-blue-500/10 via-transparent to-purple-500/10 rounded-2xl"></div>
-              
-              {/* Larger, bolder Lock SVG */}
-              <svg className="w-16 h-16 text-slate-200 relative z-10 drop-shadow-2xl" fill="currentColor" viewBox="0 0 24 24" strokeWidth="0.5" stroke="currentColor">
-                {/* Lock body - Enhanced */}
-                <path d="M6 10V8C6 5.79086 7.79086 4 10 4H14C16.2091 4 18 5.79086 18 8V10H19C19.5523 10 20 10.4477 20 11V19C20 19.5523 19.5523 20 19 20H5C4.44772 20 4 19.5523 4 19V11C4 10.4477 4.44772 10 5 10H6ZM8 8V10H16V8C16 6.89543 15.1046 6 14 6H10C8.89543 6 8 6.89543 8 8Z" />
-                {/* Enhanced keyhole */}
-                <circle cx="12" cy="15" r="2.5" fill="currentColor" className="text-slate-400" />
-                <rect x="11" y="15" width="2" height="3.5" fill="currentColor" className="text-slate-400" />
-              </svg>
-              
-              {/* Enhanced corner accents */}
-              <div className="absolute -top-1 -right-1 w-4 h-4 bg-gradient-to-br from-cyan-400 to-blue-500 rounded-full opacity-80 animate-ping shadow-lg"></div>
-              <div className="absolute -bottom-1 -left-1 w-3 h-3 bg-gradient-to-br from-purple-400 to-pink-500 rounded-full opacity-70 animate-pulse delay-300 shadow-lg"></div>
-              <div className="absolute -top-1 -left-1 w-2 h-2 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full opacity-60 animate-pulse delay-700"></div>
-            </div>
-          </div>
-          
-          {/* Bold Coming Soon Text */}
-          <div className="space-y-4">
-            <h3 className="text-4xl font-black text-white tracking-wide drop-shadow-2xl bg-gradient-to-r from-white via-blue-100 to-purple-100 bg-clip-text text-transparent">
-              {t('deposit.comingSoon')}
-            </h3>
-            <p className="text-slate-200 text-lg font-medium leading-relaxed max-w-lg mx-auto drop-shadow-lg">
-              {t('deposit.comingSoonMessage')}
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Blurred Background Content */}
-      <div className="opacity-30 pointer-events-none">
-        {/* Country Selector */}
-        <div className="relative">
-          <select 
-            disabled
-            className="w-full bg-slate-700 text-white rounded-lg px-3 py-2.5 pr-8 text-sm appearance-none"
-          >
-            <option>{selectedCountry.flag} {selectedCountry.name}</option>
-          </select>
-          <ChevronDownIcon className="absolute right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-        </div>
-
-        {/* Amount Input */}
-        <div className="text-center py-4 bg-slate-800/30 rounded-xl">
-          <div className="text-4xl text-white font-light flex items-center justify-center">
-            <span className="text-gray-400">$</span>
-            <input
-              type="number"
-              disabled
-              value="100"
-              className="bg-transparent text-white text-4xl font-light w-32 text-center"
-            />
-          </div>
-        </div>
-
-        {/* Token Selector */}
-        <div className="relative">
-          <button
-            disabled
-            className="w-full bg-slate-800/50 border border-slate-700/50 text-white rounded-lg px-3 py-3 text-left flex items-center justify-between"
-          >
-            <div className="flex items-center gap-2">
-              <img src="/assets/logos/usdc-logo.png" alt="USDC" className="w-4 h-4" />
-              <span className="text-white font-medium text-sm">USDC - USD Coin</span>
-            </div>
-            <ChevronDownIcon className="w-4 h-4 text-gray-400" />
-          </button>
-        </div>
-
-        {/* Quick Amount Buttons */}
-        <div className="grid grid-cols-3 gap-1.5">
-          {[100, 300, 500].map((value) => (
-            <button
-              key={value}
-              disabled
-              className="bg-slate-700 text-white py-1.5 px-3 rounded-lg text-sm"
-            >
-              ${value}
-            </button>
-          ))}
-        </div>
-
-        {/* Institution Selector */}
-        <div>
-          <label className="block text-xs text-gray-400 mb-1.5">{t('deposit.selectInstitution')}</label>
-          <div className="relative">
-            <select disabled className="w-full bg-slate-700 text-white rounded-lg px-3 py-2.5 pr-8 text-sm appearance-none">
-              <option>{t('deposit.chooseInstitution')}</option>
-            </select>
-            <ChevronDownIcon className="absolute right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-          </div>
-        </div>
-
-        {/* Account / Mobile Number */}
-        <div>
-          <label className="block text-xs text-gray-400 mb-1.5">{t('deposit.accountNumber')}</label>
-          <input
-            type="text"
-            disabled
-            placeholder={t('deposit.accountPlaceholder')}
-            className="w-full bg-slate-700 text-white rounded-lg px-3 py-2.5 text-sm"
-          />
-        </div>
-
-        {/* Wallet Address */}
-        <div>
-          <label className="block text-xs text-gray-400 mb-1.5">{t('deposit.walletAddress').replace('USDC', 'USDC')}</label>
-          <input
-            type="text"
-            disabled
-            placeholder="0x1234...5678"
-            className="w-full bg-slate-700 text-white rounded-lg px-3 py-2.5 text-sm"
-          />
-        </div>
-
-        {/* Exchange Rate */}
-        <div className="text-center text-xs text-gray-400">
-          1 USDC = 2547 {selectedCountry.currency}
-        </div>
-
-        {/* Buy Button */}
-        <button disabled className="w-full bg-slate-600 text-gray-400 font-bold py-4 rounded-2xl">
-          {t('deposit.buyNow')}
-        </button>
-      </div>
-    </div>
-  );
+  const renderDepositTab = () => {
+    return (
+      <PretiumOnRampFlow 
+        asset={depositAsset as 'USDC' | 'USDT'} 
+        walletAddress={walletAddress}
+      />
+    );
+  };
 
   const renderLinkTab = () => (
     <div className="space-y-3">
@@ -4828,15 +4893,15 @@ export default function FarcasterMiniApp() {
     const handleLineItemChange = (idx: number, field: string, value: string) => {
       setInvoiceLineItems(prev => prev.map((item, i) => i === idx ? { ...item, [field]: value } : item));
     };
-    
+
     const addLineItem = () => {
       setInvoiceLineItems([...invoiceLineItems, { description: '', amount: '' }]);
     };
-    
+
     const handleSubmit = async (e: React.FormEvent) => {
       e.preventDefault();
       setInvoiceStatus('loading');
-      
+
       try {
         const requestData = {
           merchantId: walletAddress,
@@ -4849,29 +4914,23 @@ export default function FarcasterMiniApp() {
           lineItems: invoiceLineItems,
           paymentLink: invoicePaymentLink,
         };
-        
-        console.log('📤 Sending invoice data:', requestData);
-        
+
         const res = await fetch('/api/send-invoice', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(requestData),
         });
-        
-        console.log('📥 Response status:', res.status, res.statusText);
-        
+
         if (!res.ok) {
           const errorData = await res.json();
-          console.error('❌ API Error:', errorData);
           setInvoiceStatus(errorData.error || `Failed to create invoice (${res.status})`);
           return;
         }
-        
+
         setInvoiceStatus('success');
         setTimeout(() => {
           setInvoiceView('main');
           setInvoiceStatus(null);
-          // Reset form
           setInvoiceRecipient('');
           setInvoiceEmail('');
           setInvoiceSender('');
@@ -4884,224 +4943,68 @@ export default function FarcasterMiniApp() {
           setInvoiceLineItems([{ description: '', amount: '' }]);
         }, 2000);
       } catch (err: any) {
-        console.error('❌ Network/Parse Error:', err);
         setInvoiceStatus(err.message || 'Network error occurred');
       }
     };
-    
+
     const totalAmount = invoiceLineItems.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
-    
+
     return (
       <div className="space-y-4">
-        {/* Header with Back Button */}
         <div className="flex items-center gap-3">
-          <button 
-            onClick={() => setInvoiceView('main')}
-            className="p-2 rounded-lg bg-slate-700 text-white hover:bg-slate-600 transition-colors"
-          >
-            ←
-          </button>
-          <div>
-            <h2 className="text-lg font-bold text-white">{t('invoice.createInvoice')}</h2>
-          </div>
+          <button onClick={() => setInvoiceView('main')} className="p-2 rounded-lg bg-slate-700 text-white hover:bg-slate-600 transition-colors">←</button>
+          <h2 className="text-lg font-bold text-white">{t('invoice.createInvoice')}</h2>
         </div>
-        
+
         <form onSubmit={handleSubmit} className="space-y-2 mt-4">
-          {/* Client Information */}
           <div className="bg-slate-800/30 rounded-lg p-3">
             <h3 className="text-white font-medium mb-2 text-sm">{t('invoice.clientInfo')}</h3>
             <div className="space-y-2.5">
-              <input
-                type="text"
-                placeholder={t('invoice.clientPlaceholder')}
-                value={invoiceRecipient}
-                onChange={(e) => setInvoiceRecipient(e.target.value)}
-                className="w-full bg-slate-700 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                required
-              />
-              <input
-                type="email"
-                placeholder={t('invoice.emailPlaceholder')}
-                value={invoiceEmail}
-                onChange={(e) => setInvoiceEmail(e.target.value)}
-                className="w-full bg-slate-700 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                required
-              />
+              <input type="text" placeholder={t('invoice.clientPlaceholder')} value={invoiceRecipient} onChange={(e) => setInvoiceRecipient(e.target.value)} className="w-full bg-slate-700 text-white rounded-lg px-3 py-2 text-sm" required />
+              <input type="email" placeholder={t('invoice.emailPlaceholder')} value={invoiceEmail} onChange={(e) => setInvoiceEmail(e.target.value)} className="w-full bg-slate-700 text-white rounded-lg px-3 py-2 text-sm" required />
             </div>
           </div>
-          
-          {/* Sender Information */}
+
           <div className="bg-slate-800/30 rounded-lg p-2">
             <h3 className="text-white font-medium mb-1.5 text-xs">{t('invoice.yourInfo')}</h3>
-            <input
-              type="text"
-              placeholder={t('invoice.yourPlaceholder')}
-              value={invoiceSender}
-              onChange={(e) => setInvoiceSender(e.target.value)}
-              className="w-full bg-slate-700 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              required
-            />
+            <input type="text" placeholder={t('invoice.yourPlaceholder')} value={invoiceSender} onChange={(e) => setInvoiceSender(e.target.value)} className="w-full bg-slate-700 text-white rounded-lg px-3 py-2 text-sm" required />
           </div>
-          
-          {/* Currency Selection */}
-          <div className="bg-slate-800/30 rounded-lg p-2">
-            <div className="flex items-center justify-between">
-              <span className="text-white text-xs font-medium">{t('invoice.paymentCurrency')}</span>
-              <div className="relative">
-                <button
-                  onClick={() => setShowInvoiceCurrencyDropdown(!showInvoiceCurrencyDropdown)}
-                  className="bg-slate-700 text-white rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 min-w-[140px] flex items-center justify-between gap-2 border border-slate-600/50 hover:border-slate-500 transition-colors"
-                >
-                  <div className="flex items-center gap-2">
-                    {invoiceCurrency === 'USDC' ? (
-                      <img src="/assets/logos/usdc-logo.png" alt="USDC" className="w-4 h-4" />
-                    ) : (
-                      <span className="text-sm">{stablecoins.find(t => t.baseToken === invoiceCurrency)?.flag || '🌍'}</span>
-                    )}
-                    <span>{invoiceCurrency}</span>
-                  </div>
-                  <ChevronDownIcon className="w-3 h-3 text-gray-400" />
-                </button>
-                
-                {showInvoiceCurrencyDropdown && (
-                  <div className="absolute top-full left-0 mt-1 bg-slate-800 rounded-lg border border-slate-600 shadow-xl z-50 max-h-64 overflow-y-auto w-full min-w-max">
-                    {stablecoins.map((token, index) => (
-                      <button
-                        key={`${token.baseToken}-${token.chainId}-${index}`}
-                        onClick={() => {
-                          setInvoiceCurrency(token.baseToken);
-                          setShowInvoiceCurrencyDropdown(false);
-                        }}
-                        className="w-full px-3 py-2 text-left hover:bg-slate-700 flex items-center gap-2 text-xs transition-colors whitespace-nowrap"
-                      >
-                        {renderTokenIcon(token, "w-4 h-4")}
-                        <span className="text-white">{token.baseToken} - {token.name}</span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-          
-          {/* Due Date */}
-          <div className="bg-slate-800/30 rounded-lg p-2">
-            <div className="flex items-center justify-between">
-              <span className="text-white text-xs font-medium">{t('invoice.dueDate')}</span>
-              <input
-                type="date"
-                value={invoiceDueDate}
-                onChange={(e) => setInvoiceDueDate(e.target.value)}
-                className="bg-slate-700 text-white rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 min-w-[140px]"
-              />
-            </div>
-          </div>
-          
-          {/* Payment Link Selection */}
-          <div className="bg-slate-800/30 rounded-lg p-3">
-            <h3 className="text-white font-medium mb-2 text-sm">{t('invoice.paymentLink')}</h3>
-            <p className="text-gray-400 text-sm mb-2.5">
-              {t('invoice.paymentLinkDesc')}
-            </p>
-            <input
-              type="text"
-              placeholder={t('invoice.paymentLinkPlaceholder')}
-              value={invoicePaymentLink}
-              onChange={(e) => setInvoicePaymentLink(e.target.value)}
-              className="w-full bg-slate-700 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              required
-            />
-          </div>
-          
-          {/* Line Items */}
+
           <div className="bg-slate-800/30 rounded-lg p-3">
             <div className="flex items-center justify-between mb-2">
               <h3 className="text-white font-medium text-sm">{t('invoice.invoiceItems')}</h3>
-              <button
-                type="button"
-                onClick={addLineItem}
-                className="text-blue-400 hover:text-blue-300 text-sm"
-              >
-                + {t('invoice.addItem')}
-              </button>
+              <button type="button" onClick={addLineItem} className="text-blue-400 hover:text-blue-300 text-sm">+ {t('invoice.addItem')}</button>
             </div>
             <div className="space-y-2">
               {invoiceLineItems.map((item, idx) => (
-                <div key={idx} className="grid grid-cols-3 gap-2">
-                  <input
-                    type="text"
-                    placeholder={t('invoice.description')}
-                    value={item.description}
-                    onChange={(e) => handleLineItemChange(idx, 'description', e.target.value)}
-                    className="col-span-2 bg-slate-700 text-white rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    required
-                  />
-                  <input
-                    type="number"
-                    placeholder="0.00"
-                    value={item.amount}
-                    onChange={(e) => handleLineItemChange(idx, 'amount', e.target.value)}
-                    className="bg-slate-700 text-white rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    step="0.01"
-                    required
-                  />
+                <div key={idx} className="flex items-center gap-2">
+                  <input type="text" placeholder={t('invoice.itemPlaceholder')} value={item.description} onChange={(e) => handleLineItemChange(idx, 'description', e.target.value)} className="w-full bg-slate-700 text-white rounded-lg px-3 py-2 text-sm" />
+                  <input type="number" placeholder="0.00" value={item.amount} onChange={(e) => handleLineItemChange(idx, 'amount', e.target.value)} className="w-32 bg-slate-700 text-white rounded-lg px-3 py-2 text-sm" />
                 </div>
               ))}
             </div>
-            
-            {/* Total */}
-            <div className="mt-3 pt-2 border-t border-slate-600">
-              <div className="flex justify-between items-center">
-                <span className="text-gray-400 text-sm">{t('invoice.totalAmount')}</span>
-                <div className="flex items-center gap-2">
-                  {/* Currency Icon */}
-                  {invoiceCurrency === 'USDC' ? (
-                    <Image 
-                      src="/assets/logos/usdc-logo.png" 
-                      alt="USDC" 
-                      width={20} 
-                      height={20} 
-                      className="rounded-full"
-                    />
-                  ) : (
-                    <span className="text-lg">
-                      {stablecoins.find(s => s.baseToken === invoiceCurrency)?.flag || '💰'}
-                    </span>
-                  )}
-                  <span className="text-white font-bold">
-                    {totalAmount.toFixed(2)} {invoiceCurrency}
-                  </span>
-                </div>
-              </div>
-            </div>
           </div>
-          
-          {/* Submit Button */}
-          <button
-            type="submit"
-            disabled={invoiceStatus === 'loading'}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 rounded-lg transition-colors disabled:opacity-50 border-2 border-blue-500 hover:border-blue-400"
-          >
-            {invoiceStatus === 'loading' ? t('invoice.creating') : t('invoice.sendInvoice')}
-          </button>
-          
-          {/* Status Messages */}
-          {invoiceStatus === 'success' && (
-            <div className="bg-green-600/20 border border-green-600/30 text-green-400 p-3 rounded-lg text-sm">
-              ✅ {t('invoice.success')}
+
+          <div className="pt-4">
+            <div className="flex justify-between items-center mb-4">
+              <span className="text-lg font-bold text-white">{t('invoice.total')}</span>
+              <span className="text-lg font-bold text-white">{totalAmount.toFixed(2)} {invoiceCurrency}</span>
             </div>
-          )}
-          
-          {invoiceStatus && invoiceStatus !== 'loading' && invoiceStatus !== 'success' && (
-            <div className="bg-red-600/20 border border-red-600/30 text-red-400 p-3 rounded-lg text-sm">
-              ❌ {invoiceStatus}
-            </div>
-          )}
+            <button type="submit" disabled={invoiceStatus === 'loading'} className="w-full bg-blue-600 text-white font-bold py-3 rounded-xl hover:bg-blue-700 disabled:bg-slate-600">
+              {invoiceStatus === 'loading' ? t('invoice.sending') : t('invoice.sendInvoice')}
+            </button>
+          </div>
         </form>
+
+        {invoiceStatus && invoiceStatus !== 'loading' && (
+          <div className={`mt-4 p-3 rounded-lg text-sm ${invoiceStatus === 'success' ? 'bg-green-500/20 text-green-300' : 'bg-red-500/20 text-red-300'}`}>
+            {invoiceStatus === 'success' ? t('invoice.success') : invoiceStatus}
+          </div>
+        )}
       </div>
     );
   };
-  
+
   const renderInvoiceList = () => {
     return (
       <div className="space-y-4">

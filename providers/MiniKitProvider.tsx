@@ -8,7 +8,7 @@ import { WagmiProvider, createConfig, http } from 'wagmi';
 import { coinbaseWallet, metaMask, walletConnect } from 'wagmi/connectors';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
-// Create wagmi config with multiple connectors for different environments
+// Create wagmi config with optimized connector loading
 export const config = createConfig({
   chains: [base, celo],
   transports: {
@@ -22,7 +22,7 @@ export const config = createConfig({
     coinbaseWallet({
       appName: 'NedaPay',
       appLogoUrl: '/NEDApayLogo.png',
-      preference: 'smartWalletOnly', // Use smart wallet for better Base.dev compatibility
+      preference: 'smartWalletOnly',
     }),
     // MetaMask with improved configuration
     metaMask({
@@ -32,6 +32,7 @@ export const config = createConfig({
         iconUrl: '/NEDApayLogo.png',
       },
     }),
+    // WalletConnect with optimized settings
     walletConnect({
       projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || 'default-project-id',
       metadata: {
@@ -40,11 +41,34 @@ export const config = createConfig({
         url: process.env.NEXT_PUBLIC_URL || 'https://nedapayminiapp.vercel.app',
         icons: ['/NEDApayLogo.png'],
       },
+      // Optimize WalletConnect initialization
+      showQrModal: false, // Disable modal to speed up initialization
+      qrModalOptions: {
+        themeMode: 'dark',
+      },
     }),
-  ]
+  ],
+  // Enable SSR mode to prevent hydration issues
+  ssr: true,
+  // Add batch configuration for better performance
+  batch: {
+    multicall: {
+      wait: 50, // Reduce wait time for faster responses
+    },
+  },
 });
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 60_000, // Consider data fresh for 1 minute
+      gcTime: 300_000, // Keep unused data in cache for 5 minutes
+      refetchOnWindowFocus: false, // Disable refetch on window focus for better performance
+      refetchOnReconnect: false, // Disable refetch on reconnect
+      retry: 1, // Reduce retry attempts from 3 to 1
+    },
+  },
+});
 
 export function MiniKitProvider({ children }: { children: ReactNode }) {
   // Enhanced MiniKit initialization for smart wallet environments

@@ -64,6 +64,7 @@ Thumbs.db
 /contracts-workspace/.openzeppelin
 
 # Local development
+.env
 .env.local
 .env.development.local
 .env.test.local
