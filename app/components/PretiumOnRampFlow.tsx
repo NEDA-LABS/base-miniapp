@@ -39,7 +39,10 @@ const FIAT_OPTIONS: Array<{ code: SupportedFiat; countryCode: string; label: str
 
 const ASSET_OPTIONS: PretiumAsset[] = ['USDC', 'USDT'];
 
-type PretiumOnrampChain = 'BASE' | 'POLYGON' | 'CELO' | 'SCROLL';
+const NEDAPAY_API_BASE = 'https://api.nedapay.xyz';
+const NEDAPAY_API_KEY = process.env.NEXT_PUBLIC_NEDAPAY_API_KEY;
+
+type PretiumOnrampChain = 'BASE' | 'CELO';
 
 interface PretiumOnRampFlowProps {
   walletAddress?: string;
@@ -48,8 +51,6 @@ interface PretiumOnRampFlowProps {
 }
 
 export default function PretiumOnRampFlow({ walletAddress, asset, onBack }: PretiumOnRampFlowProps) {
-  // Mock auth token for now as per user request
-  const getAccessToken = async () => '';
   const { toast } = useToast();
 
   // Step 1: Configuration & Details
@@ -64,8 +65,7 @@ export default function PretiumOnRampFlow({ walletAddress, asset, onBack }: Pret
   const [selectedNetwork, setSelectedNetwork] = useState<string>('');
 
   const chainOptions = useMemo<PretiumOnrampChain[]>(() => {
-    if (asset === 'USDC') return ['BASE', 'POLYGON', 'CELO'];
-    return ['CELO', 'POLYGON', 'SCROLL'];
+    return ['BASE', 'CELO'];
   }, [asset]);
 
   const [selectedChain, setSelectedChain] = useState<PretiumOnrampChain>(() => {
@@ -119,7 +119,24 @@ export default function PretiumOnRampFlow({ walletAddress, asset, onBack }: Pret
     const fetchNetworks = async () => {
       setLoadingNetworks(true);
       try {
-        const res = await fetch(`/api/pretium/networks?country=${selectedFiatMeta.countryCode}`);
+        if (!NEDAPAY_API_KEY) {
+          toast({
+            title: 'Config Error',
+            description: 'NEDAPAY API key is not configured.',
+            variant: 'destructive',
+          });
+          setNetworks([]);
+          return;
+        }
+
+        const res = await fetch(
+          `${NEDAPAY_API_BASE}/api/v1/ramp/pretium/networks?country=${selectedFiatMeta.countryCode}`,
+          {
+            headers: {
+              'x-api-key': NEDAPAY_API_KEY,
+            },
+          }
+        );
         const data = await res.json();
         if (data.statusCode === 200 && Array.isArray(data.data)) {
           setNetworks(data.data);
@@ -150,12 +167,21 @@ export default function PretiumOnRampFlow({ walletAddress, asset, onBack }: Pret
     const fetchRate = async () => {
       setLoadingRate(true);
       try {
-        const token = await getAccessToken();
-        const res = await fetch('/api/pretium/exchange-rate', {
+        if (!NEDAPAY_API_KEY) {
+          toast({
+            title: 'Config Error',
+            description: 'NEDAPAY API key is not configured.',
+            variant: 'destructive',
+          });
+          setExchangeRate(null);
+          return;
+        }
+
+        const res = await fetch(`${NEDAPAY_API_BASE}/api/v1/ramp/pretium/exchange-rate`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
+            'x-api-key': NEDAPAY_API_KEY,
           },
           body: JSON.stringify({ currency_code: fiat }),
         });
@@ -185,7 +211,7 @@ export default function PretiumOnRampFlow({ walletAddress, asset, onBack }: Pret
     };
 
     fetchRate();
-  }, [fiat, getAccessToken, toast]);
+  }, [fiat, toast]);
 
   useEffect(() => {
     if (networks.length === 0) return;
@@ -210,12 +236,20 @@ export default function PretiumOnRampFlow({ walletAddress, asset, onBack }: Pret
   const startOnramp = async () => {
     setSubmitting(true);
     try {
-      const token = await getAccessToken();
-      const res = await fetch('/api/pretium/onramp', {
+      if (!NEDAPAY_API_KEY) {
+        toast({
+          title: 'Config Error',
+          description: 'NEDAPAY API key is not configured.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      const res = await fetch(`${NEDAPAY_API_BASE}/api/v1/ramp/pretium/onramp`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
+          'x-api-key': NEDAPAY_API_KEY,
         },
         body: JSON.stringify({
           currency_code: fiat,
@@ -270,12 +304,20 @@ export default function PretiumOnRampFlow({ walletAddress, asset, onBack }: Pret
 
     setPolling(true);
     try {
-      const token = await getAccessToken();
-      const res = await fetch('/api/pretium/status', {
+      if (!NEDAPAY_API_KEY) {
+        toast({
+          title: 'Config Error',
+          description: 'NEDAPAY API key is not configured.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      const res = await fetch(`${NEDAPAY_API_BASE}/api/v1/ramp/pretium/status`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
+          'x-api-key': NEDAPAY_API_KEY,
         },
         body: JSON.stringify({
           currency_code: fiat,
@@ -317,7 +359,7 @@ export default function PretiumOnRampFlow({ walletAddress, asset, onBack }: Pret
     } finally {
       setPolling(false);
     }
-  }, [fiat, getAccessToken, toast, transactionCode]);
+  }, [fiat, toast, transactionCode]);
 
   useEffect(() => {
     if (currentStep === 2 && transactionCode) {
@@ -491,14 +533,14 @@ export default function PretiumOnRampFlow({ walletAddress, asset, onBack }: Pret
                     <div className="p-2.5 rounded-xl border border-slate-700/60 bg-slate-900/30">
                       <div className="flex items-center gap-2">
                         <div className="w-6 h-6 rounded-full flex items-center justify-center bg-white/10 flex-shrink-0">
-                          <img 
+                          {/* <img 
                             src={getTokenIcon(asset)} 
                             alt={asset}
                             className="w-3 h-3 object-cover rounded-full"
-                            onError={(e) => {
-                              e.currentTarget.src = '/default-token-icon.png';
-                            }}
-                          />
+                            // onError={(e) => {
+                            //   e.currentTarget.src = '/default-token-icon.png';
+                            // }}
+                          /> */}
                         </div>
                         <div className="min-w-0">
                           <span className="text-[10px] text-slate-400 block">Asset</span>

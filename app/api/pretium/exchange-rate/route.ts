@@ -1,0 +1,49 @@
+import { NextResponse } from 'next/server';
+
+const BASE_URL = process.env.PRETIUM_BASE_URL || 'https://api.xwift.africa';
+const API_KEY = process.env.PRETIUM_API_KEY || '';
+
+export async function POST(request: Request) {
+  try {
+    const body = await request.json();
+    const { currency_code } = body;
+
+    if (!currency_code) {
+      return NextResponse.json({
+        statusCode: 400,
+        message: 'Currency code is required',
+      }, { status: 400 });
+    }
+
+    const response = await fetch(`${BASE_URL}/v1/exchange-rate`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': API_KEY,
+      },
+      body: JSON.stringify({ currency_code }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      return NextResponse.json({
+        statusCode: response.status,
+        message: data.message || 'Failed to fetch exchange rate',
+        error: data.error,
+      }, { status: response.status });
+    }
+
+    return NextResponse.json({
+      statusCode: 200,
+      data: data.data || data,
+    });
+  } catch (error: any) {
+    console.error('Exchange rate error:', error);
+    return NextResponse.json({
+      statusCode: 500,
+      message: 'Internal server error',
+      error: error.message,
+    }, { status: 500 });
+  }
+}
