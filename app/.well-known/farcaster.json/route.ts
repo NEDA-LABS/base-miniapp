@@ -5,7 +5,7 @@ export async function GET() {
     "accountAssociation": {
       "header": "eyJmaWQiOjg2OTUyNywidHlwZSI6ImN1c3RvZHkiLCJrZXkiOiIweEY5N0NFZkRiNTIzMzFiZDk3YWUyMDY5NjQ0NjcxMTNkMGQ3QjM2MjkifQ",
       "payload": "eyJkb21haW4iOiJtaW5pYXBwLm5lZGFwYXkueHl6In0K",
-      "signature": "MHgxMzE0YjJjM2ZlYjljNjIxYzkzZjA1MDk4OWU4M2FkYjFjNDEwM2QxMDllNWQwYjhjNWU4MmY0NmY4MWYyNWY2NjYwNGE0NzViN2Q1ZjU3MjIwZDdhNmE4YTU0ZDhjYjRiNzQyMTk0ZTJkN2MwZDRjZDUzOTVkNDI4ZGRiZjM3MTFi"
+      "signature": "A3PZCwNAjNrIWXfkUnOchmHzVL+0DFHye+oX6YrgZ4YfCrT/QqvbdnrLCZz28SYwGHD85uAUz5x6vCtw8wZR5Rw="
     },
     "miniapp": {
       "version": "1",
