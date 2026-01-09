@@ -35,12 +35,12 @@ export async function GET() {
     "frame": {
       "version": "1",
       "name": "NEDApay",
-      "iconUrl": "https://miniapp.nedapay.xyz/icon-192.png",
+      "iconUrl": "https://miniapp.nedapay.xyz/icon-512.png",
       "homeUrl": "https://miniapp.nedapay.xyz",
       "imageUrl": "https://miniapp.nedapay.xyz/og-image.png",
       "buttonTitle": "☄️ Launch NEDApay",
       "splashImageUrl": "https://miniapp.nedapay.xyz/splash.png",
-      "splashBackgroundColor": "#1e293b",
+      "splashBackgroundColor": "#1e40af",
       "webhookUrl": "https://miniapp.nedapay.xyz/api/webhook"
     },
     "baseBuilder": {
