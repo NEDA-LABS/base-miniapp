@@ -71,7 +71,8 @@ export default function RootLayout({
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
         {/* Farcaster MiniApp metadata - only for main app, payment pages have their own */}
-        <meta name="fc:miniapp" content='{"version":"1","imageUrl":"https://nedapayminiapp.vercel.app/og-image.png","button":{"title":"💰 Launch NedaPay","action":{"type":"launch_miniapp","name":"NedaPay","url":"https://nedapayminiapp.vercel.app","splashImageUrl":"https://nedapayminiapp.vercel.app/splash.png","splashBackgroundColor":"#1e293b"}}}' />
+        <meta name="fc:miniapp" content='{"version":"1","imageUrl":"https://miniapp.nedapay.xyz/og-image.png","button":{"title":"💰 Launch NedaPay","action":{"type":"launch_miniapp","name":"NEDAPay","url":"https://miniapp.nedapay.xyz","splashImageUrl":"https://miniapp.nedapay.xyz/splash.png","splashBackgroundColor":"#1e293b"}}}' />
+        <meta name="base:app_id" content="68a5c58dd3f637a5b9984595" />
         <link
           href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap"
           rel="stylesheet"
