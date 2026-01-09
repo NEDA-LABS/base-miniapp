@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
       version: '1',
       name: 'NEDApay',
       subtitle: 'Global Stablecoin payments',
-      description: 'NedaPay is a Global stablecoin payment solution. Send money to mobile money, create payment links, generate invoices, and accept crypto payments seamlessly.',
+      description: 'NedaPay is a stablecoin payment solution for Africa. Send money to mobile money, create payment links, generate invoices, and accept crypto payments seamlessly.',
       screenshotUrls: [
         `${baseUrl}/screenshot-send.png`,
         `${baseUrl}/screenshot-invoice.png`,
