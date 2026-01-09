@@ -32,17 +32,6 @@ export async function GET() {
       "ogImageUrl": "https://miniapp.nedapay.xyz/og-image.png",
       "castShareUrl": "https://miniapp.nedapay.xyz"
     },
-    "frame": {
-      "version": "1",
-      "name": "NEDApay",
-      "iconUrl": "https://miniapp.nedapay.xyz/icon-512.png",
-      "homeUrl": "https://miniapp.nedapay.xyz",
-      "imageUrl": "https://miniapp.nedapay.xyz/og-image.png",
-      "buttonTitle": "☄️ Launch NEDApay",
-      "splashImageUrl": "https://miniapp.nedapay.xyz/splash.png",
-      "splashBackgroundColor": "#1e40af",
-      "webhookUrl": "https://miniapp.nedapay.xyz/api/webhook"
-    },
     "baseBuilder": {
       "allowedAddresses": ["0x9BdBE16907547C1C0751FD15c1101B74cC0ba0F4"],
       "appType": "miniapp",
