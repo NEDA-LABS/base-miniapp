@@ -20,6 +20,8 @@ export async function GET(req: NextRequest) {
         `${baseUrl}/screenshot-link.png`
       ],
       iconUrl: `${baseUrl}/icon-512.png`,
+      imageUrl: `${baseUrl}/og-image.png`,
+      buttonTitle: '☄️ Launch NEDApay',
       splashImageUrl: `${baseUrl}/splash.png`,
       splashBackgroundColor: '#1e40af',
       homeUrl: baseUrl,

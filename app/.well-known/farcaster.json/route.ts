@@ -19,6 +19,8 @@ export async function GET() {
         "https://miniapp.nedapay.xyz/screenshot-link.png"
       ],
       "iconUrl": "https://miniapp.nedapay.xyz/icon-512.png",
+      "imageUrl": "https://miniapp.nedapay.xyz/og-image.png",
+      "buttonTitle": "☄️ Launch NEDApay",
       "splashImageUrl": "https://miniapp.nedapay.xyz/splash.png",
       "splashBackgroundColor": "#1e40af",
       "homeUrl": "https://miniapp.nedapay.xyz",
