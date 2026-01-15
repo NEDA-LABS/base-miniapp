@@ -3067,24 +3067,31 @@ export default function FarcasterMiniApp() {
       }
       
       // Prepare recipient data for Paycrest API (correct format)
-      // Clean phone number and check if it already includes country code
-      const cleanPhoneNumber = phoneNumber.replace(/\D/g, '');
-      const countryCodeNumber = selectedCountry.countryCode?.replace('+', '') || '';
-      
-      // Check if phone number already starts with country code
-      const fullPhoneNumber = cleanPhoneNumber.startsWith(countryCodeNumber) 
-        ? cleanPhoneNumber 
-        : countryCodeNumber + cleanPhoneNumber;
-      
       // Determine account type based on selected institution
       const selectedInstitutionData = institutions.find(i => i.code === selectedInstitution);
       const isBank = selectedInstitutionData?.type === 'bank';
       
+      // Clean phone number/account number
+      const cleanPhoneNumber = phoneNumber.replace(/\D/g, '');
+      
+      // Only add country code for mobile money, not for banks
+      let accountIdentifier;
+      if (isBank) {
+        // For banks, use the raw account number without country code
+        accountIdentifier = cleanPhoneNumber;
+      } else {
+        // For mobile money, add country code if not already present
+        const countryCodeNumber = selectedCountry.countryCode?.replace('+', '') || '';
+        accountIdentifier = cleanPhoneNumber.startsWith(countryCodeNumber) 
+          ? cleanPhoneNumber 
+          : countryCodeNumber + cleanPhoneNumber;
+      }
+      
       const recipient = {
         institution: selectedInstitution,
-        accountIdentifier: fullPhoneNumber,
+        accountIdentifier: accountIdentifier,
         accountName: isBank ? 'Bank Account' : 'Mobile Money Account',
-        memo: `Send ${sendCurrency === 'local' ? amount + ' ' + selectedCountry.currency : amount + ' ' + selectedSendToken} to ${fullPhoneNumber}`
+        memo: `Send ${sendCurrency === 'local' ? amount + ' ' + selectedCountry.currency : amount + ' ' + selectedSendToken} to ${accountIdentifier}`
       };
       
       // Execute Paycrest API transaction
