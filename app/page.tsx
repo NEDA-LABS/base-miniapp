@@ -3062,7 +3062,7 @@ export default function FarcasterMiniApp() {
       
       // Validate that institution is selected
       if (!selectedInstitution) {
-        alert('Please select a mobile money provider');
+        alert('Please select a mobile money or bank provider');
         return;
       }
       
@@ -3518,12 +3518,14 @@ export default function FarcasterMiniApp() {
           />
         </div>
         <div>
-          <label className="block text-[10px] text-gray-400 mb-0.5 uppercase tracking-wide">Phone/Account</label>
+          <label className="block text-[10px] text-gray-400 mb-0.5 uppercase tracking-wide">
+            {institutions.find(i => i.code === selectedInstitution)?.type === 'bank' ? 'Bank Account' : 'Phone Number'}
+          </label>
           <input
             type="text"
             value={phoneNumber}
             onChange={(e) => setPhoneNumber(e.target.value)}
-            placeholder="+255..."
+            placeholder={institutions.find(i => i.code === selectedInstitution)?.type === 'bank' ? 'Enter account number' : '+255...'}
             className="w-full bg-slate-700/80 text-white rounded-lg px-2.5 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
           />
         </div>
@@ -5748,58 +5750,50 @@ export default function FarcasterMiniApp() {
         </div>
       </div>
       
-      {/* Bottom Navigation - Fixed & Bold */}
-      <div className="fixed bottom-0 left-0 right-0 z-40 bg-gradient-to-t from-slate-900 via-slate-900/98 to-slate-900/95 backdrop-blur-xl border-t border-slate-600/30 safe-area-bottom">
-        <div className="max-w-sm mx-auto px-3 py-3">
-          <div className="grid grid-cols-5 gap-2">
-            {[
-              { key: 'send' as Tab, label: t('navigation.send'), icon: ArrowUpIcon, isArrow: true },
-              { key: 'pay' as Tab, label: t('navigation.pay'), icon: CurrencyDollarIcon, isArrow: false },
-              { key: 'deposit' as Tab, label: t('navigation.deposit'), icon: ArrowDownIcon, isArrow: true },
-              { key: 'link' as Tab, label: t('navigation.link'), icon: LinkIcon, isArrow: false },
-              { key: 'invoice' as Tab, label: t('navigation.invoice'), icon: DocumentTextIcon, isArrow: false }
-            ].map(({ key, label, icon: Icon, isArrow }) => (
-              <button
-                key={key}
-                onClick={() => setActiveTab(key)}
-                className={`relative flex flex-col items-center justify-center py-2.5 px-1 rounded-2xl transition-all duration-300 ${
-                  activeTab === key
-                    ? `${isCeloToken 
-                        ? 'bg-gradient-to-br from-[#FCFF52]/25 to-[#FDFF8B]/15 text-[#FCFF52] shadow-lg shadow-yellow-500/20 border border-[#FCFF52]/30' 
-                        : 'bg-gradient-to-br from-blue-500/25 to-purple-500/15 text-blue-400 shadow-lg shadow-blue-500/20 border border-blue-400/30'
-                      }`
-                    : 'text-white/70 hover:text-white hover:bg-slate-800/50'
-                }`}
-              >
-                {/* Active indicator bar */}
-                {activeTab === key && (
-                  <div className={`absolute -top-1 left-1/2 transform -translate-x-1/2 w-8 h-1 rounded-full ${isCeloToken ? 'bg-[#FCFF52]' : 'bg-gradient-to-r from-blue-400 to-purple-400'}`} />
-                )}
-                
-                {/* Enhanced arrow icons for Send/Deposit */}
-                {isArrow ? (
-                  <div className={`relative mb-1 ${activeTab === key ? 'scale-110' : ''} transition-all duration-300`}>
-                    <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${
-                      activeTab === key 
-                        ? (isCeloToken ? 'bg-[#FCFF52]/20' : 'bg-blue-400/20')
-                        : 'bg-slate-700/50'
-                    }`}>
-                      <Icon className="w-5 h-5" strokeWidth={activeTab === key ? 2.5 : 2} />
-                    </div>
-                  </div>
-                ) : (
-                  <Icon className={`w-6 h-6 mb-1 transition-all duration-300 ${
-                    activeTab === key ? 'scale-110 drop-shadow-lg' : ''
-                  }`} strokeWidth={activeTab === key ? 2.5 : 1.5} />
-                )}
-                
-                <span className={`text-[11px] tracking-wide ${
-                  activeTab === key ? 'font-bold' : 'font-semibold'
-                }`}>
-                  {label}
-                </span>
-              </button>
-            ))}
+      {/* Bottom Navigation - Glassmorphism */}
+      <div className="fixed bottom-0 left-0 right-0 z-40 safe-area-bottom">
+        <div className="mx-auto">
+          <div className="glass-card-bottom px-3 py-1">
+            <div className="grid grid-cols-5 gap-1">
+              {[
+                { key: 'send' as Tab, label: t('navigation.send'), icon: ArrowUpIcon },
+                { key: 'pay' as Tab, label: t('navigation.pay'), icon: CurrencyDollarIcon },
+                { key: 'deposit' as Tab, label: t('navigation.deposit'), icon: ArrowDownIcon },
+                { key: 'link' as Tab, label: t('navigation.link'), icon: LinkIcon },
+                { key: 'invoice' as Tab, label: t('navigation.invoice'), icon: DocumentTextIcon }
+              ].map(({ key, label, icon: Icon }) => (
+                <button
+                  key={key}
+                  onClick={() => setActiveTab(key)}
+                  className={`relative flex flex-col items-center justify-center py-2.5 rounded-xl transition-all duration-300 group ${
+                    activeTab === key
+                      ? isCeloToken 
+                        ? 'text-[#FCFF52] bg-[#FCFF52]/10' 
+                        : 'text-blue-400 bg-blue-400/10'
+                      : 'text-gray-400 hover:text-gray-300 hover:bg-white/5'
+                  }`}
+                >
+                  <Icon className={`w-6 h-6 mb-1.5 transition-all duration-300 ${
+                    activeTab === key 
+                      ? 'scale-110 stroke-2' 
+                      : 'stroke-[1.5] group-hover:scale-105'
+                  }`} />
+                  
+                  <span className={`text-[10px] font-medium leading-none transition-all duration-300 ${
+                    activeTab === key ? 'opacity-100' : 'opacity-70 group-hover:opacity-90'
+                  }`}>
+                    {label}
+                  </span>
+
+                  {/* Active indicator dot */}
+                  {activeTab === key && (
+                    <div className={`absolute -bottom-0.5 w-1 h-1 rounded-full ${
+                      isCeloToken ? 'bg-[#FCFF52]' : 'bg-blue-400'
+                    }`} />
+                  )}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       </div>

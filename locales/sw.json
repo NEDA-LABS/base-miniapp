@@ -46,7 +46,7 @@
   "send": {
     "title": "Tuma Pesa",
     "subtitle": "Tuma USDC kwa pesa za simu haraka",
-    "selectProvider": "Chagua Mtoa Huduma wa Mobile Money",
+    "selectProvider": "Chagua Mobile Money au Benki",
     "chooseProvider": "Chagua huduma...",
     "recipientName": "Jina la Mpokeaji (au Jina la Akaunti)",
     "recipientPlaceholder": "John Doe",
@@ -73,7 +73,7 @@
     "confirming": "Inathibitisha...",
     "processing": "Inachakata...",
     "dragToConfirm": "Buruta kulia kuthibitisha malipo",
-    "selectProvider": "Chagua Mtoa Huduma wa Pesa za Simu",
+    "selectProvider": "Chagua Mobile Money au Benki",
     "buyGoods": "Nunua Bidhaa",
     "payBill": "Lipa Bill",
     "enterTillNumber": "Ingiza nambari ya till",
