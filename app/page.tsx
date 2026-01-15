@@ -3069,6 +3069,8 @@ export default function FarcasterMiniApp() {
       // Prepare recipient data for Paycrest API (correct format)
       // Determine account type based on selected institution
       const selectedInstitutionData = institutions.find(i => i.code === selectedInstitution);
+      // console.log('🏦 Selected institution data:', selectedInstitutionData);
+      // console.log('🏦 Institution type:', selectedInstitutionData?.type);
       const isBank = selectedInstitutionData?.type === 'bank';
       
       // Clean phone number/account number
@@ -3090,7 +3092,7 @@ export default function FarcasterMiniApp() {
       const recipient = {
         institution: selectedInstitution,
         accountIdentifier: accountIdentifier,
-        accountName: isBank ? 'Bank Account' : 'Mobile Money Account',
+        accountName: recipientName,
         memo: `Send ${sendCurrency === 'local' ? amount + ' ' + selectedCountry.currency : amount + ' ' + selectedSendToken} to ${accountIdentifier}`
       };
       
