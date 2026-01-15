@@ -3076,10 +3076,14 @@ export default function FarcasterMiniApp() {
         ? cleanPhoneNumber 
         : countryCodeNumber + cleanPhoneNumber;
       
+      // Determine account type based on selected institution
+      const selectedInstitutionData = institutions.find(i => i.code === selectedInstitution);
+      const isBank = selectedInstitutionData?.type === 'bank';
+      
       const recipient = {
         institution: selectedInstitution,
         accountIdentifier: fullPhoneNumber,
-        accountName: 'Mobile Money Account',
+        accountName: isBank ? 'Bank Account' : 'Mobile Money Account',
         memo: `Send ${sendCurrency === 'local' ? amount + ' ' + selectedCountry.currency : amount + ' ' + selectedSendToken} to ${fullPhoneNumber}`
       };
       
