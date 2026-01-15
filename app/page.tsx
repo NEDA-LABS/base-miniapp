@@ -3533,89 +3533,74 @@ export default function FarcasterMiniApp() {
 
       {/* Amount Input with Currency Switching */}
       <div>
-        <div className="flex justify-between items-center mb-1">
-          <label className="text-xs text-gray-400">{t('send.enterAmount')}</label>
-          <div className="flex gap-1">
-            <div className="relative">
-              <div className="relative">
-                <button
-                  onClick={() => {
-                    setSendCurrency('usdc');
-                    setShowSendTokenDropdown(!showSendTokenDropdown);
-                  }}
-                  className={`relative px-3 py-1 text-xs rounded-lg font-bold transition-all duration-300 ease-out overflow-hidden group w-full text-left flex items-center justify-between bg-gradient-to-br ${themeColors.gradient} ${isCeloToken ? 'text-slate-900' : 'text-white'} shadow-xl shadow-${themeColors.shadow} border-2 border-${themeColors.border}`}
-                >
-                  <div className="flex items-center gap-2">
-                    {renderTokenIcon(stablecoins.find(token => token.baseToken === selectedSendToken) || stablecoins[0], "w-3 h-3")}
-                    <span>{selectedSendToken}</span>
-                  </div>
-                  <ChevronDownIcon className={`w-3 h-3 ${isCeloToken ? 'text-slate-900' : 'text-white'}`} />
-                </button>
-                
-                {showSendTokenDropdown && (
-                  <div className="absolute top-full left-0 right-0 mt-1 bg-slate-800 rounded-lg border border-slate-600 shadow-xl z-50 max-h-48 overflow-y-auto">
-                    {stablecoins.map((token, index) => (
-                      <button
-                        key={`${token.baseToken}-${token.chainId}-${index}`}
-                        onClick={async () => {
-                          setSelectedSendToken(token.baseToken);
-                          setSelectedToken(token); // Update main selected token for theme
-                          setShowSendTokenDropdown(false);
-                          
-                          // Switch chain immediately when token is selected using hook
-                          if (isConnected && switchChain) {
-                            try {
-                              const isCeloToken = (token.baseToken === 'USDT' || token.baseToken === 'cUSD');
-                              const targetChainId = isCeloToken ? 42220 : 8453; // Celo : Base
-                              const networkName = isCeloToken ? 'Celo' : 'Base';
-                              
-                              console.log(`🔄 Pre-switching to ${networkName} (${targetChainId}) for ${token.baseToken}`);
-                              await switchChain({ chainId: targetChainId });
-                              console.log(`✅ Pre-switched to ${networkName} for ${token.baseToken}`);
-                              
-                              // Fetch balance for the newly selected token
-                              setTimeout(() => {
-                                fetchWalletBalance(token.baseToken);
-                              }, 1000); // Wait for chain switch to complete
-                            } catch (error) {
-                              console.error('❌ Pre-chain switch failed:', error);
-                              // Show user-friendly error for Celo tokens
-                              const isCeloToken = (token.baseToken === 'USDT' || token.baseToken === 'cUSD');
-                              if (isCeloToken) {
-                                console.warn(`Failed to switch to Celo for ${token.baseToken}. Transaction may fail if not on correct network.`);
-                              }
-                            }
-                          }
-                        }}
-                        className="w-full px-3 py-2 text-left hover:bg-slate-700 flex items-center gap-2 text-xs transition-colors"
-                      >
-                        {renderTokenIcon(token, "w-3 h-3")}
-                        <span className="text-white">{token.baseToken}</span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-              {/* Active indicator */}
-              {sendCurrency === 'usdc' && (
-                <div className="absolute -top-1 -right-1 w-3 h-3 bg-blue-400 rounded-full animate-bounce" />
-              )}
-            </div>
-          </div>
-        </div>
-        <div className="bg-slate-700 rounded-lg px-3 py-2">
-          <div className="flex items-center">
-            <span className="text-sm text-gray-400 mr-2">
-              {sendCurrency === 'local' ? selectedCountry.currency : selectedSendToken}
-            </span>
+        <label className="block text-xs text-gray-400 mb-1">{t('send.enterAmount')}</label>
+        <div className="bg-slate-700 rounded-lg px-4 py-3">
+          <div className="flex items-center gap-3">
             <input
               type="number"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               placeholder={sendCurrency === 'local' ? '1000' : '1.5'}
               step={sendCurrency === 'local' ? '1' : '0.01'}
-              className="bg-transparent text-white text-base font-light flex-1 focus:outline-none"
+              className="bg-transparent text-white text-base font-light flex-1 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
             />
+            <div className="relative">
+              <button
+                onClick={() => {
+                  setSendCurrency('usdc');
+                  setShowSendTokenDropdown(!showSendTokenDropdown);
+                }}
+                className="flex items-center gap-1.5 px-2 py-1.5 bg-slate-800 hover:bg-slate-600 rounded-lg transition-colors border border-slate-500/30"
+              >
+                {renderTokenIcon(stablecoins.find(token => token.baseToken === selectedSendToken) || stablecoins[0], "w-3.5 h-3.5")}
+                <span className="text-white text-xs font-medium">{selectedSendToken}</span>
+                <ChevronDownIcon className="w-3.5 h-3.5 text-gray-400" />
+              </button>
+              
+              {showSendTokenDropdown && (
+                <div className="absolute top-full right-0 mt-2 bg-slate-800 rounded-lg border border-slate-600 shadow-xl z-50 max-h-48 overflow-y-auto min-w-[120px]">
+                  {stablecoins.map((token, index) => (
+                    <button
+                      key={`${token.baseToken}-${token.chainId}-${index}`}
+                      onClick={async () => {
+                        setSelectedSendToken(token.baseToken);
+                        setSelectedToken(token); // Update main selected token for theme
+                        setShowSendTokenDropdown(false);
+                        
+                        // Switch chain immediately when token is selected using hook
+                        if (isConnected && switchChain) {
+                          try {
+                            const isCeloToken = (token.baseToken === 'USDT' || token.baseToken === 'cUSD');
+                            const targetChainId = isCeloToken ? 42220 : 8453; // Celo : Base
+                            const networkName = isCeloToken ? 'Celo' : 'Base';
+                            
+                            console.log(`🔄 Pre-switching to ${networkName} (${targetChainId}) for ${token.baseToken}`);
+                            await switchChain({ chainId: targetChainId });
+                            console.log(`✅ Pre-switched to ${networkName} for ${token.baseToken}`);
+                            
+                            // Fetch balance for the newly selected token
+                            setTimeout(() => {
+                              fetchWalletBalance(token.baseToken);
+                            }, 1000); // Wait for chain switch to complete
+                          } catch (error) {
+                            console.error('❌ Pre-chain switch failed:', error);
+                            // Show user-friendly error for Celo tokens
+                            const isCeloToken = (token.baseToken === 'USDT' || token.baseToken === 'cUSD');
+                            if (isCeloToken) {
+                              console.warn(`Failed to switch to Celo for ${token.baseToken}. Transaction may fail if not on correct network.`);
+                            }
+                          }
+                        }
+                      }}
+                      className="w-full px-3 py-2 text-left hover:bg-slate-700 flex items-center gap-2 text-xs transition-colors"
+                    >
+                      {renderTokenIcon(token, "w-3 h-3")}
+                      <span className="text-white">{token.baseToken}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
         
@@ -4350,99 +4335,74 @@ export default function FarcasterMiniApp() {
 
       {/* Amount Input with Currency Switching */}
       <div>
-        <div className="flex justify-between items-center mb-1.5">
-          <label className="text-xs text-gray-400">{t('pay.enterAmount')}</label>
-          <div className="flex gap-2">
-            <div className="relative">
-              <div className="relative">
-                <button
-                  onClick={() => {
-                    setPayCurrency('usdc');
-                    setShowPayTokenDropdown(!showPayTokenDropdown);
-                  }}
-                  className={`relative px-3 py-1 text-xs rounded-lg font-bold transition-all duration-300 ease-out overflow-hidden group w-full text-left flex items-center justify-between bg-gradient-to-br ${themeColors.gradient} ${isCeloToken ? 'text-slate-900' : 'text-white'} shadow-xl shadow-${themeColors.shadow} border-2 border-${themeColors.border}`}
-                >
-                  <div className="flex items-center gap-2">
-                    {selectedPayToken === 'USDC' ? (
-                      <img src="/assets/logos/usdc-logo.png" alt="USDC" className="w-3 h-3" />
-                    ) : selectedPayToken === 'USDT' ? (
-                      <img src="/usdt.png" alt="USDT" className="w-3 h-3" />
-                    ) : selectedPayToken === 'cUSD' ? (
-                      <img src="/cUSD.png" alt="cUSD" className="w-3 h-3" />
-                    ) : (
-                      <span className="text-xs">
-                        {stablecoins.find(token => token.baseToken === selectedPayToken)?.flag || '🌍'}
-                      </span>
-                    )}
-                    <span>{selectedPayToken}</span>
-                  </div>
-                  <ChevronDownIcon className={`w-3 h-3 ${isCeloToken ? 'text-slate-900' : 'text-white'}`} />
-                </button>
-                
-                {showPayTokenDropdown && (
-                  <div className="absolute top-full left-0 right-0 mt-1 bg-slate-800 rounded-lg border border-slate-600 shadow-xl z-50 max-h-48 overflow-y-auto">
-                    {stablecoins.map((token, index) => (
-                      <button
-                        key={`${token.baseToken}-${token.chainId}-${index}`}
-                        onClick={async () => {
-                          setSelectedPayToken(token.baseToken);
-                          setSelectedToken(token); // Update main selected token for theme
-                          setShowPayTokenDropdown(false);
-                          
-                          // Switch chain immediately when token is selected using hook
-                          if (isConnected && switchChain) {
-                            try {
-                              const isCeloToken = (token.baseToken === 'USDT' || token.baseToken === 'cUSD');
-                              const targetChainId = isCeloToken ? 42220 : 8453; // Celo : Base
-                              const networkName = isCeloToken ? 'Celo' : 'Base';
-                              
-                              console.log(`🔄 Pre-switching to ${networkName} (${targetChainId}) for ${token.baseToken}`);
-                              await switchChain({ chainId: targetChainId });
-                              console.log(`✅ Pre-switched to ${networkName} for ${token.baseToken}`);
-                              
-                              // Fetch balance for the newly selected token
-                              setTimeout(() => {
-                                fetchWalletBalance(token.baseToken);
-                              }, 1000); // Wait for chain switch to complete
-                            } catch (error) {
-                              console.error('❌ Pre-chain switch failed:', error);
-                              // Show user-friendly error for Celo tokens
-                              const isCeloToken = (token.baseToken === 'USDT' || token.baseToken === 'cUSD');
-                              if (isCeloToken) {
-                                console.warn(`Failed to switch to Celo for ${token.baseToken}. Transaction may fail if not on correct network.`);
-                              }
-                            }
-                          }
-                        }}
-                        className="w-full px-3 py-2 text-left hover:bg-slate-700 flex items-center gap-2 text-xs transition-colors"
-                      >
-                        {renderTokenIcon(token, "w-3 h-3")}
-                        <span className="text-white">{token.baseToken}</span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-              {/* Active indicator */}
-              {payCurrency === 'usdc' && (
-                <div className="absolute -top-1 -right-1 w-3 h-3 bg-blue-400 rounded-full animate-bounce" />
-              )}
-            </div>
-          </div>
-        </div>
-        <div className="bg-slate-700 rounded-lg px-3 py-3">
-          <div className="flex items-center">
-            <span className="text-sm text-gray-400 mr-2">
-              {payCurrency === 'local' ? selectedCountry.currency : selectedPayToken}
-            </span>
+        <label className="block text-xs text-gray-400 mb-1">{t('pay.enterAmount')}</label>
+        <div className="bg-slate-700 rounded-lg px-4 py-3">
+          <div className="flex items-center gap-3">
             <input
               type="number"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               placeholder={payCurrency === 'local' ? '1000' : '1.5'}
               step={payCurrency === 'local' ? '1' : '0.01'}
-              className="bg-transparent text-white text-lg font-light flex-1 focus:outline-none placeholder-gray-500"
+              className="bg-transparent text-white text-base font-light flex-1 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
             />
+            <div className="relative">
+              <button
+                onClick={() => {
+                  setPayCurrency('usdc');
+                  setShowPayTokenDropdown(!showPayTokenDropdown);
+                }}
+                className="flex items-center gap-1.5 px-2 py-1.5 bg-slate-600/50 hover:bg-slate-600 rounded-lg transition-colors border border-slate-500/30"
+              >
+                {renderTokenIcon(stablecoins.find(token => token.baseToken === selectedPayToken) || stablecoins[0], "w-3.5 h-3.5")}
+                <span className="text-white text-xs font-medium">{selectedPayToken}</span>
+                <ChevronDownIcon className="w-3.5 h-3.5 text-gray-400" />
+              </button>
+              
+              {showPayTokenDropdown && (
+                <div className="absolute top-full right-0 mt-2 bg-slate-800 rounded-lg border border-slate-600 shadow-xl z-50 max-h-48 overflow-y-auto min-w-[120px]">
+                  {stablecoins.map((token, index) => (
+                    <button
+                      key={`${token.baseToken}-${token.chainId}-${index}`}
+                      onClick={async () => {
+                        setSelectedPayToken(token.baseToken);
+                        setSelectedToken(token); // Update main selected token for theme
+                        setShowPayTokenDropdown(false);
+                        
+                        // Switch chain immediately when token is selected using hook
+                        if (isConnected && switchChain) {
+                          try {
+                            const isCeloToken = (token.baseToken === 'USDT' || token.baseToken === 'cUSD');
+                            const targetChainId = isCeloToken ? 42220 : 8453; // Celo : Base
+                            const networkName = isCeloToken ? 'Celo' : 'Base';
+                            
+                            console.log(`🔄 Pre-switching to ${networkName} (${targetChainId}) for ${token.baseToken}`);
+                            await switchChain({ chainId: targetChainId });
+                            console.log(`✅ Pre-switched to ${networkName} for ${token.baseToken}`);
+                            
+                            // Fetch balance for the newly selected token
+                            setTimeout(() => {
+                              fetchWalletBalance(token.baseToken);
+                            }, 1000); // Wait for chain switch to complete
+                          } catch (error) {
+                            console.error('❌ Pre-chain switch failed:', error);
+                            // Show user-friendly error for Celo tokens
+                            const isCeloToken = (token.baseToken === 'USDT' || token.baseToken === 'cUSD');
+                            if (isCeloToken) {
+                              console.warn(`Failed to switch to Celo for ${token.baseToken}. Transaction may fail if not on correct network.`);
+                            }
+                          }
+                        }
+                      }}
+                      className="w-full px-3 py-2 text-left hover:bg-slate-700 flex items-center gap-2 text-xs transition-colors"
+                    >
+                      {renderTokenIcon(token, "w-3 h-3")}
+                      <span className="text-white">{token.baseToken}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
         
@@ -5590,7 +5550,7 @@ export default function FarcasterMiniApp() {
           {/* Notification Bell - Compact */}
           <button
             onClick={() => setShowNotifications(!showNotifications)}
-            className="relative p-1.5 bg-slate-700/80 rounded-lg border border-slate-600/30"
+            className="relative p-1.5"
           >
             <BellIcon className="w-4 h-4 text-white" />
             {notifications.filter(n => !n.read).length > 0 && (
