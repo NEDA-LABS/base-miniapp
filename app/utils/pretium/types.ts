@@ -1,3 +1,4 @@
+
 export type PretiumAsset = 'USDC' | 'USDT' | 'cUSD';
 
 export interface PretiumNetwork {
@@ -20,4 +21,13 @@ export interface PretiumExchangeRateResponse {
   buying_rate: number;
   selling_rate: number;
   quoted_rate: number;
+}
+
+export interface PretiumSettlementNetwork {
+  name: string;
+  settlement_wallet_address: string;
+}
+
+export interface PretiumAccountResponse {
+  networks: PretiumSettlementNetwork[];
 }

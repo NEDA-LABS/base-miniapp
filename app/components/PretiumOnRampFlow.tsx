@@ -2,11 +2,11 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ArrowDown, CheckCircle2, ChevronDown, ChevronRight, Loader2, XCircle } from 'lucide-react';
-import { Button } from '@/compliance/user/components/ui/button';
-import { Input } from '@/compliance/user/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/compliance/user/components/ui/select';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/compliance/user/components/ui/card';
-import { useToast } from '@/compliance/user/components/ui/use-toast';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { useToast } from '@/components/ui/use-toast';
 import type { PretiumAsset, PretiumExchangeRateResponse, PretiumNetwork, PretiumStatusResponse } from '@/utils/pretium/types';
 import { motion } from 'framer-motion';
 import { stablecoins } from '@/data/stablecoins';
@@ -384,19 +384,17 @@ export default function PretiumOnRampFlow({ walletAddress, asset, onBack }: Pret
             {[1, 2].map((step) => (
               <div key={step} className="flex items-center">
                 <div
-                  className={`w-6 h-6 rounded-full text-[10px] font-medium flex items-center justify-center border transition-colors ${
-                    currentStep >= step
+                  className={`w-6 h-6 rounded-full text-[10px] font-medium flex items-center justify-center border transition-colors ${currentStep >= step
                       ? 'bg-purple-500/20 border-purple-500/50 text-purple-200'
                       : 'bg-slate-800/60 border-slate-700/60 text-slate-500'
-                  }`}
+                    }`}
                 >
                   {step}
                 </div>
                 {step < 2 && (
                   <div
-                    className={`w-6 h-px mx-1 transition-colors ${
-                      currentStep > step ? 'bg-purple-500/50' : 'bg-slate-700/50'
-                    }`}
+                    className={`w-6 h-px mx-1 transition-colors ${currentStep > step ? 'bg-purple-500/50' : 'bg-slate-700/50'
+                      }`}
                   />
                 )}
               </div>
@@ -455,8 +453,8 @@ export default function PretiumOnRampFlow({ walletAddress, asset, onBack }: Pret
                             {loadingRate
                               ? 'Loading...'
                               : quotedRate
-                              ? `1 ${asset} ≈ ${quotedRate.toFixed(2)} ${fiat}` 
-                              : 'Unavailable'}
+                                ? `1 ${asset} ≈ ${quotedRate.toFixed(2)} ${fiat}`
+                                : 'Unavailable'}
                           </p>
                         </div>
                       </div>
@@ -643,13 +641,12 @@ export default function PretiumOnRampFlow({ walletAddress, asset, onBack }: Pret
                     <p className="text-xs font-mono text-white mt-0.5 break-all">{transactionCode}</p>
                   </div>
                   <div
-                    className={`px-2 py-1 rounded-full text-[10px] font-medium border flex items-center gap-1 ${
-                      statusTone === 'success'
+                    className={`px-2 py-1 rounded-full text-[10px] font-medium border flex items-center gap-1 ${statusTone === 'success'
                         ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-200'
                         : statusTone === 'failed'
-                        ? 'bg-red-500/15 border-red-500/40 text-red-200'
-                        : 'bg-amber-500/15 border-amber-500/40 text-amber-200'
-                    }`}
+                          ? 'bg-red-500/15 border-red-500/40 text-red-200'
+                          : 'bg-amber-500/15 border-amber-500/40 text-amber-200'
+                      }`}
                   >
                     {statusTone === 'success' ? (
                       <CheckCircle2 className="w-3 h-3" />

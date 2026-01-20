@@ -1,12 +1,12 @@
 import '@coinbase/onchainkit/styles.css';
 import type { Metadata } from 'next';
 import './globals.css';
-import './compliance/user/kyc.css';
+
 import './components/name-fallback.css';
 import { Providers } from './providers';
 import AppToaster from './components/Toaster';
 import { ReadyState } from './components/ReadyState';
-import {Analytics} from '@vercel/analytics/next';
+import { Analytics } from '@vercel/analytics/next';
 
 const URL = process.env.NEXT_PUBLIC_URL || 'https://nedapayminiapp.vercel.app';
 const PROJECT_NAME = process.env.NEXT_PUBLIC_ONCHAINKIT_PROJECT_NAME || 'NedaPay';

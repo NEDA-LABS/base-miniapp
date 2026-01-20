@@ -21,6 +21,7 @@ import { useTranslation } from 'react-i18next';
 import LanguageSwitcher from '../components/LanguageSwitcher';
 import { useFarcasterProfile } from './hooks/useFarcasterProfile';
 import Sidebar from './components/Sidebar';
+import PretiumOffRampFlow from './components/PretiumOffRampFlow';
 import PretiumOnRampFlow from './components/PretiumOnRampFlow';
 import { usePrivy } from '@privy-io/react-auth';
 import '../lib/i18n';
@@ -39,10 +40,10 @@ interface Country {
 // Mobile number validation function
 const validateMobileNumber = (phoneNumber: string, countryCode: string): { isValid: boolean; message?: string } => {
   if (!phoneNumber) return { isValid: false, message: 'Phone number is required' };
-  
+
   // Remove any non-digit characters
   const cleanNumber = phoneNumber.replace(/\D/g, '');
-  
+
   switch (countryCode) {
     case 'NG': // Nigeria
       if (cleanNumber.length !== 10) return { isValid: false, message: 'Nigerian numbers must be 10 digits' };
@@ -98,7 +99,7 @@ const validateMobileNumber = (phoneNumber: string, countryCode: string): { isVal
     default:
       return { isValid: true }; // Allow other countries without specific validation
   }
-  
+
   return { isValid: true };
 };
 
@@ -106,11 +107,11 @@ const validateMobileNumber = (phoneNumber: string, countryCode: string): { isVal
 const sendCountries: Country[] = [
   { name: 'Nigeria', code: 'NG', flag: '🇳🇬', currency: 'NGN', countryCode: '+234', comingSoon: false },
   { name: 'Kenya', code: 'KE', flag: '🇰🇪', currency: 'KES', countryCode: '+254', comingSoon: false },
-  { name: 'Ghana', code: 'GH', flag: '🇬🇭', currency: 'GHS', countryCode: '+233', comingSoon: false },
   { name: 'Tanzania', code: 'TZ', flag: '🇹🇿', currency: 'TZS', countryCode: '+255', comingSoon: false },
   { name: 'Uganda', code: 'UG', flag: '🇺🇬', currency: 'UGX', countryCode: '+256', comingSoon: false },
-  { name: 'Ivory Coast', code: 'CI', flag: '🇨🇮', currency: 'XOF', countryCode: '+225', comingSoon: false },
-  { name: 'Benin', code: 'BJ', flag: '🇧🇯', currency: 'XOF', countryCode: '+229', comingSoon: false },
+  { name: 'Ghana', code: 'GH', flag: '🇬🇭', currency: 'GHS', countryCode: '+233', comingSoon: false },
+  { name: 'DR Congo', code: 'CD', flag: '🇨🇩', currency: 'CDF', countryCode: '+243', comingSoon: false },
+  { name: 'Malawi', code: 'MW', flag: '🇲🇼', currency: 'MWK', countryCode: '+265', comingSoon: false },
 ];
 
 // Countries for Pay tab - Tanzania and Kenya first, others disabled
@@ -145,7 +146,7 @@ export default function FarcasterMiniApp() {
   console.log('🚀🚀🚀 NedaPay MiniApp Loading - DEPLOYMENT TEST v6 - FIX CORS ISSUE...');
   console.log('🔍 Stablecoins array length:', stablecoins.length);
   console.log('🔍 Last 3 tokens:', stablecoins.slice(-3).map(s => ({ baseToken: s.baseToken, name: s.name, chainId: s.chainId })));
-  
+
   // SAFE MINIKIT CHECK - AVOID CORS ERRORS
   if (typeof window !== 'undefined') {
     try {
@@ -168,13 +169,13 @@ export default function FarcasterMiniApp() {
       console.log('🚫 CORS Error avoided:', error instanceof Error ? error.message : 'Unknown error');
     }
   }
-  
+
   const { t, i18n } = useTranslation();
   const { authenticated } = usePrivy();
 
   // DIRECT FARCASTER USER STATE
   const [farcasterUser, setFarcasterUser] = useState<any>(null);
-  
+
   // LISTEN FOR FRAME MESSAGES THAT MIGHT CONTAIN USER DATA
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
@@ -183,13 +184,13 @@ export default function FarcasterMiniApp() {
         data: event.data,
         source: event.source === window.parent ? 'parent' : 'other'
       });
-      
+
       // Check if message contains user data
       if (event.data && typeof event.data === 'object') {
         if (event.data.user?.fid || event.data.fid) {
           const userFid = event.data.user?.fid || event.data.fid;
           console.log('🎯 FOUND USER FID FROM FRAME MESSAGE:', userFid);
-          
+
           // Fetch user data with this FID (for any user, not just specific ones)
           if (userFid && userFid !== 9152 && !isNaN(parseInt(userFid))) {
             fetch(`/api/farcaster-user?fid=${userFid}`)
@@ -203,7 +204,7 @@ export default function FarcasterMiniApp() {
         }
       }
     };
-    
+
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
   }, []);
@@ -216,7 +217,7 @@ export default function FarcasterMiniApp() {
       console.log('🎯 MiniKit user detected event received!');
       console.log('  FID:', fid);
       console.log('  Context:', context);
-      
+
       if (fid && fid !== 9152) {
         console.log('🎯 Loading profile for detected FID:', fid);
         try {
@@ -233,9 +234,9 @@ export default function FarcasterMiniApp() {
         }
       }
     };
-    
+
     window.addEventListener('minikit-user-detected', handleUserDetected);
-    
+
     return () => {
       window.removeEventListener('minikit-user-detected', handleUserDetected);
     };
@@ -310,34 +311,34 @@ export default function FarcasterMiniApp() {
   const { disconnect } = useDisconnect();
   const { data: walletClient } = useConnectorClient();
   const { switchChain } = useSwitchChain();
-  
-  
+
+
   // Detect if we're in a smart wallet environment (Farcaster MiniApp) - enhanced detection
   const isSmartWalletEnvironment = useMemo(() => {
     if (typeof window === 'undefined') return false;
-    
+
     const url = window.location.href.toLowerCase();
     const referrer = document.referrer.toLowerCase();
     const userAgent = navigator.userAgent.toLowerCase();
     const isMobile = /mobile|android|iphone|ipad/i.test(navigator.userAgent);
-    
+
     // Check for official Farcaster MiniApp URLs
-    const isFarcasterOfficial = url.includes('warpcast.com/~/') || 
-                               url.includes('farcaster.xyz/miniapp') ||
-                               url.includes('farcaster.xyz/miniapps') ||
-                               url.includes('fc_frame=') ||
-                               url.includes('fc_miniapp=') ||
-                               referrer.includes('warpcast.com') ||
-                               referrer.includes('farcaster.xyz');
-    
+    const isFarcasterOfficial = url.includes('warpcast.com/~/') ||
+      url.includes('farcaster.xyz/miniapp') ||
+      url.includes('farcaster.xyz/miniapps') ||
+      url.includes('fc_frame=') ||
+      url.includes('fc_miniapp=') ||
+      referrer.includes('warpcast.com') ||
+      referrer.includes('farcaster.xyz');
+
     // Check for MiniKit SDK presence
     const hasMiniKit = typeof (window as any).MiniKit !== 'undefined';
-    
+
     // Check for mobile webview patterns
-    const isMobileWebview = userAgent.includes('wv') || 
-                           userAgent.includes('webview') ||
-                           (userAgent.includes('mobile') && !userAgent.includes('safari'));
-    
+    const isMobileWebview = userAgent.includes('wv') ||
+      userAgent.includes('webview') ||
+      (userAgent.includes('mobile') && !userAgent.includes('safari'));
+
     // AGGRESSIVE mobile detection - if mobile and not our main site, assume Farcaster
     const isMobileFarcaster = isMobile && (
       isFarcasterOfficial ||
@@ -346,9 +347,9 @@ export default function FarcasterMiniApp() {
       // If mobile and not our main domain, likely Farcaster
       (!url.includes('nedapayminiapp.vercel.app') && !url.includes('localhost'))
     );
-    
+
     const result = isFarcasterOfficial || hasMiniKit || isMobileWebview || isMobileFarcaster;
-    
+
     console.log('🔍 Environment Detection:', {
       url: window.location.href,
       referrer: document.referrer,
@@ -360,7 +361,7 @@ export default function FarcasterMiniApp() {
       isMobileFarcaster,
       result
     });
-    
+
     return result;
   }, []);
 
@@ -389,17 +390,17 @@ export default function FarcasterMiniApp() {
     let retryCount = 0;
     const maxRetries = 3;
     const isMobile = /Mobile|Android|iPhone|iPad/i.test(navigator.userAgent);
-    
+
     const autoConnectSmartWallet = async () => {
       // Check if already connected
       if (isConnected) {
         console.log('✅ Already connected to wallet');
         return;
       }
-      
+
       // Simple but effective detection - focus on what works
       const shouldAutoConnect = isSmartWalletEnvironment;
-      
+
       console.log('🔍 Auto-connect check:', {
         isMobile,
         isSmartWalletEnvironment,
@@ -408,29 +409,29 @@ export default function FarcasterMiniApp() {
         connectorsCount: connectors?.length || 0,
         retryCount
       });
-        
+
       if (shouldAutoConnect && connectors && connectors.length > 0 && !isConnected) {
         console.log('🚀 Attempting auto-connect in smart wallet environment');
         console.log('Available connectors:', connectors.map(c => ({ name: c.name, id: c.id })));
-        
+
         try {
           // For Farcaster MiniApp, find the farcaster connector specifically
-          const farcasterConnector = connectors.find(c => 
+          const farcasterConnector = connectors.find(c =>
             c.name.toLowerCase().includes('farcaster') ||
             c.id.toLowerCase().includes('farcaster') ||
             c.name.toLowerCase().includes('miniapp')
           );
-          
+
           if (farcasterConnector) {
-            console.log('🔌 Auto-connecting with Farcaster connector:', { 
-              name: farcasterConnector.name, 
+            console.log('🔌 Auto-connecting with Farcaster connector:', {
+              name: farcasterConnector.name,
               id: farcasterConnector.id
             });
-            
+
             try {
               const result = await connect({ connector: farcasterConnector });
               console.log('✅ Connect result:', result);
-              
+
               // Verify connection after a delay
               setTimeout(() => {
                 console.log('🔍 Post-connect verification:', {
@@ -455,7 +456,7 @@ export default function FarcasterMiniApp() {
               await connect({ connector: connectors[0] });
             }
           }
-          
+
         } catch (error) {
           console.error('❌ Auto-connect failed:', error);
           retryCount++;
@@ -506,7 +507,7 @@ export default function FarcasterMiniApp() {
   const [showPayTokenDropdown, setShowPayTokenDropdown] = useState(false);
   const [showDepositTokenDropdown, setShowDepositTokenDropdown] = useState(false);
   const [showProviderDropdown, setShowProviderDropdown] = useState(false);
-  
+
   // Deposit (On-Ramp) state variables
   const [depositStep, setDepositStep] = useState<1 | 2 | 3 | 4>(1);
   const [depositAmount, setDepositAmount] = useState('100');
@@ -544,7 +545,7 @@ export default function FarcasterMiniApp() {
     return today.toISOString().split('T')[0];
   });
   const [invoiceStatus, setInvoiceStatus] = useState<string | null>(null);
-  
+
   // Swap state variables
   const [swapFromToken, setSwapFromToken] = useState('USDC');
   const [swapToToken, setSwapToToken] = useState('');
@@ -558,7 +559,7 @@ export default function FarcasterMiniApp() {
   const [showInvoiceCurrencyDropdown, setShowInvoiceCurrencyDropdown] = useState(false);
   const [showLinkCurrencyDropdown, setShowLinkCurrencyDropdown] = useState(false);
 
-  
+
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [isConfirming, setIsConfirming] = useState(false);
@@ -570,13 +571,13 @@ export default function FarcasterMiniApp() {
     type: 'send' | 'pay';
     token: 'USDC' | 'USDT';
   } | null>(null);
-  
+
   const [errorData, setErrorData] = useState<{
     title: string;
     message: string;
     suggestion?: string;
   } | null>(null);
-  
+
   // Track user's preferred wallet selection
   const [preferredWalletType, setPreferredWalletType] = useState<string | null>(null);
   const [addressCopied, setAddressCopied] = useState(false);
@@ -606,7 +607,7 @@ export default function FarcasterMiniApp() {
 
   // Function to add notification (with database persistence)
   const addNotification = useCallback(async (
-    message: string, 
+    message: string,
     type: 'send' | 'pay' | 'deposit' | 'general' = 'general',
     transactionData?: {
       hash?: string;
@@ -623,10 +624,10 @@ export default function FarcasterMiniApp() {
       type,
       read: false
     };
-    
+
     // Add to local state immediately for instant UI feedback
     setNotifications(prev => [newNotification, ...prev]);
-    
+
     try {
       // Save to database if wallet is connected
       if (walletAddress) {
@@ -653,7 +654,7 @@ export default function FarcasterMiniApp() {
                 network: transactionData.currency === 'USDT' || transactionData.currency === 'cUSD' ? 'celo' : 'base'
               })
             });
-            
+
             if (transactionResponse.ok) {
               const transaction = await transactionResponse.json();
               transactionId = transaction.id;
@@ -663,7 +664,7 @@ export default function FarcasterMiniApp() {
             console.warn('⚠️ Failed to save transaction to database:', error);
           }
         }
-        
+
         // Save notification to database
         const notificationResponse = await fetch('/api/notifications', {
           method: 'POST',
@@ -676,15 +677,15 @@ export default function FarcasterMiniApp() {
             relatedTransactionId: transactionId
           })
         });
-        
+
         if (notificationResponse.ok) {
           const savedNotification = await notificationResponse.json();
           console.log('✅ Notification saved to database:', savedNotification.id);
-          
+
           // Update local state with database ID
-          setNotifications(prev => 
-            prev.map(notif => 
-              notif.id === newNotification.id 
+          setNotifications(prev =>
+            prev.map(notif =>
+              notif.id === newNotification.id
                 ? { ...notif, id: savedNotification.id }
                 : notif
             )
@@ -700,12 +701,12 @@ export default function FarcasterMiniApp() {
   // Function to handle notification click - mark as read and show details
   const handleNotificationClick = useCallback(async (notification: any) => {
     console.log('Notification clicked:', notification);
-    
+
     // Mark as read
-    setNotifications(prev => 
+    setNotifications(prev =>
       prev.map(notif => notif.id === notification.id ? { ...notif, read: true } : notif)
     );
-    
+
     try {
       // Update in database
       await fetch(`/api/notifications?id=${notification.id}`, {
@@ -716,7 +717,7 @@ export default function FarcasterMiniApp() {
     } catch (error) {
       console.warn('⚠️ Failed to update notification status in database:', error);
     }
-    
+
     // Show transaction details if available
     if (notification.relatedTransaction) {
       console.log('Opening transaction details:', notification.relatedTransaction);
@@ -747,13 +748,13 @@ export default function FarcasterMiniApp() {
       console.log('No linked transaction data for this notification');
     }
   }, []);
-  
+
   // Keep old function for compatibility
   const markNotificationAsRead = useCallback(async (id: string) => {
-    setNotifications(prev => 
+    setNotifications(prev =>
       prev.map(notif => notif.id === id ? { ...notif, read: true } : notif)
     );
-    
+
     try {
       await fetch(`/api/notifications?id=${id}`, {
         method: 'PUT',
@@ -771,7 +772,7 @@ export default function FarcasterMiniApp() {
       console.log('⚠️ No wallet address, skipping transaction load');
       return;
     }
-    
+
     // Normalize wallet address to lowercase for consistent querying
     const normalizedWallet = walletAddress.toLowerCase();
     console.log(`🔄 Fetching transactions for wallet: ${normalizedWallet}`);
@@ -799,12 +800,12 @@ export default function FarcasterMiniApp() {
   // Function to load notifications from database
   const loadNotifications = useCallback(async () => {
     if (!walletAddress) return;
-    
+
     try {
       const response = await fetch(`/api/notifications?recipient=${walletAddress}&limit=50`);
       if (response.ok) {
         const dbNotifications = await response.json();
-        
+
         // Transform database notifications to match local state format
         const transformedNotifications = dbNotifications.map((notif: any) => ({
           id: notif.id,
@@ -813,7 +814,7 @@ export default function FarcasterMiniApp() {
           type: notif.type,
           read: notif.status === 'seen'
         }));
-        
+
         setNotifications(transformedNotifications);
         console.log(`✅ Loaded ${transformedNotifications.length} notifications from database`);
       }
@@ -833,15 +834,15 @@ export default function FarcasterMiniApp() {
   const openUrl = useOpenUrl();
   const composeCast = useComposeCast();
   const viewProfile = useViewProfile();
-  
+
   // Base App client detection (clientFid 309857 = Base App)
   const isBaseApp = context?.client?.clientFid === 309857;
 
   // Farcaster profile integration
   const { profile: farcasterProfile, isLoading: farcasterLoading, isFarcasterEnvironment } = useFarcasterProfile();
-  
+
   // Removed hardcoded FID 9152 fetch - no more automatic calls
-  
+
   // Debug Farcaster profile integration
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -858,7 +859,7 @@ export default function FarcasterMiniApp() {
   // MiniKit Auto-Connection: Farcaster smart wallet integration
   const connectedWallet = (() => {
     if (!isWalletConnected || !walletAddress) return null;
-    
+
     // MiniKit automatically connects to Farcaster smart wallet when available
     // Return a simplified wallet object for compatibility with existing code
     return {
@@ -868,7 +869,7 @@ export default function FarcasterMiniApp() {
       getEthereumProvider: () => walletClient
     };
   })();
-  
+
   // Debug MiniKit wallet info and Base App detection
   useEffect(() => {
     console.log('=== MINIKIT WALLET DEBUG ===');
@@ -878,7 +879,7 @@ export default function FarcasterMiniApp() {
     console.log('Wallet Client:', !!walletClient);
     console.log('Is Base App:', isBaseApp);
     // Removed Client FID log - that's just the Warpcast client, not the user
-    
+
     if (connectedWallet) {
       console.log('🔍 CONNECTED WALLET:', {
         address: connectedWallet.address,
@@ -891,13 +892,13 @@ export default function FarcasterMiniApp() {
       console.log('No wallet connected');
       setWalletBalance('0.00');
     }
-    
+
     if (isBaseApp) {
       console.log('🏗️ Running in Base App - using Base App specific features');
     }
     console.log('===================');
   }, [connectedWallet, isConnected, address, connectors.length, walletClient, isBaseApp, context]);
-  
+
   // MiniKit initialization - signal when app is ready
   useEffect(() => {
     if (isSmartWalletEnvironment && setFrameReady) {
@@ -907,15 +908,15 @@ export default function FarcasterMiniApp() {
         setFrameReady();
         console.log('MiniKit frame ready signal sent!');
       }, 1000);
-      
+
       return () => clearTimeout(timer);
     }
   }, [isSmartWalletEnvironment, setFrameReady]);
-  
+
   // MiniKit handles wallet connections automatically - no manual tracking needed
-  
+
   // Removed duplicate handleGeneratePaymentLink function - using the one defined later
-  
+
   // Fetch real USDC wallet balance
   const fetchWalletBalance = useCallback(async (tokenSymbol?: string) => {
     if (!walletAddress || !isConnected) {
@@ -923,11 +924,11 @@ export default function FarcasterMiniApp() {
       setWalletBalance('0.00');
       return;
     }
-    
+
     // Determine which token to fetch balance for
     const currentTab = activeTab;
     let selectedToken = tokenSymbol;
-    
+
     if (!selectedToken) {
       if (currentTab === 'send') {
         selectedToken = sendCurrency === 'usdc' ? selectedSendToken : 'USDC';
@@ -937,9 +938,9 @@ export default function FarcasterMiniApp() {
         selectedToken = 'USDC'; // Default for other tabs
       }
     }
-    
+
     console.log('💰 Fetching balance for:', walletAddress, 'Token:', selectedToken);
-    
+
     try {
       // Find token data
       const tokenData = stablecoins.find(token => token.baseToken === selectedToken);
@@ -948,11 +949,11 @@ export default function FarcasterMiniApp() {
         setWalletBalance('0.00');
         return;
       }
-      
+
       // Use the new generic token balance function
       const balance = await getTokenBalance(walletAddress, tokenData);
       const displayBalance = parseFloat(balance).toFixed(tokenData.decimals === 2 ? 2 : 2);
-      
+
       console.log('✅ Balance fetched:', displayBalance, selectedToken);
       setWalletBalance(displayBalance);
     } catch (error) {
@@ -960,7 +961,7 @@ export default function FarcasterMiniApp() {
       setWalletBalance('0.00');
     }
   }, [walletAddress, isConnected, activeTab, sendCurrency, selectedSendToken, payCurrency, selectedPayToken, stablecoins]);
-  
+
   // Fetch balance when wallet connects or address changes
   useEffect(() => {
     console.log('🔄 Balance useEffect triggered:', { isConnected, walletAddress });
@@ -972,13 +973,13 @@ export default function FarcasterMiniApp() {
       console.log('⚠️ Balance fetch skipped - not connected or no address');
     }
   }, [fetchWalletBalance, loadNotifications, isConnected, walletAddress]);
-  
+
   // Manual balance refresh function
   const refreshBalance = useCallback(() => {
     console.log('🔄 Manual balance refresh triggered');
     fetchWalletBalance();
   }, [fetchWalletBalance]);
-  
+
   // Monitor wallet balance state changes
   useEffect(() => {
     console.log('💰 Wallet balance state changed to:', walletBalance);
@@ -987,19 +988,19 @@ export default function FarcasterMiniApp() {
   // Fetch real-time rate from Paycrest
   const fetchRate = useCallback(async (currency: string, tokenOverride?: string) => {
     if (!currency || currency === 'USDC') return;
-    
+
     try {
       setIsLoadingRate(true);
       console.log(`💱 Fetching rate for ${currency}...`);
-      
+
       // Determine which token to use based on current tab
       const currentToken = tokenOverride || (activeTab === 'send' ? selectedSendToken : selectedPayToken);
-      
+
       const rate = await fetchTokenRate(currentToken as 'USDC' | 'USDT', 1, currency);
       setCurrentRate(rate);
-      
+
       console.log(`✅ Rate fetched successfully for ${currency}: ${rate}`);
-      
+
       // Update floating rates
       setFloatingRates(prev => ({
         ...prev,
@@ -1020,10 +1021,10 @@ export default function FarcasterMiniApp() {
   const calculatePaymentDetails = useCallback(() => {
     const amountNum = parseFloat(amount) || 0;
     const rate = parseFloat(currentRate) || 1;
-    
+
     // Determine if we're working with local currency or USDC
     const isLocalCurrency = sendCurrency === 'local' || payCurrency === 'local';
-    
+
     if (isLocalCurrency) {
       // Amount is in local currency (TZS, KES, etc.)
       const percentageFee = amountNum * 0.005; // 0.5%
@@ -1031,7 +1032,7 @@ export default function FarcasterMiniApp() {
       const totalFee = percentageFee + fixedFee;
       const totalLocal = amountNum + totalFee;
       const usdcAmount = totalLocal / rate;
-      
+
       return {
         totalLocal: totalLocal.toFixed(2),
         fee: totalFee.toFixed(2),
@@ -1045,7 +1046,7 @@ export default function FarcasterMiniApp() {
       const fixedFee = 0.36;
       const totalFee = percentageFee + fixedFee;
       const totalLocal = localEquivalent + totalFee;
-      
+
       return {
         totalLocal: totalLocal.toFixed(2),
         fee: totalFee.toFixed(2),
@@ -1062,19 +1063,19 @@ export default function FarcasterMiniApp() {
           fetchSupportedCurrencies(),
           fetchSupportedInstitutions(selectedCountry.currency)
         ]);
-        
+
         setCurrencies(supportedCurrencies);
-        
+
         // Keep all institutions for all countries
         let filteredInstitutions = supportedInstitutions;
-        
+
         // For Kenya, move M-Pesa to the top of the list
         if (selectedCountry.code === 'KE') {
-          const mpesaIndex = filteredInstitutions.findIndex(institution => 
-            institution.name.toLowerCase().includes('mpesa') || 
+          const mpesaIndex = filteredInstitutions.findIndex(institution =>
+            institution.name.toLowerCase().includes('mpesa') ||
             institution.name.toLowerCase().includes('m-pesa')
           );
-          
+
           if (mpesaIndex > 0) {
             const mpesa = filteredInstitutions[mpesaIndex];
             filteredInstitutions = [
@@ -1084,29 +1085,29 @@ export default function FarcasterMiniApp() {
             ];
           }
         }
-        
+
         setInstitutions(filteredInstitutions);
-        
+
         // Set default institution if none selected
         if (filteredInstitutions.length > 0 && !selectedInstitution) {
           setSelectedInstitution(filteredInstitutions[0].code);
         }
-        
+
         // Load initial floating rates for supported currencies (limit to prevent API spam)
         const priorityCurrencies = ['NGN', 'KES', 'GHS', 'TZS', 'UGX']; // Focus on main supported currencies
         const currenciesToLoad = supportedCurrencies
           .filter(currency => priorityCurrencies.includes(currency.code))
           .slice(0, 5); // Limit to 5 to avoid API rate limits
-        
+
         console.log(`💱 Loading rates for ${currenciesToLoad.length} priority currencies...`);
-        
+
         for (const currency of currenciesToLoad) {
           try {
             // Add small delay between requests to avoid rate limiting
             if (currenciesToLoad.indexOf(currency) > 0) {
               await new Promise(resolve => setTimeout(resolve, 500));
             }
-            
+
             const rate = await fetchTokenRate(selectedSendToken as 'USDC' | 'USDT', 1, currency.code);
             setFloatingRates(prev => ({
               ...prev,
@@ -1121,12 +1122,12 @@ export default function FarcasterMiniApp() {
             // Don't spam the console with full error objects
           }
         }
-        
+
       } catch (error) {
         console.error('Failed to load currencies and institutions:', error);
       }
     };
-    
+
     loadData();
   }, [selectedCountry, selectedInstitution]);
 
@@ -1143,7 +1144,7 @@ export default function FarcasterMiniApp() {
   }, [activeTab, fetchRate, selectedCountry.currency]);
 
   // MiniKit initialization (already declared above)
-  
+
   useEffect(() => {
     if (!isFrameReady) {
       setFrameReady();
@@ -1160,14 +1161,14 @@ export default function FarcasterMiniApp() {
       connectorsCount: connectors.length,
       connectError: connectError?.message
     });
-    
+
     // In smart wallet environments, don't force connection attempts
     if (isSmartWalletEnvironment) {
       if (isConnected && address) {
         console.log('✅ Smart wallet already connected:', address);
         return;
       }
-      
+
       // Only attempt auto-connection if MiniKit is ready and no connection errors
       if (isFrameReady && !isWalletConnected && !connectError && connectors.length > 0) {
         console.log('🔗 Attempting smart wallet auto-connection...');
@@ -1194,20 +1195,20 @@ export default function FarcasterMiniApp() {
         // First try to get location from IP geolocation API
         const response = await fetch('https://ipapi.co/json/');
         const data = await response.json();
-        
+
         if (data.country_code) {
           const detectedCountry = countries.find(c => c.code === data.country_code);
           if (detectedCountry) {
             console.log('🌍 Detected user location:', detectedCountry.name);
             setUserLocation(data.country_code);
-            
+
             // Reorder countries to put user's country first
             const reorderedCountries = [
               detectedCountry,
               ...countries.filter(c => c.code !== data.country_code)
             ];
             setOrderedCountries(reorderedCountries);
-            
+
             // Set as default selected country if not already set
             if (selectedCountry.code === countries[0].code) {
               setSelectedCountry(detectedCountry);
@@ -1250,7 +1251,7 @@ export default function FarcasterMiniApp() {
       const isUSDT = tokenData?.baseToken === 'USDT';
       const isCUSD = tokenData?.baseToken === 'cUSD';
       const isCeloToken = isUSDT || isCUSD;
-      
+
       console.log('🔍 Token Detection Debug:', {
         tokenDataBaseToken: tokenData?.baseToken,
         isUSDT,
@@ -1258,59 +1259,59 @@ export default function FarcasterMiniApp() {
         isCeloToken,
         tokenDataChainId: tokenData?.chainId
       });
-      
-      const tokenContract = isCeloToken 
+
+      const tokenContract = isCeloToken
         ? (isUSDT ? '0x48065fbBE25f71C9282ddf5e1cD6D6A887483D5e' : '0x765DE816845861e75A25fCA122bb6898B8B1282a') // USDT : cUSD on Celo
         : '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913'; // USDC on Base
       const decimals = tokenData?.decimals || 6;
       const chainId = isCeloToken ? 42220 : 8453; // Celo : Base
-      
+
       console.log('🔍 Final Transaction Config:', {
         tokenContract,
         chainId,
         chainName: isCeloToken ? 'Celo' : 'Base',
         decimals
       });
-      
+
       // Convert amount to token decimals
       const amountInUnits = BigInt(Math.floor(amount * Math.pow(10, decimals)));
-      
+
       // Encode USDC transfer function call
       const transferData = `0xa9059cbb${toAddress.slice(2).padStart(64, '0')}${amountInUnits.toString(16).padStart(64, '0')}`;
-      
+
       // Use wagmi's writeContract approach for Farcaster MiniApps
       const { writeContract, switchChain } = await import('wagmi/actions');
       const { config } = await import('../providers/MiniKitProvider');
-      
+
       // Switch to the correct chain before executing transaction - be more aggressive
       try {
         console.log(`🔄 Attempting to switch to chain ${chainId} (${isCeloToken ? 'Celo' : 'Base'}) for ${tokenData?.baseToken}`);
         await switchChain(config, { chainId: chainId });
         console.log(`✅ Successfully switched to chain ${chainId} (${isCeloToken ? 'Celo' : 'Base'})`);
-        
+
         // Wait longer for chain switch to complete in MiniKit
         await new Promise(resolve => setTimeout(resolve, 3000));
-        
+
         // Verify the chain switch was successful with multiple attempts
         const { getAccount } = await import('wagmi/actions');
         let attempts = 0;
         let currentAccount = getAccount(config);
-        
+
         while (currentAccount.chainId !== chainId && attempts < 3) {
           console.log(`🔄 Chain verification attempt ${attempts + 1}: current=${currentAccount.chainId}, expected=${chainId}`);
-          
+
           if (isCeloToken) {
             console.log('🔄 Retrying chain switch for Celo token...');
             await switchChain(config, { chainId: chainId });
             await new Promise(resolve => setTimeout(resolve, 2000));
           }
-          
+
           currentAccount = getAccount(config);
           attempts++;
         }
-        
+
         console.log(`🔍 Final chain verification: ${currentAccount.chainId} (expected: ${chainId})`);
-        
+
         if (currentAccount.chainId !== chainId && isCeloToken) {
           throw new Error(`Unable to switch to Celo network after multiple attempts. Please manually switch to Celo network in your wallet.`);
         }
@@ -1322,7 +1323,7 @@ export default function FarcasterMiniApp() {
         }
         console.log('⚠️ Continuing with current chain for Base token');
       }
-      
+
       const hash = await writeContract(config, {
         address: tokenContract as `0x${string}`,
         abi: [
@@ -1341,16 +1342,16 @@ export default function FarcasterMiniApp() {
         args: [toAddress as `0x${string}`, amountInUnits],
         chainId: chainId
       });
-      
+
       console.log('✅ Farcaster transaction sent:', hash);
-      
+
       return {
         success: true,
         hash: hash
       };
     } catch (error: any) {
       console.error('❌ Farcaster transaction failed:', error);
-      
+
       if (error?.message?.includes('user rejected') || error?.message?.includes('denied')) {
         throw new Error('Transaction was rejected by user');
       } else if (error?.message?.includes('insufficient funds')) {
@@ -1376,11 +1377,11 @@ export default function FarcasterMiniApp() {
 
       const { writeContract } = await import('wagmi/actions');
       const { config } = await import('../providers/MiniKitProvider');
-      
+
       // 1. Handle approval if needed (with reasonable approval amount)
       if (approvalNeeded) {
         console.log('📝 Setting reasonable approval to avoid security warnings...');
-        
+
         const erc20ABI = [
           {
             name: 'approve',
@@ -1396,26 +1397,26 @@ export default function FarcasterMiniApp() {
 
         // Use 10x the needed amount instead of unlimited to avoid security warnings
         const reasonableAmount = ethers.BigNumber.from(approvalAmount).mul(10);
-        
+
         const approvalHash = await writeContract(config, {
           address: tokenAddress as `0x${string}`,
           abi: erc20ABI,
           functionName: 'approve',
           args: [spenderAddress as `0x${string}`, BigInt(reasonableAmount.toString())],
         });
-        
+
         console.log('✅ Reasonable approval transaction sent:', approvalHash);
       }
-      
+
       // 2. Execute main transaction
       const mainHash = await mainTransaction();
       console.log('✅ Main transaction completed:', mainHash);
-      
+
       return {
         success: true,
         hash: mainHash
       };
-      
+
     } catch (error: any) {
       console.error('❌ Optimized transaction failed:', error);
       throw error;
@@ -1434,10 +1435,10 @@ export default function FarcasterMiniApp() {
   ): Promise<{ success: boolean; hash: string }> => {
     try {
       console.log('🔄 Preparing optimized swap with fee collection...');
-      
+
       const { writeContract } = await import('wagmi/actions');
       const { config } = await import('../providers/MiniKitProvider');
-      
+
       // 1. Check if approval is needed for protocol fee
       const erc20ABI = [
         {
@@ -1461,27 +1462,27 @@ export default function FarcasterMiniApp() {
           stateMutability: 'view'
         }
       ];
-      
+
       // Check current allowance for protocol contract
       const provider = new ethers.providers.JsonRpcProvider('https://mainnet.base.org');
       const tokenContract = new ethers.Contract(fromTokenAddress, erc20ABI, provider);
       const currentAllowance = await tokenContract.allowance(userAddress, feeInfo.protocolAddress);
       const totalNeeded = ethers.BigNumber.from(amountIn).add(feeInfo.feeInTokenUnits);
-      
+
       // 2. Set reasonable approval if needed
       if (currentAllowance.lt(totalNeeded)) {
         console.log('📝 Setting approval for protocol fee...');
-        
+
         // Use 10x the needed amount instead of unlimited to avoid security warnings
         const approvalAmount = totalNeeded.mul(10);
-        
+
         const approvalHash = await writeContract(config, {
           address: fromTokenAddress as `0x${string}`,
           abi: erc20ABI,
           functionName: 'approve',
           args: [feeInfo.protocolAddress as `0x${string}`, BigInt(approvalAmount.toString())],
         });
-        
+
         console.log('✅ Approval set for protocol fee:', approvalHash);
       }
 
@@ -1502,7 +1503,7 @@ export default function FarcasterMiniApp() {
           stateMutability: 'nonpayable'
         }
       ];
-      
+
       const feeHash = await writeContract(config, {
         address: feeInfo.protocolAddress as `0x${string}`,
         abi: protocolABI,
@@ -1515,7 +1516,7 @@ export default function FarcasterMiniApp() {
           '0x' as `0x${string}`
         ],
       });
-      
+
       console.log('✅ Protocol fee processed:', feeHash);
 
       // 4. Execute main swap
@@ -1528,16 +1529,16 @@ export default function FarcasterMiniApp() {
         userAddress,
         deadline
       );
-      
+
       // Clean up fee info
       delete (window as any).batchedFeeInfo;
       delete (window as any).protocolFeeInfo;
-      
+
       return {
         success: swapResult.success,
         hash: swapResult.hash
       };
-      
+
     } catch (error: any) {
       console.error('❌ Optimized swap with fee failed:', error);
       throw error;
@@ -1570,10 +1571,10 @@ export default function FarcasterMiniApp() {
       // Use wagmi's writeContract approach for Farcaster MiniApps
       const { writeContract } = await import('wagmi/actions');
       const { config } = await import('../providers/MiniKitProvider');
-      
+
       // Aerodrome Router contract
       const AERODROME_ROUTER = '0xcF77a3Ba9A5CA399B7c97c74d54e5b1Beb874E43';
-      
+
       // 1. Check and set approval if needed
       const erc20ABI = [
         {
@@ -1597,16 +1598,16 @@ export default function FarcasterMiniApp() {
           stateMutability: 'view'
         }
       ];
-      
+
       // Check current allowance for router
       const rpcProvider = new ethers.providers.JsonRpcProvider('https://mainnet.base.org');
       const tokenContract = new ethers.Contract(fromTokenAddress, erc20ABI, rpcProvider);
       const currentAllowance = await tokenContract.allowance(userAddress, AERODROME_ROUTER);
       const amountNeeded = ethers.BigNumber.from(amountIn);
-      
+
       // Check if this is a local stablecoin (not USDC) for approval
       const isLocalStablecoinApproval = fromTokenAddress.toLowerCase() !== '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913'.toLowerCase();
-      
+
       console.log('🔍 Approval validation:', {
         fromTokenAddress,
         amountIn,
@@ -1618,7 +1619,7 @@ export default function FarcasterMiniApp() {
       // Set exact amount approval to avoid "unlimited" warnings
       if (currentAllowance.lt(amountNeeded)) {
         console.log('📝 Setting exact amount approval for router...');
-        
+
         // Use exact amount needed to avoid any "unlimited" interpretation
         // Add specific gas parameters for all local stablecoins to help with gas estimation
         const approvalConfig: any = {
@@ -1627,7 +1628,7 @@ export default function FarcasterMiniApp() {
           functionName: 'approve',
           args: [AERODROME_ROUTER as `0x${string}`, BigInt(amountNeeded.toString())],
         };
-        
+
         // Add gas parameters for all local stablecoins to help with estimation
         if (isLocalStablecoinApproval) {
           // Ultra-specific gas handling for IDRX
@@ -1639,7 +1640,7 @@ export default function FarcasterMiniApp() {
             console.log('🪙 Using local stablecoin approval gas limit only (no fee override)');
           }
         }
-        
+
         console.log('📤 Sending approval transaction to wallet...');
         console.log('🔍 Approval transaction details:', {
           tokenAddress: fromTokenAddress,
@@ -1649,41 +1650,41 @@ export default function FarcasterMiniApp() {
           isConnected,
           hasAddress: !!address
         });
-        
+
         // Ensure we have the correct user context for the approval
         if (!userAddress || userAddress === '0x0000000000000000000000000000000000000000') {
           throw new Error('Invalid user address for approval transaction');
         }
-        
+
         const { writeContract: writeApprovalContract } = await import('wagmi/actions');
         const approvalHash = await writeApprovalContract(config, {
           ...approvalConfig,
           account: userAddress as `0x${string}` // Explicitly set the account
         });
-        
+
         console.log('✅ Approval transaction sent:', approvalHash);
-        
+
         // CRITICAL: Wait for approval confirmation before proceeding
         console.log('⏳ Waiting for approval confirmation...');
         const { waitForTransactionReceipt } = await import('wagmi/actions');
-        
+
         try {
           const approvalReceipt = await waitForTransactionReceipt(config, {
             hash: approvalHash,
             timeout: 120000 // 2 minutes timeout
           });
-          
+
           console.log('✅ Approval confirmed on-chain:', {
             status: approvalReceipt.status,
             blockNumber: approvalReceipt.blockNumber,
             gasUsed: approvalReceipt.gasUsed?.toString()
           });
-          
+
           // Double-check allowance after confirmation with retry logic
           let newAllowance;
           let retryCount = 0;
           const maxRetries = 3;
-          
+
           while (retryCount < maxRetries) {
             try {
               await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1))); // Wait 1s, 2s, 3s
@@ -1693,12 +1694,12 @@ export default function FarcasterMiniApp() {
                 actual: newAllowance.toString(),
                 sufficient: newAllowance.gte(amountNeeded)
               });
-              
+
               if (newAllowance.gte(amountNeeded)) {
                 console.log('✅ Allowance confirmed sufficient');
                 break;
               }
-              
+
               retryCount++;
               if (retryCount === maxRetries) {
                 console.log('⚠️ Allowance still insufficient after retries, but proceeding with swap (approval transaction was confirmed)');
@@ -1715,7 +1716,7 @@ export default function FarcasterMiniApp() {
               }
             }
           }
-          
+
         } catch (confirmError: any) {
           console.error('❌ Approval confirmation failed:', confirmError);
           throw new Error(`Approval confirmation failed: ${confirmError.message}`);
@@ -1723,7 +1724,7 @@ export default function FarcasterMiniApp() {
       } else {
         console.log('✅ Sufficient allowance already exists for router');
       }
-      
+
       // 2. Execute swap with route validation
       // Detect local stablecoins via address set (USDC + known locals)
       const USDC_ADDR = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913'.toLowerCase();
@@ -1740,10 +1741,10 @@ export default function FarcasterMiniApp() {
       const toIsLocalStable = LOCAL_STABLES.has(toTokenAddress.toLowerCase());
       const fromIsUSDC = fromTokenAddress.toLowerCase() === USDC_ADDR;
       const toIsUSDC = toTokenAddress.toLowerCase() === USDC_ADDR;
-      
+
       // Try stable pools first for better gas estimation, then fallback to volatile
       const hasLocalStablecoin = fromIsLocalStable || toIsLocalStable;
-      
+
       // Start with stable pools for all stablecoin pairs
       const useStablePair = true; // Always try stable pools first
 
@@ -1753,7 +1754,7 @@ export default function FarcasterMiniApp() {
         stable: useStablePair,
         factory: AERODROME_FACTORY_ADDRESS as `0x${string}`
       }];
-      
+
       console.log('🛣️ Route configuration:', {
         routes,
         fromTokenAddress,
@@ -1761,7 +1762,7 @@ export default function FarcasterMiniApp() {
         factoryAddress: AERODROME_FACTORY_ADDRESS,
         stable: useStablePair
       });
-      
+
       // Add local stablecoin gas parameters for better gas estimation (either direction)
       const isFromLocalStablecoin = fromIsLocalStable;
       const isToLocalStablecoin = toIsLocalStable;
@@ -1801,13 +1802,13 @@ export default function FarcasterMiniApp() {
         functionName: 'swapExactTokensForTokens',
         args: [
           BigInt(amountIn),
-          BigInt(amountOutMin), 
+          BigInt(amountOutMin),
           routes,
           userAddress as `0x${string}`,
           BigInt(deadline)
         ]
       };
-      
+
       // Add higher gas limit for local stablecoin swaps to help with gas estimation
       if (isLocalStablecoinSwap) {
         // Apply only gas limits; let wallet estimate fees
@@ -1822,24 +1823,24 @@ export default function FarcasterMiniApp() {
           console.log('🪙 Using local stablecoin swap gas limit only (no fee override):', { gasLimit: '400000' });
         }
       }
-      
+
       // Implement robust swap with stable/volatile pool fallback
       console.log('🔄 Starting robust swap with pool fallback strategy...');
-      
+
       // Robust wallet client retrieval with retry logic
       let currentWalletClient = walletClient;
-      
+
       if (!currentWalletClient) {
         console.log('❌ Wallet client not immediately available, attempting to get fresh client...');
         console.log('🔍 Connection status:', { isConnected, address: address?.slice(0, 6) + '...' });
-        
+
         if (!isWalletConnected || !walletAddress) {
           throw new Error('Wallet not connected. Please connect your wallet first.');
         }
-        
+
         // Wait a moment and try to get the wallet client from the window object (MiniKit specific)
         await new Promise(resolve => setTimeout(resolve, 100));
-        
+
         // Try to get wallet client from window.ethereum as fallback
         if ((window as any).ethereum) {
           console.log('✅ Using window.ethereum provider as fallback');
@@ -1848,12 +1849,12 @@ export default function FarcasterMiniApp() {
           throw new Error('Wallet client unavailable. Please refresh the page and try again.');
         }
       }
-      
+
       console.log('✅ Wallet client available, proceeding with swap...');
-      
+
       const swapProvider = new ethers.providers.Web3Provider(currentWalletClient!.transport || currentWalletClient!);
       const signer = swapProvider.getSigner();
-      
+
       // Pre-swap validation and debugging
       console.log('🔍 Pre-swap validation:', {
         amountIn,
@@ -1891,7 +1892,7 @@ export default function FarcasterMiniApp() {
           stable: useStablePair,
           factory: AERODROME_FACTORY_ADDRESS
         });
-        
+
         console.log('✅ Fresh quote received:', {
           inputAmount: amountIn,
           outputAmount: freshQuote[1]?.toString(),
@@ -1910,7 +1911,7 @@ export default function FarcasterMiniApp() {
 
       // Simple direct swap execution - copy exact logic from main app
       console.log('🔄 Executing direct swap with volatile pools (like main app)...');
-      
+
       let tx;
       try {
         tx = await swapAerodrome({
@@ -1924,24 +1925,24 @@ export default function FarcasterMiniApp() {
           userAddress,
           deadline
         });
-        
+
         console.log('✅ Direct swap successful:', tx.hash);
         return { success: true, hash: tx.hash };
-        
+
       } catch (error: any) {
         console.error('❌ Direct swap failed:', error);
-        
+
         // If it's a slippage issue, try with higher slippage once
         if (error?.message?.includes('slippage') || error?.message?.includes('INSUFFICIENT_OUTPUT_AMOUNT')) {
           console.log('🔄 Retrying with higher slippage (15%)...');
-          
+
           try {
             const higherSlippageAmount = Number(amountOutMin) * 0.85; // 15% slippage
             const higherSlippageAmountOut = ethers.utils.parseUnits(
-              higherSlippageAmount.toFixed(6), 
+              higherSlippageAmount.toFixed(6),
               6
             ).toString();
-            
+
             tx = await swapAerodrome({
               signer,
               amountIn,
@@ -1953,33 +1954,33 @@ export default function FarcasterMiniApp() {
               userAddress,
               deadline
             });
-            
+
             console.log('✅ Higher slippage swap successful:', tx.hash);
             return { success: true, hash: tx.hash };
-            
+
           } catch (slippageError: any) {
             console.error('❌ Higher slippage swap also failed:', slippageError);
             throw new Error('Swap failed: Insufficient liquidity or slippage too high. Try reducing the amount or increasing slippage tolerance.');
           }
         }
-        
+
         // Handle other common errors
         if (error?.message?.includes('user rejected') || error?.message?.includes('denied')) {
           throw new Error('Transaction was cancelled by user');
         }
-        
+
         if (error?.message?.includes('execution reverted')) {
           throw new Error('Swap failed: Insufficient liquidity or slippage too high. Try reducing the amount or increasing slippage tolerance.');
         }
-        
+
         if (error?.message?.includes('INSUFFICIENT_LIQUIDITY')) {
           throw new Error('Swap failed: Not enough liquidity in the pool for this token pair.');
         }
-        
+
         if (error?.message?.includes('Unable to estimate')) {
           throw new Error('Unable to estimate gas for this swap. The token pair might not have sufficient liquidity.');
         }
-        
+
         throw new Error(`Swap failed: ${error?.message || 'Unknown error'}`);
       }
 
@@ -2009,7 +2010,7 @@ export default function FarcasterMiniApp() {
       // Use wagmi's writeContract approach for Farcaster MiniApps
       const { writeContract } = await import('wagmi/actions');
       const { config } = await import('../providers/MiniKitProvider');
-      
+
       const hash = await writeContract(config, {
         address: tokenAddress as `0x${string}`,
         abi: [
@@ -2027,20 +2028,20 @@ export default function FarcasterMiniApp() {
         functionName: 'approve',
         args: [spenderAddress as `0x${string}`, BigInt(amount)]
       });
-      
+
       console.log('✅ Farcaster approval transaction sent:', hash);
-      
+
       return {
         success: true,
         hash: hash
       };
     } catch (error: any) {
       console.error('❌ Farcaster approval failed:', error);
-      
+
       if (error?.message?.includes('user rejected') || error?.message?.includes('denied')) {
         throw new Error('Approval was cancelled by user');
       }
-      
+
       throw new Error(`Farcaster approval failed: ${error?.message || 'Unknown error'}`);
     }
   }, [isConnected, address]);
@@ -2065,7 +2066,7 @@ export default function FarcasterMiniApp() {
       // Use wagmi's writeContract approach for Farcaster MiniApps
       const { writeContract } = await import('wagmi/actions');
       const { config } = await import('../providers/MiniKitProvider');
-      
+
       const hash = await writeContract(config, {
         address: tokenAddress as `0x${string}`,
         abi: [
@@ -2086,20 +2087,20 @@ export default function FarcasterMiniApp() {
           BigInt(amount)
         ]
       });
-      
+
       console.log('✅ Farcaster transfer transaction sent:', hash);
-      
+
       return {
         success: true,
         hash: hash
       };
     } catch (error: any) {
       console.error('❌ Farcaster transfer failed:', error);
-      
+
       if (error?.message?.includes('user rejected') || error?.message?.includes('denied')) {
         throw new Error('Transfer was cancelled by user');
       }
-      
+
       throw new Error(`Farcaster transfer failed: ${error?.message || 'Unknown error'}`);
     }
   }, [isConnected, address]);
@@ -2113,24 +2114,24 @@ export default function FarcasterMiniApp() {
       // Calculate the correct amount and rate
       const rate = parseFloat(currentRate);
       const amountNum = parseFloat(amount);
-      
+
       // For local currency, amount is in local currency; for USDC, amount is in USDC
       const paymentAmount = currency === 'local' ? amountNum : amountNum;
-      
+
       // Determine network and token based on selected token and flow type
       // Use selectedPayToken for Pay flow, selectedSendToken for Send flow
-      const selectedTokenData = stablecoins.find(token => 
+      const selectedTokenData = stablecoins.find(token =>
         token.baseToken === (flowType === 'send' ? selectedSendToken : selectedPayToken)
       );
-      
+
       console.log('🔍 All stablecoins:', stablecoins.map(s => ({ baseToken: s.baseToken, chainId: s.chainId })));
       console.log('🔍 Looking for token:', flowType === 'send' ? selectedSendToken : selectedPayToken);
       console.log('🔍 Found token data:', selectedTokenData);
-      
+
       // Ensure proper network detection based on token type
       let network: 'base' | 'celo' = 'base'; // Default to base
       let token: 'USDC' | 'USDT' | 'cUSD' = 'USDC'; // Default to USDC
-      
+
       if (selectedTokenData) {
         token = selectedTokenData.baseToken as 'USDC' | 'USDT' | 'cUSD';
         // USDT and cUSD are on Celo (chainId: 42220), USDC is on Base (chainId: 8453)
@@ -2143,7 +2144,7 @@ export default function FarcasterMiniApp() {
           network = selectedTokenData.chainId === 42220 ? 'celo' : 'base';
         }
       }
-      
+
       // Prepare Paycrest API payload (same as main app)
       const paymentOrderPayload = {
         amount: paymentAmount,
@@ -2175,9 +2176,9 @@ export default function FarcasterMiniApp() {
       if (!response.ok) {
         const errorText = await response.text();
         console.error('❌ API Error Response:', errorText);
-        
+
         let userFriendlyMessage = 'Unknown error';
-        
+
         try {
           const errorData = JSON.parse(errorText);
           userFriendlyMessage = errorData.message || 'Unknown error';
@@ -2186,56 +2187,56 @@ export default function FarcasterMiniApp() {
           console.error('Failed to parse error JSON:', parseError);
           userFriendlyMessage = errorText || 'Unknown error';
         }
-        
+
         // Parse and provide user-friendly error messages
         const lowerMessage = userFriendlyMessage.toLowerCase();
-        
+
         // Check for specific error types
         // Check for route/provider availability issues first (before generic "missing fields")
-        if (lowerMessage.includes('route not found') || 
-            lowerMessage.includes('no route') ||
-            lowerMessage.includes('route unavailable') ||
-            lowerMessage.includes('provider does not support') ||
-            lowerMessage.includes('institution code') ||
-            lowerMessage.includes('institution not found') ||
-            lowerMessage.includes('invalid request') ||
-            (lowerMessage.includes('missing') && lowerMessage.includes('institution')) ||
-            (response.status === 400 && !lowerMessage.includes('phone') && !lowerMessage.includes('amount'))) {
+        if (lowerMessage.includes('route not found') ||
+          lowerMessage.includes('no route') ||
+          lowerMessage.includes('route unavailable') ||
+          lowerMessage.includes('provider does not support') ||
+          lowerMessage.includes('institution code') ||
+          lowerMessage.includes('institution not found') ||
+          lowerMessage.includes('invalid request') ||
+          (lowerMessage.includes('missing') && lowerMessage.includes('institution')) ||
+          (response.status === 400 && !lowerMessage.includes('phone') && !lowerMessage.includes('amount'))) {
           userFriendlyMessage = `This provider does not support ${token} payments to the selected destination. Please try a different provider or token.`;
-        } else if (lowerMessage.includes('provider not supported') || 
-                   lowerMessage.includes('institution not supported') ||
-                   lowerMessage.includes('not available for')) {
+        } else if (lowerMessage.includes('provider not supported') ||
+          lowerMessage.includes('institution not supported') ||
+          lowerMessage.includes('not available for')) {
           userFriendlyMessage = `This provider is not currently supported for ${token} transactions. Please try a different provider or token.`;
-        } else if (lowerMessage.includes('missing required fields') || 
-                   lowerMessage.includes('required field')) {
+        } else if (lowerMessage.includes('missing required fields') ||
+          lowerMessage.includes('required field')) {
           userFriendlyMessage = `Please fill in all required fields (recipient name, phone number, and amount)`;
-        } else if (lowerMessage.includes('invalid phone number') || 
-                   lowerMessage.includes('invalid account') ||
-                   lowerMessage.includes('invalid mobile')) {
+        } else if (lowerMessage.includes('invalid phone number') ||
+          lowerMessage.includes('invalid account') ||
+          lowerMessage.includes('invalid mobile')) {
           userFriendlyMessage = `Invalid phone number format. Please check and try again.`;
-        } else if (lowerMessage.includes('insufficient liquidity') || 
-                   lowerMessage.includes('amount too high') ||
-                   lowerMessage.includes('exceeds maximum')) {
+        } else if (lowerMessage.includes('insufficient liquidity') ||
+          lowerMessage.includes('amount too high') ||
+          lowerMessage.includes('exceeds maximum')) {
           userFriendlyMessage = `Transaction amount is too high. Please try a smaller amount.`;
         } else if (lowerMessage.includes('rate') && !lowerMessage.includes('separate')) {
           userFriendlyMessage = `Unable to get exchange rate. Please try again in a moment.`;
         } else if (lowerMessage.includes('network') && !lowerMessage.includes('switch')) {
           userFriendlyMessage = `Network error. Please check your connection and try again.`;
         } else if (lowerMessage.includes('token not supported') ||
-                   lowerMessage.includes('currency not supported')) {
+          lowerMessage.includes('currency not supported')) {
           userFriendlyMessage = `${token} is not supported for this transaction. Please select a different token.`;
         } else if (response.status === 404) {
           userFriendlyMessage = `Service not available. Please contact support.`;
         } else if (response.status === 500) {
           userFriendlyMessage = `Server error. Please try again later.`;
         }
-        
+
         throw new Error(`Paycrest API error: ${userFriendlyMessage}`);
       }
 
       const responseText = await response.text();
       console.log('📝 Raw API Response:', responseText);
-      
+
       let paymentOrder;
       try {
         paymentOrder = JSON.parse(responseText);
@@ -2245,17 +2246,17 @@ export default function FarcasterMiniApp() {
         throw new Error('Invalid response from server');
       }
       console.log('Paycrest payment order created:', paymentOrder);
-      
+
       // Now execute the actual blockchain transaction
       if (!paymentOrder.data?.receiveAddress) {
         throw new Error('No receive address received from Paycrest');
       }
-      
+
       console.log('Executing blockchain transaction to:', paymentOrder.data.receiveAddress);
-      
+
       // Calculate token amount based on selected token
       const tokenAmount = currency === 'local' ? (paymentAmount / rate).toFixed(selectedTokenData?.decimals || 6) : paymentAmount.toFixed(selectedTokenData?.decimals || 6);
-      
+
       // Execute the blockchain transaction - handle walletClient being null
       console.log('🔍 Wallet state debug:', {
         isConnected,
@@ -2266,15 +2267,15 @@ export default function FarcasterMiniApp() {
         connectors: connectors?.map(c => c.name),
         hasWindowEthereum: !!(window as any).ethereum
       });
-      
+
       if (!isConnected) {
         throw new Error('Wallet not connected');
       }
-      
+
       if (!address) {
         throw new Error('No wallet address found');
       }
-      
+
       // Simple wallet provider detection: use smart wallet if no window.ethereum but wallet is connected
       console.log('🔍 Wallet detection:', {
         hasWindowEthereum: !!(window as any).ethereum,
@@ -2282,23 +2283,23 @@ export default function FarcasterMiniApp() {
         address,
         userAgent: navigator.userAgent.substring(0, 100)
       });
-      
+
       if ((window as any).ethereum) {
         // Use window.ethereum (MetaMask, Coinbase Wallet, etc.)
         const walletProvider = (window as any).ethereum;
         console.log('✅ Using window.ethereum provider');
-        
+
         const blockchainResult = await executeTokenTransaction(
-          paymentOrder.data.receiveAddress, 
-          parseFloat(tokenAmount), 
+          paymentOrder.data.receiveAddress,
+          parseFloat(tokenAmount),
           walletProvider,
           selectedTokenData
         );
-        
+
         if (!blockchainResult.success) {
           throw new Error('Blockchain transaction failed');
         }
-        
+
         return {
           success: true,
           orderId: paymentOrder.data?.id || 'unknown',
@@ -2314,7 +2315,7 @@ export default function FarcasterMiniApp() {
           parseFloat(tokenAmount),
           selectedTokenData
         );
-        
+
         return {
           success: true,
           orderId: paymentOrder.data?.id || 'unknown',
@@ -2337,7 +2338,7 @@ export default function FarcasterMiniApp() {
     try {
       // Create shareable text for Farcaster
       const shareText = `💰 ${linkDescription || 'Payment Request'} - $${linkAmount || '0'} ${selectedStablecoin.baseToken}\n\nPay instantly with NedaPay! 🚀`;
-      
+
       // Try to use Farcaster's native sharing if available
       if (typeof window !== 'undefined' && (window as any).parent) {
         // Post message to parent frame (Farcaster client)
@@ -2348,7 +2349,7 @@ export default function FarcasterMiniApp() {
             embeds: [paymentLink] // Use the direct payment link with embedded metadata
           }
         }, '*');
-        
+
         alert('🚀 Shared to Farcaster! The payment link will display with a rich preview and open directly in NedaPay.');
       } else {
         // Fallback: Copy share text and link to clipboard
@@ -2372,7 +2373,7 @@ export default function FarcasterMiniApp() {
       console.log('❌ Missing required params:', { swapAmount, swapFromToken, swapToToken });
       return;
     }
-    
+
     if (!isConnected) {
       console.log('❌ Wallet not connected, skipping quote fetch');
       return;
@@ -2384,7 +2385,7 @@ export default function FarcasterMiniApp() {
 
     try {
       console.log('🔄 Fetching quote for:', swapAmount, swapFromToken, '->', swapToToken);
-      
+
       // Get token addresses from stablecoins data
       const fromTokenData = stablecoins.find(token => token.baseToken === swapFromToken);
       const toTokenData = stablecoins.find(token => token.baseToken === swapToToken);
@@ -2401,7 +2402,7 @@ export default function FarcasterMiniApp() {
       try {
         // Try Aerodrome first
         const provider = new ethers.providers.JsonRpcProvider('https://mainnet.base.org');
-        
+
         // Convert amount to token units (use token decimals or default to 6)
         const fromDecimals = fromTokenData.decimals || 6;
         const toDecimals = toTokenData.decimals || 6;
@@ -2454,7 +2455,7 @@ export default function FarcasterMiniApp() {
 
     try {
       console.log('🔄 Starting swap execution:', { swapFromToken, swapToToken, swapAmount, swapQuote });
-      
+
       // Get token data
       const fromTokenData = stablecoins.find(token => token.baseToken === swapFromToken);
       const toTokenData = stablecoins.find(token => token.baseToken === swapToToken);
@@ -2462,7 +2463,7 @@ export default function FarcasterMiniApp() {
       if (!fromTokenData || !toTokenData) {
         throw new Error('Token not supported');
       }
-      
+
       console.log('📊 Token addresses:', {
         from: { token: fromTokenData.baseToken, address: fromTokenData.address },
         to: { token: toTokenData.baseToken, address: toTokenData.address }
@@ -2479,7 +2480,7 @@ export default function FarcasterMiniApp() {
       // Convert amounts using proper decimals
       const fromDecimals = fromTokenData.decimals || 6;
       const toDecimals = toTokenData.decimals || 6;
-      
+
       console.log('🔍 Token decimal info:', {
         fromToken: fromTokenData.baseToken,
         fromDecimals,
@@ -2487,13 +2488,13 @@ export default function FarcasterMiniApp() {
         toDecimals,
         swapAmount
       });
-      
+
       // Special handling for all local stablecoins to avoid gas estimation issues
       let amountInUnits;
       const isFromLocalStablecoin = fromTokenData.baseToken !== 'USDC';
       const isToLocalStablecoin = toTokenData.baseToken !== 'USDC';
       const isLocalStablecoinInvolved = isFromLocalStablecoin || isToLocalStablecoin;
-      
+
       if (isLocalStablecoinInvolved) {
         // Ultra-robust handling for ALL local stablecoins to ensure consistent behavior
         if (fromTokenData.baseToken === 'IDRX') {
@@ -2542,7 +2543,7 @@ export default function FarcasterMiniApp() {
       } else {
         amountInUnits = ethers.utils.parseUnits(swapAmount, fromDecimals);
       }
-      
+
       console.log('💰 Amount calculation:', {
         originalAmount: swapAmount,
         fromDecimals,
@@ -2556,7 +2557,7 @@ export default function FarcasterMiniApp() {
       const slippageAmount = Number(swapQuote) * slippagePercentage;
       const minAmountOutFormatted = slippageAmount.toFixed(toDecimals);
       const minAmountOut = ethers.utils.parseUnits(minAmountOutFormatted, toDecimals);
-      
+
       console.log('📊 Slippage calculation:', {
         swapQuote,
         slippagePercentage: `${(1 - slippagePercentage) * 100}%`,
@@ -2568,7 +2569,7 @@ export default function FarcasterMiniApp() {
 
       // Calculate deadline (10 minutes from now)
       const deadline = Math.floor(Date.now() / 1000) + 600;
-      
+
       console.log('🔄 Swap parameters:', {
         fromToken: fromTokenData.address,
         toToken: toTokenData.address,
@@ -2577,15 +2578,15 @@ export default function FarcasterMiniApp() {
         userAddress: address,
         deadline: new Date(deadline * 1000).toISOString()
       });
-      
+
       // Force Farcaster approach for all swaps to ensure compatibility
       if (!isConnected || !address) {
         console.error('❌ No wallet available');
         throw new Error('Please connect your wallet first');
       }
-      
+
       console.log('✅ Using Farcaster smart wallet for swap');
-      
+
       // Calculate and collect protocol fee if enabled
       let actualSwapAmount = amountInUnits;
       if (isProtocolEnabled()) {
@@ -2603,21 +2604,21 @@ export default function FarcasterMiniApp() {
         }
         const feeInfo = calculateDynamicFee(usdValue);
         console.log('💰 Protocol fee info:', feeInfo, 'USD value used:', usdValue);
-        
+
         if (feeInfo.feeAmount > 0) {
           // Calculate fee in token units
           const feeInTokenUnits = ethers.utils.parseUnits(
-            (feeInfo.feeAmount).toFixed(fromDecimals), 
+            (feeInfo.feeAmount).toFixed(fromDecimals),
             fromDecimals
           );
-          
+
           console.log('💳 Protocol fee will be collected during swap:', {
             feeRate: feeInfo.feeRate + '%',
             feeAmountUSD: '$' + feeInfo.feeAmount.toFixed(4),
             feeInTokenUnits: ethers.utils.formatUnits(feeInTokenUnits, fromDecimals) + ' ' + swapFromToken,
             tier: feeInfo.tier
           });
-          
+
           // Store fee info for the swap execution
           (window as any).protocolFeeInfo = {
             feeInTokenUnits,
@@ -2626,14 +2627,14 @@ export default function FarcasterMiniApp() {
           };
         }
       }
-      
+
       // Execute swap with protocol fee handling
       let swapResult;
-      
+
       if (isProtocolEnabled() && (window as any).protocolFeeInfo) {
         console.log('🔄 Executing swap with protocol fee...');
         const feeInfo = (window as any).protocolFeeInfo;
-        
+
         // Use the batched swap function that handles protocol fees
         swapResult = await executeBatchedSwapWithFee(
           fromTokenData.address,
@@ -2656,26 +2657,26 @@ export default function FarcasterMiniApp() {
           deadline
         );
       }
-      
+
       console.log('💰 Swap executed:', {
         swapAmount: amountInUnits.toString(),
         protocolFeeEnabled: isProtocolEnabled(),
         swapResult: swapResult.success ? 'Success' : 'Failed'
       });
-      
+
       console.log('✅ Swap completed successfully!', swapResult);
-      
+
       // Clean up any remaining fee info since batched transaction handles it
       if (isProtocolEnabled() && (window as any).batchedFeeInfo) {
         console.log('✅ Fee collection completed via batched transaction');
         delete (window as any).batchedFeeInfo;
         delete (window as any).protocolFeeInfo;
       }
-      
+
       setSwapSuccess(`Swap successful! Transaction: ${swapResult.hash}`);
       setSwapAmount('');
       setSwapQuote(null);
-      
+
       // Refresh balance
       setTimeout(() => {
         window.location.reload();
@@ -2741,7 +2742,7 @@ export default function FarcasterMiniApp() {
       const timeoutId = setTimeout(() => {
         fetchSwapQuote();
       }, 500); // Debounce for 500ms
-      
+
       return () => clearTimeout(timeoutId);
     } else {
       setSwapQuote(null);
@@ -2788,7 +2789,7 @@ export default function FarcasterMiniApp() {
           'UG': 'UGX',
         };
         const currencyCode = currencyMapping[depositCountry];
-        
+
         const apiKey = process.env.NEXT_PUBLIC_NEDAPAY_API_KEY;
         const response = await fetch('https://api.nedapay.xyz/api/v1/ramp/pretium/exchange-rate', {
           method: 'POST',
@@ -2903,7 +2904,7 @@ export default function FarcasterMiniApp() {
 
       if (data.status === 'success' && data.data) {
         const statusUpper = String(data.data.status || '').toUpperCase();
-        
+
         if (statusUpper === 'COMPLETE' || statusUpper === 'COMPLETED' || statusUpper === 'SUCCESS') {
           setDepositStatus('✅ Deposit completed! Your crypto has been sent to your wallet.');
         } else if (statusUpper === 'FAILED' || statusUpper === 'FAIL') {
@@ -2940,17 +2941,17 @@ export default function FarcasterMiniApp() {
       // Generate a unique payment link
       const linkId = `payment-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
       const baseUrl = window.location.origin;
-      
+
       // Calculate protocol fee if enabled
       let protocolFeeParams = '';
       if (isProtocolEnabled()) {
         const feeInfo = calculateDynamicFee(Number(linkAmount));
         protocolFeeParams = `&protocolFee=${feeInfo.feeRate}&feeTier=${encodeURIComponent(feeInfo.tier)}&protocolEnabled=true`;
       }
-      
+
       // Create universal payment link
       const paymentLink = `${baseUrl}/payment-request?id=${linkId}&amount=${linkAmount}&token=${selectedStablecoin.baseToken}&description=${encodeURIComponent(linkDescription)}&merchant=${walletAddress}${protocolFeeParams}`;
-      
+
       // Store payment request data
       const storedPaymentData = {
         id: linkId,
@@ -2965,17 +2966,17 @@ export default function FarcasterMiniApp() {
           protocolFee: calculateDynamicFee(Number(linkAmount))
         })
       };
-      
+
       // Store in localStorage for now (in production, this would be stored in a database)
       localStorage.setItem(`payment-${linkId}`, JSON.stringify(storedPaymentData));
-      
+
       // Set the generated link in state first to update UI
       setGeneratedLink(paymentLink);
-      
+
       // Then copy to clipboard
       try {
         console.log('🔗 Copying payment link to clipboard:', paymentLink);
-        
+
         // Try modern clipboard API first
         if (navigator.clipboard && navigator.clipboard.writeText) {
           await navigator.clipboard.writeText(paymentLink);
@@ -2985,7 +2986,7 @@ export default function FarcasterMiniApp() {
 
         // Fallback to manual copy method
         console.log('📋 Using fallback copy method');
-        
+
         // Create a temporary text area for copying
         const textArea = document.createElement('textarea');
         textArea.value = paymentLink;
@@ -2995,11 +2996,11 @@ export default function FarcasterMiniApp() {
         document.body.appendChild(textArea);
         textArea.focus();
         textArea.select();
-        
+
         try {
           const successful = document.execCommand('copy');
           document.body.removeChild(textArea);
-          
+
           if (!successful) {
             // Show the link directly if copy failed
             prompt('Copy this payment link:', paymentLink);
@@ -3015,7 +3016,7 @@ export default function FarcasterMiniApp() {
         // Final fallback - show the link in a prompt
         prompt('Copy this payment link:', paymentLink);
       }
-      
+
     } catch (error) {
       console.error('Failed to generate payment link:', error);
       alert(' Failed to generate payment link: ' + (error as Error).message);
@@ -3039,12 +3040,12 @@ export default function FarcasterMiniApp() {
         const isCeloToken = (selectedSendToken === 'USDT' || selectedSendToken === 'cUSD');
         const targetChainId = isCeloToken ? 42220 : 8453; // Celo : Base
         const networkName = isCeloToken ? 'Celo' : 'Base';
-        
+
         try {
           console.log(`🔄 Switching to ${networkName} (${targetChainId}) for ${selectedSendToken} transaction`);
           await switchChain({ chainId: targetChainId });
           console.log(`✅ Successfully switched to ${networkName} for ${selectedSendToken} transaction`);
-          
+
           // Wait a moment for chain switch to complete
           await new Promise(resolve => setTimeout(resolve, 1500));
         } catch (error) {
@@ -3059,23 +3060,23 @@ export default function FarcasterMiniApp() {
 
       // Show loading state
       setIsSwipeComplete(true);
-      
+
       // Validate that institution is selected
       if (!selectedInstitution) {
         alert('Please select a mobile money or bank provider');
         return;
       }
-      
+
       // Prepare recipient data for Paycrest API (correct format)
       // Determine account type based on selected institution
       const selectedInstitutionData = institutions.find(i => i.code === selectedInstitution);
       // console.log('🏦 Selected institution data:', selectedInstitutionData);
       // console.log('🏦 Institution type:', selectedInstitutionData?.type);
       const isBank = selectedInstitutionData?.type === 'bank';
-      
+
       // Clean phone number/account number
       const cleanPhoneNumber = phoneNumber.replace(/\D/g, '');
-      
+
       // Only add country code for mobile money, not for banks
       let accountIdentifier;
       if (isBank) {
@@ -3084,28 +3085,28 @@ export default function FarcasterMiniApp() {
       } else {
         // For mobile money, add country code if not already present
         const countryCodeNumber = selectedCountry.countryCode?.replace('+', '') || '';
-        accountIdentifier = cleanPhoneNumber.startsWith(countryCodeNumber) 
-          ? cleanPhoneNumber 
+        accountIdentifier = cleanPhoneNumber.startsWith(countryCodeNumber)
+          ? cleanPhoneNumber
           : countryCodeNumber + cleanPhoneNumber;
       }
-      
+
       const recipient = {
         institution: selectedInstitution,
         accountIdentifier: accountIdentifier,
         accountName: recipientName,
         memo: `Send ${sendCurrency === 'local' ? amount + ' ' + selectedCountry.currency : amount + ' ' + selectedSendToken} to ${accountIdentifier}`
       };
-      
+
       // Execute Paycrest API transaction
       setIsConfirming(true); // Show confirming state
       const result = await executePaycrestTransaction(sendCurrency, amount, recipient, 'send');
-      
+
       if (!result) {
         throw new Error('Transaction failed - no result returned');
       }
-      
+
       setIsConfirming(false); // Hide confirming state
-      
+
       // Transaction successful - show animated modal
       setSuccessData({
         orderId: result.orderId,
@@ -3116,7 +3117,7 @@ export default function FarcasterMiniApp() {
         token: selectedSendToken as 'USDC' | 'USDT'
       });
       setShowSuccessModal(true);
-      
+
       // Add notification for successful send (with transaction data)
       addNotification(
         t('notifications.successfullySent', { amount, token: selectedSendToken, recipient: recipientName || phoneNumber }),
@@ -3129,24 +3130,24 @@ export default function FarcasterMiniApp() {
           orderId: result.orderId
         }
       );
-      
+
       // Refresh balance
       await fetchWalletBalance();
-      
+
     } catch (error: any) {
       console.error('Send transaction failed:', error);
       setIsConfirming(false); // Hide confirming state on error
       setIsSwipeComplete(false);
       setSwipeProgress(0);
-      
+
       // Parse error message and provide user-friendly feedback
       let errorTitle = 'Transaction Failed';
       let errorMessage = error.message || 'Unknown error occurred';
       let suggestion = '';
-      
+
       if (errorMessage.includes('Paycrest API error')) {
         errorMessage = errorMessage.replace('Paycrest API error: ', '');
-        
+
         // Provide specific suggestions based on error type
         if (errorMessage.includes('does not support') && errorMessage.includes('payments to')) {
           errorTitle = 'Route Not Available';
@@ -3174,7 +3175,7 @@ export default function FarcasterMiniApp() {
         errorTitle = 'Wallet Not Connected';
         suggestion = 'Please connect your wallet to continue.';
       }
-      
+
       setErrorData({
         title: errorTitle,
         message: errorMessage,
@@ -3210,12 +3211,12 @@ export default function FarcasterMiniApp() {
         const isCeloToken = (selectedPayToken === 'USDT' || selectedPayToken === 'cUSD');
         const targetChainId = isCeloToken ? 42220 : 8453; // Celo : Base
         const networkName = isCeloToken ? 'Celo' : 'Base';
-        
+
         try {
           console.log(`🔄 Switching to ${networkName} (${targetChainId}) for ${selectedPayToken} transaction`);
           await switchChain({ chainId: targetChainId });
           console.log(`✅ Successfully switched to ${networkName} for ${selectedPayToken} transaction`);
-          
+
           // Wait a moment for chain switch to complete
           await new Promise(resolve => setTimeout(resolve, 1500));
         } catch (error) {
@@ -3230,40 +3231,40 @@ export default function FarcasterMiniApp() {
 
       // Show loading state
       setIsSwipeComplete(true);
-      
+
       // Validate that institution is selected for payments
       if (!selectedInstitution) {
         alert('Please select a payment provider');
         return;
       }
-      
+
       // Prepare recipient data for Paycrest API (correct format)
       // Clean till/business number and check if it already includes country code
       const cleanTillNumber = tillNumber.replace(/\D/g, '');
       const countryCodeNumber = selectedCountry.countryCode?.replace('+', '') || '';
-      
+
       // Check if till number already starts with country code (for mobile numbers)
-      const formattedTillNumber = cleanTillNumber.startsWith(countryCodeNumber) 
-        ? cleanTillNumber 
+      const formattedTillNumber = cleanTillNumber.startsWith(countryCodeNumber)
+        ? cleanTillNumber
         : (cleanTillNumber.length > 6 ? countryCodeNumber + cleanTillNumber : cleanTillNumber);
-      
+
       const recipient = {
         institution: selectedInstitution, // Use actual selected institution
         accountIdentifier: paymentType === 'bill' ? businessNumber : formattedTillNumber,
         accountName: paymentType === 'bill' ? 'Paybill Payment' : 'Till Payment',
         memo: `Pay ${payCurrency === 'local' ? amount + ' ' + selectedCountry.currency : amount + ' ' + selectedPayToken} to ${paymentType === 'bill' ? 'paybill ' + tillNumber + ' account ' + businessNumber : 'till ' + tillNumber}`
       };
-      
+
       // Execute Paycrest API transaction
       setIsConfirming(true); // Show confirming state
       const result = await executePaycrestTransaction(payCurrency, amount, recipient, 'pay');
-      
+
       if (!result) {
         throw new Error('Transaction failed - no result returned');
       }
-      
+
       setIsConfirming(false); // Hide confirming state
-      
+
       // Transaction successful - show animated modal
       setSuccessData({
         orderId: result.orderId,
@@ -3274,7 +3275,7 @@ export default function FarcasterMiniApp() {
         token: selectedPayToken as 'USDC' | 'USDT'
       });
       setShowSuccessModal(true);
-      
+
       // Add notification for successful payment (with transaction data)
       addNotification(
         t('notifications.successfullyPaid', { amount, token: selectedPayToken, recipient: recipientName || (paymentType === 'bill' ? 'paybill' : 'till'), tillNumber }),
@@ -3287,22 +3288,22 @@ export default function FarcasterMiniApp() {
           orderId: result.orderId
         }
       );
-      
+
       // Refresh balance
       await fetchWalletBalance();
-      
+
     } catch (error: any) {
       console.error('Pay transaction failed:', error);
       setIsConfirming(false); // Hide confirming state on error
-      
+
       // Parse error message and provide user-friendly feedback
       let errorTitle = 'Payment Failed';
       let errorMessage = error.message || 'Unknown error occurred';
       let suggestion = '';
-      
+
       if (errorMessage.includes('Paycrest API error')) {
         errorMessage = errorMessage.replace('Paycrest API error: ', '');
-        
+
         // Provide specific suggestions based on error type
         if (errorMessage.includes('does not support') && errorMessage.includes('payments to')) {
           errorTitle = 'Route Not Available';
@@ -3330,7 +3331,7 @@ export default function FarcasterMiniApp() {
         errorTitle = 'Wallet Not Connected';
         suggestion = 'Please connect your wallet to continue.';
       }
-      
+
       setErrorData({
         title: errorTitle,
         message: errorMessage,
@@ -3343,496 +3344,516 @@ export default function FarcasterMiniApp() {
     }
   }, [amount, tillNumber, businessNumber, paymentType, walletAddress, isConnected, payCurrency, selectedPayToken, selectedCountry.currency, selectedCountry.code, executePaycrestTransaction, fetchWalletBalance, switchChain, t, addNotification, recipientName, selectedInstitution]);
 
-  const renderSendTab = () => (
-    <div className="space-y-3">
-      {/* Compact Header with Network Badge */}
-      <div className="flex items-center justify-between mb-1">
-        <h2 className="text-white text-base font-semibold">{t('send.title')}</h2>
-        <div className="flex items-center gap-1.5 bg-slate-800/60 rounded-lg px-2 py-1">
-          {(() => {
-            const selectedTokenData = stablecoins.find(token => 
-              token.baseToken === (sendCurrency === 'local' ? selectedSendToken : selectedSendToken)
-            );
-            const isCeloToken = selectedTokenData?.baseToken === 'USDT' || selectedTokenData?.baseToken === 'cUSD';
-            return (
-              <>
-                <img 
-                  src={isCeloToken ? "/celo.png" : "/assets/logos/base-logo.jpg"} 
-                  alt={isCeloToken ? "Celo" : "Base"} 
-                  className="w-3.5 h-3.5 rounded-full" 
-                />
-                <span className="text-white text-xs font-medium">{isCeloToken ? "Celo" : "Base"}</span>
-              </>
-            );
-          })()}
+  const renderSendTab = () => {
+    // Check if selected country uses Pretium Off-Ramp (GH, CD, MW)
+    // We handle the conditional rendering inside the main return to keep the Country Selector visible.
+
+
+    // BUT! The country selector is INSIDE renderSendTab. 
+    // If I replace the whole content, I can't change country back easily if I want to switch to Nigeria.
+    // So, I should only replace the "Form" part, NOT the header and country selector.
+
+    return (
+      <div className="space-y-3">
+
+        {/* Compact Header with Network Badge */}
+        <div className="flex items-center justify-between mb-1">
+          <h2 className="text-white text-base font-semibold">{t('send.title')}</h2>
+          <div className="flex items-center gap-1.5 bg-slate-800/60 rounded-lg px-2 py-1">
+            {(() => {
+              const selectedTokenData = stablecoins.find(token =>
+                token.baseToken === (sendCurrency === 'local' ? selectedSendToken : selectedSendToken)
+              );
+              const isCeloToken = selectedTokenData?.baseToken === 'USDT' || selectedTokenData?.baseToken === 'cUSD';
+              return (
+                <>
+                  <img
+                    src={isCeloToken ? "/celo.png" : "/assets/logos/base-logo.jpg"}
+                    alt={isCeloToken ? "Celo" : "Base"}
+                    className="w-3.5 h-3.5 rounded-full"
+                  />
+                  <span className="text-white text-xs font-medium">{isCeloToken ? "Celo" : "Base"}</span>
+                </>
+              );
+            })()}
+          </div>
         </div>
-      </div>
 
-      {/* Country Selector - Compact */}
-      <div className="relative">
-        <button
-          onClick={() => setIsCountryDropdownOpen(!isCountryDropdownOpen)}
-          className="w-full bg-slate-800/50 border border-slate-700/50 text-white rounded-lg px-3 py-2.5 text-left flex items-center justify-between hover:bg-slate-700/50 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
-          <div className="flex items-center gap-2">
-            <span className="text-lg">{selectedCountry.flag}</span>
-            <span className="text-white font-medium text-sm">{selectedCountry.name}</span>
-          </div>
-          <ChevronDownIcon className={`w-4 h-4 text-gray-400 transition-transform ${
-            isCountryDropdownOpen ? 'rotate-180' : ''
-          }`} />
-        </button>
-        
-        {/* Dropdown Menu */}
-        {isCountryDropdownOpen && (
-          <div className="absolute top-full left-0 right-0 mt-1 bg-slate-800 border border-slate-700 rounded-lg shadow-xl z-50 overflow-hidden max-h-64">
-            {sendCountries.map((country) => (
-              <button
-                key={country.code}
-                onClick={() => {
-                  if (!country.comingSoon) {
-                    setSelectedCountry(country);
-                    setIsCountryDropdownOpen(false);
-                  }
-                }}
-                disabled={country.comingSoon}
-                className={`w-full px-3 py-2 text-left flex items-center gap-2 transition-colors ${
-                  country.comingSoon 
-                    ? 'opacity-50 cursor-not-allowed' 
-                    : 'hover:bg-slate-700'
-                } ${
-                  selectedCountry.code === country.code ? 'bg-blue-600/20' : ''
-                }`}
-              >
-                <span className="text-lg">{country.flag}</span>
-                <div className="flex flex-col">
-                  <span className="text-white font-medium text-sm">{country.name}</span>
-                  {country.comingSoon && (
-                    <span className="text-gray-400 text-xs">Coming soon</span>
-                  )}
-                </div>
-                {selectedCountry.code === country.code && (
-                  <div className="ml-auto w-2 h-2 bg-blue-500 rounded-full"></div>
-                )}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-
-
-      {/* Mobile Money Provider - Custom Dropdown */}
-      <div>
-        <label className="block text-xs text-gray-300 font-medium mb-1">{t('send.selectProvider')}</label>
+        {/* Country Selector - Compact */}
         <div className="relative">
           <button
-            onClick={() => setShowProviderDropdown(!showProviderDropdown)}
-            className="w-full bg-slate-800/50 border border-slate-700/50 text-white rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 hover:bg-slate-700/50 transition-colors flex items-center justify-between"
+            onClick={() => setIsCountryDropdownOpen(!isCountryDropdownOpen)}
+            className="w-full bg-slate-800/50 border border-slate-700/50 text-white rounded-lg px-3 py-2.5 text-left flex items-center justify-between hover:bg-slate-700/50 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             <div className="flex items-center gap-2">
-              {selectedInstitution ? (
-                <>
-                  {institutions.find(i => i.code === selectedInstitution)?.type === 'mobile_money' ? (
-                    <svg className="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                    </svg>
-                  ) : (
-                    <svg className="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                    </svg>
-                  )}
-                  <span className="text-white">{institutions.find(i => i.code === selectedInstitution)?.name}</span>
-                </>
-              ) : (
-                <span className="text-gray-400">{t('send.chooseProvider')}</span>
-              )}
+              <span className="text-lg">{selectedCountry.flag}</span>
+              <span className="text-white font-medium text-sm">{selectedCountry.name}</span>
             </div>
-            <ChevronDownIcon className={`w-4 h-4 text-gray-400 transition-transform ${showProviderDropdown ? 'rotate-180' : ''}`} />
+            <ChevronDownIcon className={`w-4 h-4 text-gray-400 transition-transform ${isCountryDropdownOpen ? 'rotate-180' : ''
+              }`} />
           </button>
-          
-          {showProviderDropdown && (
-            <div className="absolute top-full left-0 right-0 mt-2 bg-slate-800 rounded-lg border border-slate-600 shadow-xl z-50 max-h-64 overflow-y-auto">
-              {/* Mobile Money Section */}
-              {institutions.filter(i => i.type === 'mobile_money').length > 0 && (
-                <div>
-                  <div className="px-3 py-2 text-xs font-semibold text-gray-400 bg-slate-900/50 sticky top-0 z-10">
-                    📱 Mobile Money
+
+          {/* Dropdown Menu */}
+          {isCountryDropdownOpen && (
+            <div className="absolute top-full left-0 right-0 mt-1 bg-slate-800 border border-slate-700 rounded-lg shadow-xl z-50 overflow-hidden max-h-64">
+              {sendCountries.map((country) => (
+                <button
+                  key={country.code}
+                  onClick={() => {
+                    if (!country.comingSoon) {
+                      setSelectedCountry(country);
+                      setIsCountryDropdownOpen(false);
+                    }
+                  }}
+                  disabled={country.comingSoon}
+                  className={`w-full px-3 py-2 text-left flex items-center gap-2 transition-colors ${country.comingSoon
+                    ? 'opacity-50 cursor-not-allowed'
+                    : 'hover:bg-slate-700'
+                    } ${selectedCountry.code === country.code ? 'bg-blue-600/20' : ''
+                    }`}
+                >
+                  <span className="text-lg">{country.flag}</span>
+                  <div className="flex flex-col">
+                    <span className="text-white font-medium text-sm">{country.name}</span>
+                    {country.comingSoon && (
+                      <span className="text-gray-400 text-xs">Coming soon</span>
+                    )}
                   </div>
-                  {institutions.filter(i => i.type === 'mobile_money').map((institution) => (
-                    <button
-                      key={institution.code}
-                      onClick={() => {
-                        setSelectedInstitution(institution.code);
-                        setShowProviderDropdown(false);
-                      }}
-                      className={`w-full px-3 py-2.5 text-left hover:bg-slate-700 flex items-center gap-3 text-sm transition-colors ${
-                        selectedInstitution === institution.code ? 'bg-blue-600/20 border-l-2 border-blue-500' : ''
-                      }`}
-                    >
-                      <svg className="w-4 h-4 text-green-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                      </svg>
-                      <span className="text-white flex-1">{institution.name}</span>
-                      {selectedInstitution === institution.code && (
-                        <svg className="w-4 h-4 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                        </svg>
-                      )}
-                    </button>
-                  ))}
-                </div>
-              )}
-              
-              {/* Banks Section */}
-              {institutions.filter(i => i.type === 'bank').length > 0 && (
-                <div>
-                  <div className="px-3 py-2 text-xs font-semibold text-gray-400 bg-slate-900/50 sticky top-0 z-10">
-                    🏦 Banks
-                  </div>
-                  {institutions.filter(i => i.type === 'bank').map((institution) => (
-                    <button
-                      key={institution.code}
-                      onClick={() => {
-                        setSelectedInstitution(institution.code);
-                        setShowProviderDropdown(false);
-                      }}
-                      className={`w-full px-3 py-2.5 text-left hover:bg-slate-700 flex items-center gap-3 text-sm transition-colors ${
-                        selectedInstitution === institution.code ? 'bg-blue-600/20 border-l-2 border-blue-500' : ''
-                      }`}
-                    >
-                      <svg className="w-4 h-4 text-blue-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                      </svg>
-                      <span className="text-white flex-1">{institution.name}</span>
-                      {selectedInstitution === institution.code && (
-                        <svg className="w-4 h-4 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                        </svg>
-                      )}
-                    </button>
-                  ))}
-                </div>
-              )}
+                  {selectedCountry.code === country.code && (
+                    <div className="ml-auto w-2 h-2 bg-blue-500 rounded-full"></div>
+                  )}
+                </button>
+              ))}
             </div>
           )}
         </div>
-      </div>
 
-      {/* Recipient Details - Compact 2-column layout */}
-      <div className="grid grid-cols-2 gap-2">
-        <div>
-          <label className="block text-[10px] text-gray-400 mb-0.5 uppercase tracking-wide">Name</label>
-          <input
-            type="text"
-            value={recipientName}
-            onChange={(e) => setRecipientName(e.target.value)}
-            placeholder="John Doe"
-            className="w-full bg-slate-700/80 text-white rounded-lg px-2.5 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-          />
-        </div>
-        <div>
-          <label className="block text-[10px] text-gray-400 mb-0.5 uppercase tracking-wide">
-            {institutions.find(i => i.code === selectedInstitution)?.type === 'bank' ? 'Bank Account' : 'Phone Number'}
-          </label>
-          <input
-            type="text"
-            value={phoneNumber}
-            onChange={(e) => setPhoneNumber(e.target.value)}
-            placeholder={institutions.find(i => i.code === selectedInstitution)?.type === 'bank' ? 'Enter account number' : '+255...'}
-            className="w-full bg-slate-700/80 text-white rounded-lg px-2.5 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-          />
-        </div>
-      </div>
 
-      {/* Amount Input with Currency Switching */}
-      <div>
-        <label className="block text-xs text-gray-400 mb-1">{t('send.enterAmount')}</label>
-        <div className="bg-slate-700 rounded-lg px-4 py-3">
-          <div className="flex items-center gap-3">
-            <input
-              type="number"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              placeholder={sendCurrency === 'local' ? '1000' : '1.5'}
-              step={sendCurrency === 'local' ? '1' : '0.01'}
-              className="bg-transparent text-white text-base font-light flex-1 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+        {/* Dynamic Content based on Country provider */}
+        {['GH', 'CD', 'MW'].includes(selectedCountry.code) ? (
+          <div className="mt-4">
+            <PretiumOffRampFlow
+              country={selectedCountry}
+              walletAddress={walletAddress || ''}
+              onBack={() => { }} // No back action needed if embedded, or maybe reset?
+              stablecoins={stablecoins}
             />
-            <div className="relative">
-              <button
-                onClick={() => {
-                  setSendCurrency('usdc');
-                  setShowSendTokenDropdown(!showSendTokenDropdown);
-                }}
-                className="flex items-center gap-1.5 px-2 py-1.5 bg-slate-800 hover:bg-slate-600 rounded-lg transition-colors border border-slate-500/30"
-              >
-                {renderTokenIcon(stablecoins.find(token => token.baseToken === selectedSendToken) || stablecoins[0], "w-3.5 h-3.5")}
-                <span className="text-white text-xs font-medium">{selectedSendToken}</span>
-                <ChevronDownIcon className="w-3.5 h-3.5 text-gray-400" />
-              </button>
-              
-              {showSendTokenDropdown && (
-                <div className="absolute top-full right-0 mt-2 bg-slate-800 rounded-lg border border-slate-600 shadow-xl z-50 max-h-48 overflow-y-auto min-w-[120px]">
-                  {stablecoins.map((token, index) => (
-                    <button
-                      key={`${token.baseToken}-${token.chainId}-${index}`}
-                      onClick={async () => {
-                        setSelectedSendToken(token.baseToken);
-                        setSelectedToken(token); // Update main selected token for theme
-                        setShowSendTokenDropdown(false);
-                        
-                        // Switch chain immediately when token is selected using hook
-                        if (isConnected && switchChain) {
-                          try {
-                            const isCeloToken = (token.baseToken === 'USDT' || token.baseToken === 'cUSD');
-                            const targetChainId = isCeloToken ? 42220 : 8453; // Celo : Base
-                            const networkName = isCeloToken ? 'Celo' : 'Base';
-                            
-                            console.log(`🔄 Pre-switching to ${networkName} (${targetChainId}) for ${token.baseToken}`);
-                            await switchChain({ chainId: targetChainId });
-                            console.log(`✅ Pre-switched to ${networkName} for ${token.baseToken}`);
-                            
-                            // Fetch balance for the newly selected token
-                            setTimeout(() => {
-                              fetchWalletBalance(token.baseToken);
-                            }, 1000); // Wait for chain switch to complete
-                          } catch (error) {
-                            console.error('❌ Pre-chain switch failed:', error);
-                            // Show user-friendly error for Celo tokens
-                            const isCeloToken = (token.baseToken === 'USDT' || token.baseToken === 'cUSD');
-                            if (isCeloToken) {
-                              console.warn(`Failed to switch to Celo for ${token.baseToken}. Transaction may fail if not on correct network.`);
-                            }
-                          }
-                        }
-                      }}
-                      className="w-full px-3 py-2 text-left hover:bg-slate-700 flex items-center gap-2 text-xs transition-colors"
-                    >
-                      {renderTokenIcon(token, "w-3 h-3")}
-                      <span className="text-white">{token.baseToken}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
           </div>
-        </div>
-        
-      </div>
+        ) : (
+          <>
+            {/* Mobile Money Provider - Custom Dropdown */}
+            <div>
+              <label className="block text-xs text-gray-300 font-medium mb-1">{t('send.selectProvider')}</label>
+              <div className="relative">
+                <button
+                  onClick={() => setShowProviderDropdown(!showProviderDropdown)}
+                  className="w-full bg-slate-800/50 border border-slate-700/50 text-white rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 hover:bg-slate-700/50 transition-colors flex items-center justify-between"
+                >
+                  <div className="flex items-center gap-2">
+                    {selectedInstitution ? (
+                      <>
+                        {institutions.find(i => i.code === selectedInstitution)?.type === 'mobile_money' ? (
+                          <svg className="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                          </svg>
+                        ) : (
+                          <svg className="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                          </svg>
+                        )}
+                        <span className="text-white">{institutions.find(i => i.code === selectedInstitution)?.name}</span>
+                      </>
+                    ) : (
+                      <span className="text-gray-400">{t('send.chooseProvider')}</span>
+                    )}
+                  </div>
+                  <ChevronDownIcon className={`w-4 h-4 text-gray-400 transition-transform ${showProviderDropdown ? 'rotate-180' : ''}`} />
+                </button>
 
-      {/* Payment Details */}
-      <div className="space-y-1">
-        <div className="flex justify-between items-start">
-          <div>
-            <span className="text-gray-400 text-xs">{t('send.youllPay')}</span>
-            {/* Currency Conversion Display underneath You'll pay */}
-            {amount && (
-              <div className="mt-1 text-xs text-gray-400 font-medium">
-                {sendCurrency === 'local' ? (
-                  <span>≈ {(parseFloat(amount) / parseFloat(currentRate)).toFixed(4)} {selectedSendToken}</span>
-                ) : (
-                  <span>≈ {(parseFloat(amount) * parseFloat(currentRate)).toFixed(2)} {selectedCountry.currency}</span>
+                {showProviderDropdown && (
+                  <div className="absolute top-full left-0 right-0 mt-2 bg-slate-800 rounded-lg border border-slate-600 shadow-xl z-50 max-h-64 overflow-y-auto">
+                    {/* Mobile Money Section */}
+                    {institutions.filter(i => i.type === 'mobile_money').length > 0 && (
+                      <div>
+                        <div className="px-3 py-2 text-xs font-semibold text-gray-400 bg-slate-900/50 sticky top-0 z-10">
+                          📱 Mobile Money
+                        </div>
+                        {institutions.filter(i => i.type === 'mobile_money').map((institution) => (
+                          <button
+                            key={institution.code}
+                            onClick={() => {
+                              setSelectedInstitution(institution.code);
+                              setShowProviderDropdown(false);
+                            }}
+                            className={`w-full px-3 py-2.5 text-left hover:bg-slate-700 flex items-center gap-3 text-sm transition-colors ${selectedInstitution === institution.code ? 'bg-blue-600/20 border-l-2 border-blue-500' : ''
+                              }`}
+                          >
+                            <svg className="w-4 h-4 text-green-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                            </svg>
+                            <span className="text-white flex-1">{institution.name}</span>
+                            {selectedInstitution === institution.code && (
+                              <svg className="w-4 h-4 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                              </svg>
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Banks Section */}
+                    {institutions.filter(i => i.type === 'bank').length > 0 && (
+                      <div>
+                        <div className="px-3 py-2 text-xs font-semibold text-gray-400 bg-slate-900/50 sticky top-0 z-10">
+                          🏦 Banks
+                        </div>
+                        {institutions.filter(i => i.type === 'bank').map((institution) => (
+                          <button
+                            key={institution.code}
+                            onClick={() => {
+                              setSelectedInstitution(institution.code);
+                              setShowProviderDropdown(false);
+                            }}
+                            className={`w-full px-3 py-2.5 text-left hover:bg-slate-700 flex items-center gap-3 text-sm transition-colors ${selectedInstitution === institution.code ? 'bg-blue-600/20 border-l-2 border-blue-500' : ''
+                              }`}
+                          >
+                            <svg className="w-4 h-4 text-blue-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                            </svg>
+                            <span className="text-white flex-1">{institution.name}</span>
+                            {selectedInstitution === institution.code && (
+                              <svg className="w-4 h-4 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                              </svg>
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
-            )}
-          </div>
-          <div className="text-right">
-            {/* Network Label */}
-            <div className="flex items-center justify-end gap-1 mb-1">
-              {(() => {
-                const selectedTokenData = stablecoins.find(token => 
-                  token.baseToken === (sendCurrency === 'local' ? selectedSendToken : selectedSendToken)
-                );
-                const isCeloToken = selectedTokenData?.baseToken === 'USDT' || selectedTokenData?.baseToken === 'cUSD';
-                return (
-                  <>
-                    <img 
-                      src={isCeloToken ? "/celo.png" : "/assets/logos/base-logo.jpg"} 
-                      alt={isCeloToken ? "Celo" : "Base"} 
-                      className="w-3 h-3 rounded-full" 
-                    />
-                    <span className="text-white text-xs">{isCeloToken ? "Celo" : "Base"}</span>
-                  </>
-                );
-              })()}
             </div>
-            
-            {/* Balance underneath Base */}
-            <div className="text-xs text-gray-400 flex items-center justify-end gap-2">
-              <span>{t('wallet.balance')}:</span>
-              <button 
-                onClick={() => setAmount(walletBalance)}
-                className="text-blue-400 font-medium hover:text-blue-300 transition-colors cursor-pointer inline-flex items-center gap-1"
-              >
-                {renderTokenIcon(stablecoins.find(token => token.baseToken === selectedSendToken) || stablecoins[0], "w-3 h-3")}
-                {selectedSendToken} {walletBalance}
-              </button>
-              <button
-                onClick={refreshBalance}
-                className="text-gray-400 hover:text-blue-400 transition-colors p-1 rounded hover:bg-slate-700/50"
-                title="Refresh balance"
-              >
-                <ArrowPathIcon className="w-3 h-3" />
-              </button>
-            </div>
-          </div>
-        </div>
 
-        <div className="text-center text-xs text-gray-300 mb-2 font-semibold mt-2">
-          1 {selectedSendToken} = {isLoadingRate ? '...' : currentRate} {selectedCountry.currency} • {t('send.paymentCompletes')}
-        </div>
-
-        <div className="space-y-0.5 text-xs mb-3">
-          <div className="flex justify-between">
-            <span className="text-gray-400">{t('send.totalTzs').replace('TZS', selectedCountry.currency)}</span>
-            <span className="text-white">{paymentDetails.totalLocal} {selectedCountry.currency}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-gray-400">{t('send.fees')}</span>
-            <span className="text-white">{paymentDetails.fee} {selectedCountry.currency}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-gray-400">{t('send.amountInUsdc').replace('USDC', selectedSendToken)}</span>
-            <span className="text-white">{paymentDetails.usdcAmount} {selectedSendToken}</span>
-          </div>
-        </div>
-      </div>
-      
-      {/* Swipe to Send */}
-      <div className="mt-4">
-        <div className="relative bg-gradient-to-r from-green-500 via-emerald-500 to-green-600 rounded-2xl p-1.5 overflow-hidden shadow-2xl shadow-green-500/30 border border-green-400/30">
-          {/* Progress Background */}
-          <div 
-            className="absolute left-0 top-0 h-full bg-gradient-to-r from-green-400 to-emerald-400 rounded-full transition-all duration-150 ease-in-out"
-            style={{ width: `${swipeProgress}%` }}
-          />
-          
-          {/* Swipe Button */}
-          <div className="relative flex items-center justify-between px-4 py-3">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-lg">
-                <ArrowRightIcon className="w-4 h-4 text-green-600" />
+            {/* Recipient Details - Compact 2-column layout */}
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="block text-[10px] text-gray-400 mb-0.5 uppercase tracking-wide">Name</label>
+                <input
+                  type="text"
+                  value={recipientName}
+                  onChange={(e) => setRecipientName(e.target.value)}
+                  placeholder="John Doe"
+                  className="w-full bg-slate-700/80 text-white rounded-lg px-2.5 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                />
               </div>
-              <span className="text-white font-bold text-sm flex items-center gap-2">
-                {isConfirming ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    {t('send.confirming')}
-                  </>
-                ) : isSwipeComplete ? (
-                  t('send.sending')
-                ) : t('send.swipeToSend')}
-              </span>
+              <div>
+                <label className="block text-[10px] text-gray-400 mb-0.5 uppercase tracking-wide">
+                  {institutions.find(i => i.code === selectedInstitution)?.type === 'bank' ? 'Bank Account' : 'Phone Number'}
+                </label>
+                <input
+                  type="text"
+                  value={phoneNumber}
+                  onChange={(e) => setPhoneNumber(e.target.value)}
+                  placeholder={institutions.find(i => i.code === selectedInstitution)?.type === 'bank' ? 'Enter account number' : '+255...'}
+                  className="w-full bg-slate-700/80 text-white rounded-lg px-2.5 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                />
+              </div>
             </div>
-            
-            <div className="text-white text-sm font-bold flex items-center gap-2">
-              {sendCurrency === 'local' ? (
-                <>
-                  <span className="text-lg">{selectedCountry.flag}</span>
-                  <span>{amount || '0'} {selectedCountry.currency}</span>
-                </>
-              ) : (
-                <>
-                  {selectedSendToken === 'USDC' ? (
-                    <img src="/assets/logos/usdc-logo.png" alt="USDC" className="w-5 h-5" />
-                  ) : selectedSendToken === 'USDT' ? (
-                    <img src="/usdt.png" alt="USDT" className="w-5 h-5" />
-                  ) : selectedSendToken === 'cUSD' ? (
-                    <img src="/cUSD.png" alt="cUSD" className="w-5 h-5" />
-                  ) : (
-                    (() => {
-                      const tokenData = stablecoins.find(s => s.baseToken === selectedSendToken);
-                      if (tokenData && tokenData.flag && !tokenData.flag.includes('_LOGO')) {
-                        return <span className="text-lg">{tokenData.flag}</span>;
-                      }
-                      return <span className="w-5 h-5 bg-gray-400 rounded-full flex items-center justify-center text-xs">?</span>;
-                    })()
+
+            {/* Amount Input with Currency Switching */}
+            <div>
+              <label className="block text-xs text-gray-400 mb-1">{t('send.enterAmount')}</label>
+              <div className="bg-slate-700 rounded-lg px-4 py-3">
+                <div className="flex items-center gap-3">
+                  <input
+                    type="number"
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value)}
+                    placeholder={sendCurrency === 'local' ? '1000' : '1.5'}
+                    step={sendCurrency === 'local' ? '1' : '0.01'}
+                    className="bg-transparent text-white text-base font-light flex-1 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  />
+                  <div className="relative">
+                    <button
+                      onClick={() => {
+                        setSendCurrency('usdc');
+                        setShowSendTokenDropdown(!showSendTokenDropdown);
+                      }}
+                      className="flex items-center gap-1.5 px-2 py-1.5 bg-slate-800 hover:bg-slate-600 rounded-lg transition-colors border border-slate-500/30"
+                    >
+                      {renderTokenIcon(stablecoins.find(token => token.baseToken === selectedSendToken) || stablecoins[0], "w-3.5 h-3.5")}
+                      <span className="text-white text-xs font-medium">{selectedSendToken}</span>
+                      <ChevronDownIcon className="w-3.5 h-3.5 text-gray-400" />
+                    </button>
+
+                    {showSendTokenDropdown && (
+                      <div className="absolute top-full right-0 mt-2 bg-slate-800 rounded-lg border border-slate-600 shadow-xl z-50 max-h-48 overflow-y-auto min-w-[120px]">
+                        {stablecoins.map((token, index) => (
+                          <button
+                            key={`${token.baseToken}-${token.chainId}-${index}`}
+                            onClick={async () => {
+                              setSelectedSendToken(token.baseToken);
+                              setSelectedToken(token); // Update main selected token for theme
+                              setShowSendTokenDropdown(false);
+
+                              // Switch chain immediately when token is selected using hook
+                              if (isConnected && switchChain) {
+                                try {
+                                  const isCeloToken = (token.baseToken === 'USDT' || token.baseToken === 'cUSD');
+                                  const targetChainId = isCeloToken ? 42220 : 8453; // Celo : Base
+                                  const networkName = isCeloToken ? 'Celo' : 'Base';
+
+                                  console.log(`🔄 Pre-switching to ${networkName} (${targetChainId}) for ${token.baseToken}`);
+                                  await switchChain({ chainId: targetChainId });
+                                  console.log(`✅ Pre-switched to ${networkName} for ${token.baseToken}`);
+
+                                  // Fetch balance for the newly selected token
+                                  setTimeout(() => {
+                                    fetchWalletBalance(token.baseToken);
+                                  }, 1000); // Wait for chain switch to complete
+                                } catch (error) {
+                                  console.error('❌ Pre-chain switch failed:', error);
+                                  // Show user-friendly error for Celo tokens
+                                  const isCeloToken = (token.baseToken === 'USDT' || token.baseToken === 'cUSD');
+                                  if (isCeloToken) {
+                                    console.warn(`Failed to switch to Celo for ${token.baseToken}. Transaction may fail if not on correct network.`);
+                                  }
+                                }
+                              }
+                            }}
+                            className="w-full px-3 py-2 text-left hover:bg-slate-700 flex items-center gap-2 text-xs transition-colors"
+                          >
+                            {renderTokenIcon(token, "w-3 h-3")}
+                            <span className="text-white">{token.baseToken}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+            {/* Payment Details */}
+            <div className="space-y-1">
+              <div className="flex justify-between items-start">
+                <div>
+                  <span className="text-gray-400 text-xs">{t('send.youllPay')}</span>
+                  {/* Currency Conversion Display underneath You'll pay */}
+                  {amount && (
+                    <div className="mt-1 text-xs text-gray-400 font-medium">
+                      {sendCurrency === 'local' ? (
+                        <span>≈ {(parseFloat(amount) / parseFloat(currentRate)).toFixed(4)} {selectedSendToken}</span>
+                      ) : (
+                        <span>≈ {(parseFloat(amount) * parseFloat(currentRate)).toFixed(2)} {selectedCountry.currency}</span>
+                      )}
+                    </div>
                   )}
-                  <span>{amount || '0'} {selectedSendToken}</span>
-                </>
-              )}
+                </div>
+                <div className="text-right">
+                  {/* Network Label */}
+                  <div className="flex items-center justify-end gap-1 mb-1">
+                    {(() => {
+                      const selectedTokenData = stablecoins.find(token =>
+                        token.baseToken === (sendCurrency === 'local' ? selectedSendToken : selectedSendToken)
+                      );
+                      const isCeloToken = selectedTokenData?.baseToken === 'USDT' || selectedTokenData?.baseToken === 'cUSD';
+                      return (
+                        <>
+                          <img
+                            src={isCeloToken ? "/celo.png" : "/assets/logos/base-logo.jpg"}
+                            alt={isCeloToken ? "Celo" : "Base"}
+                            className="w-3 h-3 rounded-full"
+                          />
+                          <span className="text-white text-xs">{isCeloToken ? "Celo" : "Base"}</span>
+                        </>
+                      );
+                    })()}
+                  </div>
+
+                  {/* Balance underneath Base */}
+                  <div className="text-xs text-gray-400 flex items-center justify-end gap-2">
+                    <span>{t('wallet.balance')}:</span>
+                    <button
+                      onClick={() => setAmount(walletBalance)}
+                      className="text-blue-400 font-medium hover:text-blue-300 transition-colors cursor-pointer inline-flex items-center gap-1"
+                    >
+                      {renderTokenIcon(stablecoins.find(token => token.baseToken === selectedSendToken) || stablecoins[0], "w-3 h-3")}
+                      {selectedSendToken} {walletBalance}
+                    </button>
+                    <button
+                      onClick={refreshBalance}
+                      className="text-gray-400 hover:text-blue-400 transition-colors p-1 rounded hover:bg-slate-700/50"
+                      title="Refresh balance"
+                    >
+                      <ArrowPathIcon className="w-3 h-3" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="text-center text-xs text-gray-300 mb-2 font-semibold mt-2">
+                1 {selectedSendToken} = {isLoadingRate ? '...' : currentRate} {selectedCountry.currency} • {t('send.paymentCompletes')}
+              </div>
+
+              <div className="space-y-0.5 text-xs mb-3">
+                <div className="flex justify-between">
+                  <span className="text-gray-400">{t('send.totalTzs').replace('TZS', selectedCountry.currency)}</span>
+                  <span className="text-white">{paymentDetails.totalLocal} {selectedCountry.currency}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-400">{t('send.fees')}</span>
+                  <span className="text-white">{paymentDetails.fee} {selectedCountry.currency}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-400">{t('send.amountInUsdc').replace('USDC', selectedSendToken)}</span>
+                  <span className="text-white">{paymentDetails.usdcAmount} {selectedSendToken}</span>
+                </div>
+              </div>
             </div>
-          </div>
-          
-          {/* Touch/Click Handler */}
-          <div 
-            className="absolute inset-0 cursor-pointer"
-            onMouseDown={(e) => {
-              e.preventDefault();
-              const rect = e.currentTarget.getBoundingClientRect();
-              const startX = e.clientX - rect.left;
-              
-              const handleMouseMove = (moveEvent: MouseEvent) => {
-                const currentX = moveEvent.clientX - rect.left;
-                const progress = Math.min(Math.max(((currentX - startX) / rect.width) * 100, 0), 100);
-                setSwipeProgress(progress);
-                
-                if (progress >= 80) {
-                  setIsSwipeComplete(true);
-                  setTimeout(() => {
-                    handleSendTransaction();
-                    setIsSwipeComplete(false);
-                    setSwipeProgress(0);
-                  }, 500);
-                  document.removeEventListener('mousemove', handleMouseMove);
-                  document.removeEventListener('mouseup', handleMouseUp);
-                }
-              };
-              
-              const handleMouseUp = () => {
-                if (swipeProgress < 80) {
-                  setSwipeProgress(0);
-                }
-                document.removeEventListener('mousemove', handleMouseMove);
-                document.removeEventListener('mouseup', handleMouseUp);
-              };
-              
-              document.addEventListener('mousemove', handleMouseMove);
-              document.addEventListener('mouseup', handleMouseUp);
-            }}
-            onTouchStart={(e) => {
-              e.preventDefault();
-              const rect = e.currentTarget.getBoundingClientRect();
-              const startX = e.touches[0].clientX - rect.left;
-              
-              const handleTouchMove = (moveEvent: TouchEvent) => {
-                moveEvent.preventDefault();
-                const currentX = moveEvent.touches[0].clientX - rect.left;
-                const progress = Math.min(Math.max(((currentX - startX) / rect.width) * 100, 0), 100);
-                setSwipeProgress(progress);
-                
-                if (progress >= 80) {
-                  setIsSwipeComplete(true);
-                  setTimeout(() => {
-                    handleSendTransaction();
-                    setIsSwipeComplete(false);
-                    setSwipeProgress(0);
-                  }, 500);
-                  document.removeEventListener('touchmove', handleTouchMove);
-                  document.removeEventListener('touchend', handleTouchEnd);
-                }
-              };
-              
-              const handleTouchEnd = () => {
-                if (swipeProgress < 80) {
-                  setSwipeProgress(0);
-                }
-                document.removeEventListener('touchmove', handleTouchMove);
-                document.removeEventListener('touchend', handleTouchEnd);
-              };
-              
-              document.addEventListener('touchmove', handleTouchMove, { passive: false });
-              document.addEventListener('touchend', handleTouchEnd);
-            }}
-          />
-        </div>
-        
-        {/* Helper Text */}
-        <div className="text-center mt-2 text-xs text-gray-400">
-          {t('send.refundWarning')}
-        </div>
+
+            {/* Swipe to Send */}
+            <div className="mt-4">
+              <div className="relative bg-gradient-to-r from-green-500 via-emerald-500 to-green-600 rounded-2xl p-1.5 overflow-hidden shadow-2xl shadow-green-500/30 border border-green-400/30">
+                {/* Progress Background */}
+                <div
+                  className="absolute left-0 top-0 h-full bg-gradient-to-r from-green-400 to-emerald-400 rounded-full transition-all duration-150 ease-in-out"
+                  style={{ width: `${swipeProgress}%` }}
+                />
+
+                {/* Swipe Button */}
+                <div className="relative flex items-center justify-between px-4 py-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-lg">
+                      <ArrowRightIcon className="w-4 h-4 text-green-600" />
+                    </div>
+                    <span className="text-white font-bold text-sm flex items-center gap-2">
+                      {isConfirming ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                          {t('send.confirming')}
+                        </>
+                      ) : isSwipeComplete ? (
+                        t('send.sending')
+                      ) : t('send.swipeToSend')}
+                    </span>
+                  </div>
+
+                  <div className="text-white text-sm font-bold flex items-center gap-2">
+                    {sendCurrency === 'local' ? (
+                      <>
+                        <span className="text-lg">{selectedCountry.flag}</span>
+                        <span>{amount || '0'} {selectedCountry.currency}</span>
+                      </>
+                    ) : (
+                      <>
+                        {selectedSendToken === 'USDC' ? (
+                          <img src="/assets/logos/usdc-logo.png" alt="USDC" className="w-5 h-5" />
+                        ) : selectedSendToken === 'USDT' ? (
+                          <img src="/usdt.png" alt="USDT" className="w-5 h-5" />
+                        ) : selectedSendToken === 'cUSD' ? (
+                          <img src="/cUSD.png" alt="cUSD" className="w-5 h-5" />
+                        ) : (
+                          (() => {
+                            const tokenData = stablecoins.find(s => s.baseToken === selectedSendToken);
+                            if (tokenData && tokenData.flag && !tokenData.flag.includes('_LOGO')) {
+                              return <span className="text-lg">{tokenData.flag}</span>;
+                            }
+                            return <span className="w-5 h-5 bg-gray-400 rounded-full flex items-center justify-center text-xs">?</span>;
+                          })()
+                        )}
+                        <span>{amount || '0'} {selectedSendToken}</span>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                {/* Touch/Click Handler */}
+                <div
+                  className="absolute inset-0 cursor-pointer"
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    const startX = e.clientX - rect.left;
+
+                    const handleMouseMove = (moveEvent: MouseEvent) => {
+                      const currentX = moveEvent.clientX - rect.left;
+                      const progress = Math.min(Math.max(((currentX - startX) / rect.width) * 100, 0), 100);
+                      setSwipeProgress(progress);
+
+                      if (progress >= 80) {
+                        setIsSwipeComplete(true);
+                        setTimeout(() => {
+                          handleSendTransaction();
+                          setIsSwipeComplete(false);
+                          setSwipeProgress(0);
+                        }, 500);
+                        document.removeEventListener('mousemove', handleMouseMove);
+                        document.removeEventListener('mouseup', handleMouseUp);
+                      }
+                    };
+
+                    const handleMouseUp = () => {
+                      if (swipeProgress < 80) {
+                        setSwipeProgress(0);
+                      }
+                      document.removeEventListener('mousemove', handleMouseMove);
+                      document.removeEventListener('mouseup', handleMouseUp);
+                    };
+
+                    document.addEventListener('mousemove', handleMouseMove);
+                    document.addEventListener('mouseup', handleMouseUp);
+                  }}
+                  onTouchStart={(e) => {
+                    e.preventDefault();
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    const startX = e.touches[0].clientX - rect.left;
+
+                    const handleTouchMove = (moveEvent: TouchEvent) => {
+                      moveEvent.preventDefault();
+                      const currentX = moveEvent.touches[0].clientX - rect.left;
+                      const progress = Math.min(Math.max(((currentX - startX) / rect.width) * 100, 0), 100);
+                      setSwipeProgress(progress);
+
+                      if (progress >= 80) {
+                        setIsSwipeComplete(true);
+                        setTimeout(() => {
+                          handleSendTransaction();
+                          setIsSwipeComplete(false);
+                          setSwipeProgress(0);
+                        }, 500);
+                        document.removeEventListener('touchmove', handleTouchMove);
+                        document.removeEventListener('touchend', handleTouchEnd);
+                      }
+                    };
+
+                    const handleTouchEnd = () => {
+                      if (swipeProgress < 80) {
+                        setSwipeProgress(0);
+                      }
+                      document.removeEventListener('touchmove', handleTouchMove);
+                      document.removeEventListener('touchend', handleTouchEnd);
+                    };
+
+                    document.addEventListener('touchmove', handleTouchMove, { passive: false });
+                    document.addEventListener('touchend', handleTouchEnd);
+                  }}
+                />
+              </div>
+
+              {/* Helper Text */}
+              <div className="text-center mt-2 text-xs text-gray-400">
+                {t('send.refundWarning')}
+              </div>
+            </div>
+          </>
+        )}
       </div>
-    </div>
-  );
+    );
+  };
 
   // Success Modal Component
   const SuccessModal = () => {
@@ -4056,16 +4077,16 @@ export default function FarcasterMiniApp() {
         <h2 className="text-white text-lg font-medium">{t('pay.title')}</h2>
         <div className="flex items-center gap-2">
           {(() => {
-            const selectedTokenData = stablecoins.find(token => 
+            const selectedTokenData = stablecoins.find(token =>
               token.baseToken === (payCurrency === 'local' ? selectedPayToken : selectedPayToken)
             );
             const isCeloToken = selectedTokenData?.baseToken === 'USDT' || selectedTokenData?.baseToken === 'cUSD';
             return (
               <>
-                <img 
-                  src={isCeloToken ? "/celo.png" : "/assets/logos/base-logo.jpg"} 
-                  alt={isCeloToken ? "Celo" : "Base"} 
-                  className="w-4 h-4 rounded-full" 
+                <img
+                  src={isCeloToken ? "/celo.png" : "/assets/logos/base-logo.jpg"}
+                  alt={isCeloToken ? "Celo" : "Base"}
+                  className="w-4 h-4 rounded-full"
                 />
                 <span className="text-white text-sm">{isCeloToken ? "Celo" : "Base"}</span>
               </>
@@ -4084,11 +4105,10 @@ export default function FarcasterMiniApp() {
             <span className="text-lg">{selectedCountry.flag}</span>
             <span className="text-white font-medium text-sm">{selectedCountry.name}</span>
           </div>
-          <ChevronDownIcon className={`w-4 h-4 text-gray-400 transition-transform ${
-            isCountryDropdownOpen ? 'rotate-180' : ''
-          }`} />
+          <ChevronDownIcon className={`w-4 h-4 text-gray-400 transition-transform ${isCountryDropdownOpen ? 'rotate-180' : ''
+            }`} />
         </button>
-        
+
         {/* Dropdown Menu */}
         {isCountryDropdownOpen && (
           <div className="absolute top-full left-0 right-0 mt-1 bg-slate-800 border border-slate-700 rounded-lg shadow-xl z-50 overflow-hidden max-h-64">
@@ -4102,13 +4122,11 @@ export default function FarcasterMiniApp() {
                   }
                 }}
                 disabled={country.comingSoon}
-                className={`w-full px-3 py-2 text-left flex items-center gap-2 transition-colors ${
-                  country.comingSoon 
-                    ? 'opacity-50 cursor-not-allowed' 
-                    : 'hover:bg-slate-700'
-                } ${
-                  selectedCountry.code === country.code ? 'bg-blue-600/20' : ''
-                }`}
+                className={`w-full px-3 py-2 text-left flex items-center gap-2 transition-colors ${country.comingSoon
+                  ? 'opacity-50 cursor-not-allowed'
+                  : 'hover:bg-slate-700'
+                  } ${selectedCountry.code === country.code ? 'bg-blue-600/20' : ''
+                  }`}
               >
                 <span className="text-lg">{country.flag}</span>
                 <div className="flex flex-col">
@@ -4155,7 +4173,7 @@ export default function FarcasterMiniApp() {
             </div>
             <ChevronDownIcon className={`w-4 h-4 text-gray-400 transition-transform ${showProviderDropdown ? 'rotate-180' : ''}`} />
           </button>
-          
+
           {showProviderDropdown && (
             <div className="absolute top-full left-0 right-0 mt-2 bg-slate-800 rounded-lg border border-slate-600 shadow-xl z-50 max-h-64 overflow-y-auto">
               {/* Mobile Money Section */}
@@ -4171,9 +4189,8 @@ export default function FarcasterMiniApp() {
                         setSelectedInstitution(institution.code);
                         setShowProviderDropdown(false);
                       }}
-                      className={`w-full px-3 py-2.5 text-left hover:bg-slate-700 flex items-center gap-3 text-sm transition-colors ${
-                        selectedInstitution === institution.code ? 'bg-blue-600/20 border-l-2 border-blue-500' : ''
-                      }`}
+                      className={`w-full px-3 py-2.5 text-left hover:bg-slate-700 flex items-center gap-3 text-sm transition-colors ${selectedInstitution === institution.code ? 'bg-blue-600/20 border-l-2 border-blue-500' : ''
+                        }`}
                     >
                       <svg className="w-4 h-4 text-green-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
@@ -4188,7 +4205,7 @@ export default function FarcasterMiniApp() {
                   ))}
                 </div>
               )}
-              
+
               {/* Banks Section */}
               {institutions.filter(i => i.type === 'bank').length > 0 && (
                 <div>
@@ -4202,9 +4219,8 @@ export default function FarcasterMiniApp() {
                         setSelectedInstitution(institution.code);
                         setShowProviderDropdown(false);
                       }}
-                      className={`w-full px-3 py-2.5 text-left hover:bg-slate-700 flex items-center gap-3 text-sm transition-colors ${
-                        selectedInstitution === institution.code ? 'bg-blue-600/20 border-l-2 border-blue-500' : ''
-                      }`}
+                      className={`w-full px-3 py-2.5 text-left hover:bg-slate-700 flex items-center gap-3 text-sm transition-colors ${selectedInstitution === institution.code ? 'bg-blue-600/20 border-l-2 border-blue-500' : ''
+                        }`}
                     >
                       <svg className="w-4 h-4 text-blue-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
@@ -4228,68 +4244,62 @@ export default function FarcasterMiniApp() {
       <div className="grid grid-cols-2 gap-4">
         <button
           onClick={() => setPaymentType('goods')}
-          className={`relative py-3 px-2 rounded-xl text-xs font-bold transition-all duration-300 ease-out border-2 overflow-hidden group ${
-            paymentType === 'goods' 
-              ? 'bg-gradient-to-br from-emerald-500 via-green-600 to-teal-700 text-white border-emerald-400/60 shadow-2xl shadow-emerald-500/40 transform scale-105' 
-              : 'bg-slate-800/80 text-white hover:bg-slate-700/90 border-slate-600/50 hover:border-emerald-500/30 hover:scale-102 hover:shadow-xl hover:shadow-emerald-500/10 active:scale-95'
-          }`}
+          className={`relative py-3 px-2 rounded-xl text-xs font-bold transition-all duration-300 ease-out border-2 overflow-hidden group ${paymentType === 'goods'
+            ? 'bg-gradient-to-br from-emerald-500 via-green-600 to-teal-700 text-white border-emerald-400/60 shadow-2xl shadow-emerald-500/40 transform scale-105'
+            : 'bg-slate-800/80 text-white hover:bg-slate-700/90 border-slate-600/50 hover:border-emerald-500/30 hover:scale-102 hover:shadow-xl hover:shadow-emerald-500/10 active:scale-95'
+            }`}
         >
           {/* Animated background */}
           {paymentType === 'goods' && (
             <div className="absolute inset-0 bg-gradient-to-r from-emerald-400/20 to-green-400/20 animate-pulse" />
           )}
-          
+
           {/* Hover glow */}
-          <div className={`absolute inset-0 rounded-2xl transition-all duration-300 ${
-            paymentType === 'goods' 
-              ? 'opacity-100 bg-emerald-400/10' 
-              : 'opacity-0 group-hover:opacity-100 bg-emerald-400/5'
-          }`} />
-          
-          <span className={`relative z-10 flex items-center transition-all duration-300 ${
-            paymentType === 'goods' ? 'drop-shadow-lg' : 'group-hover:tracking-wide'
-          }`}>
+          <div className={`absolute inset-0 rounded-2xl transition-all duration-300 ${paymentType === 'goods'
+            ? 'opacity-100 bg-emerald-400/10'
+            : 'opacity-0 group-hover:opacity-100 bg-emerald-400/5'
+            }`} />
+
+          <span className={`relative z-10 flex items-center transition-all duration-300 ${paymentType === 'goods' ? 'drop-shadow-lg' : 'group-hover:tracking-wide'
+            }`}>
             <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
             </svg>
             {t('pay.buyGoods')}
           </span>
-          
+
           {/* Active pulse indicator */}
           {paymentType === 'goods' && (
             <div className="absolute top-2 right-2 w-2 h-2 bg-emerald-300 rounded-full animate-ping" />
           )}
         </button>
-        
+
         <button
           onClick={() => setPaymentType('bill')}
-          className={`relative py-3 px-2 rounded-xl text-xs font-bold transition-all duration-300 ease-out border-2 overflow-hidden group ${
-            paymentType === 'bill' 
-              ? 'bg-gradient-to-br from-blue-500 via-cyan-600 to-sky-700 text-white border-blue-400/60 shadow-2xl shadow-blue-500/40 transform scale-105' 
-              : 'bg-slate-800/80 text-white hover:bg-slate-700/90 border-slate-600/50 hover:border-blue-500/30 hover:scale-102 hover:shadow-xl hover:shadow-blue-500/10 active:scale-95'
-          }`}
+          className={`relative py-3 px-2 rounded-xl text-xs font-bold transition-all duration-300 ease-out border-2 overflow-hidden group ${paymentType === 'bill'
+            ? 'bg-gradient-to-br from-blue-500 via-cyan-600 to-sky-700 text-white border-blue-400/60 shadow-2xl shadow-blue-500/40 transform scale-105'
+            : 'bg-slate-800/80 text-white hover:bg-slate-700/90 border-slate-600/50 hover:border-blue-500/30 hover:scale-102 hover:shadow-xl hover:shadow-blue-500/10 active:scale-95'
+            }`}
         >
           {/* Animated background */}
           {paymentType === 'bill' && (
             <div className="absolute inset-0 bg-gradient-to-r from-blue-400/20 to-cyan-400/20 animate-pulse" />
           )}
-          
+
           {/* Hover glow */}
-          <div className={`absolute inset-0 rounded-2xl transition-all duration-300 ${
-            paymentType === 'bill' 
-              ? 'opacity-100 bg-blue-400/10' 
-              : 'opacity-0 group-hover:opacity-100 bg-blue-400/5'
-          }`} />
-          
-          <span className={`relative z-10 flex items-center transition-all duration-300 ${
-            paymentType === 'bill' ? 'drop-shadow-lg' : 'group-hover:tracking-wide'
-          }`}>
+          <div className={`absolute inset-0 rounded-2xl transition-all duration-300 ${paymentType === 'bill'
+            ? 'opacity-100 bg-blue-400/10'
+            : 'opacity-0 group-hover:opacity-100 bg-blue-400/5'
+            }`} />
+
+          <span className={`relative z-10 flex items-center transition-all duration-300 ${paymentType === 'bill' ? 'drop-shadow-lg' : 'group-hover:tracking-wide'
+            }`}>
             <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
             {t('pay.payBill')}
           </span>
-          
+
           {/* Active pulse indicator */}
           {paymentType === 'bill' && (
             <div className="absolute top-2 right-2 w-2 h-2 bg-blue-300 rounded-full animate-ping" />
@@ -4313,7 +4323,7 @@ export default function FarcasterMiniApp() {
               />
             </div>
           </div>
-          
+
           {/* Business Number */}
           <div>
             <label className="block text-xs text-gray-400 mb-1.5">Business Number</label>
@@ -4371,7 +4381,7 @@ export default function FarcasterMiniApp() {
                 <span className="text-white text-xs font-medium">{selectedPayToken}</span>
                 <ChevronDownIcon className="w-3.5 h-3.5 text-gray-400" />
               </button>
-              
+
               {showPayTokenDropdown && (
                 <div className="absolute top-full right-0 mt-2 bg-slate-800 rounded-lg border border-slate-600 shadow-xl z-50 max-h-48 overflow-y-auto min-w-[120px]">
                   {stablecoins.map((token, index) => (
@@ -4381,18 +4391,18 @@ export default function FarcasterMiniApp() {
                         setSelectedPayToken(token.baseToken);
                         setSelectedToken(token); // Update main selected token for theme
                         setShowPayTokenDropdown(false);
-                        
+
                         // Switch chain immediately when token is selected using hook
                         if (isConnected && switchChain) {
                           try {
                             const isCeloToken = (token.baseToken === 'USDT' || token.baseToken === 'cUSD');
                             const targetChainId = isCeloToken ? 42220 : 8453; // Celo : Base
                             const networkName = isCeloToken ? 'Celo' : 'Base';
-                            
+
                             console.log(`🔄 Pre-switching to ${networkName} (${targetChainId}) for ${token.baseToken}`);
                             await switchChain({ chainId: targetChainId });
                             console.log(`✅ Pre-switched to ${networkName} for ${token.baseToken}`);
-                            
+
                             // Fetch balance for the newly selected token
                             setTimeout(() => {
                               fetchWalletBalance(token.baseToken);
@@ -4418,7 +4428,7 @@ export default function FarcasterMiniApp() {
             </div>
           </div>
         </div>
-        
+
         {/* You'll pay section */}
         <div className="mt-4">
           <div className="flex justify-between items-start">
@@ -4427,27 +4437,27 @@ export default function FarcasterMiniApp() {
               {/* Network Label */}
               <div className="flex items-center justify-end gap-1 mb-1">
                 {(() => {
-                  const selectedTokenData = stablecoins.find(token => 
+                  const selectedTokenData = stablecoins.find(token =>
                     token.baseToken === (payCurrency === 'local' ? selectedPayToken : selectedPayToken)
                   );
                   const isCeloToken = selectedTokenData?.baseToken === 'USDT' || selectedTokenData?.baseToken === 'cUSD';
                   return (
                     <>
-                      <img 
-                        src={isCeloToken ? "/celo.png" : "/assets/logos/base-logo.jpg"} 
-                        alt={isCeloToken ? "Celo" : "Base"} 
-                        className="w-3 h-3 rounded-full" 
+                      <img
+                        src={isCeloToken ? "/celo.png" : "/assets/logos/base-logo.jpg"}
+                        alt={isCeloToken ? "Celo" : "Base"}
+                        className="w-3 h-3 rounded-full"
                       />
                       <span className="text-white text-xs">{isCeloToken ? "Celo" : "Base"}</span>
                     </>
                   );
                 })()}
               </div>
-              
+
               {/* Balance underneath Base */}
               <div className="text-xs text-gray-400 flex items-center justify-end gap-2">
                 <span>{t('wallet.balance')}:</span>
-                <button 
+                <button
                   onClick={() => setAmount(walletBalance)}
                   className="text-blue-400 font-medium hover:text-blue-300 transition-colors cursor-pointer inline-flex items-center gap-1"
                 >
@@ -4503,11 +4513,11 @@ export default function FarcasterMiniApp() {
       <div className="mt-6">
         <div className="relative bg-gradient-to-r from-blue-500 via-purple-500 to-blue-600 rounded-2xl p-1.5 overflow-hidden shadow-2xl shadow-blue-500/30 border border-blue-400/30">
           {/* Progress Background */}
-          <div 
+          <div
             className="absolute left-0 top-0 h-full bg-gradient-to-r from-blue-400 to-purple-400 rounded-full transition-all duration-150 ease-in-out"
             style={{ width: `${swipeProgress}%` }}
           />
-          
+
           <div className="relative flex items-center justify-between px-4 py-3">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-lg">
@@ -4524,7 +4534,7 @@ export default function FarcasterMiniApp() {
                 ) : t('pay.swipeToPay')}
               </span>
             </div>
-            
+
             <div className="text-white text-sm font-bold flex items-center gap-2">
               {payCurrency === 'local' ? (
                 <>
@@ -4553,20 +4563,20 @@ export default function FarcasterMiniApp() {
               )}
             </div>
           </div>
-          
+
           {/* Touch/Click Handler */}
-          <div 
+          <div
             className="absolute inset-0 cursor-pointer"
             onMouseDown={(e) => {
               e.preventDefault();
               const rect = e.currentTarget.getBoundingClientRect();
               const startX = e.clientX - rect.left;
-              
+
               const handleMouseMove = (moveEvent: MouseEvent) => {
                 const currentX = moveEvent.clientX - rect.left;
                 const progress = Math.min(Math.max(((currentX - startX) / rect.width) * 100, 0), 100);
                 setSwipeProgress(progress);
-                
+
                 if (progress >= 80) {
                   setIsSwipeComplete(true);
                   setTimeout(() => {
@@ -4578,7 +4588,7 @@ export default function FarcasterMiniApp() {
                   document.removeEventListener('mouseup', handleMouseUp);
                 }
               };
-              
+
               const handleMouseUp = () => {
                 if (swipeProgress < 80) {
                   setSwipeProgress(0);
@@ -4586,7 +4596,7 @@ export default function FarcasterMiniApp() {
                 document.removeEventListener('mousemove', handleMouseMove);
                 document.removeEventListener('mouseup', handleMouseUp);
               };
-              
+
               document.addEventListener('mousemove', handleMouseMove);
               document.addEventListener('mouseup', handleMouseUp);
             }}
@@ -4594,13 +4604,13 @@ export default function FarcasterMiniApp() {
               e.preventDefault();
               const rect = e.currentTarget.getBoundingClientRect();
               const startX = e.touches[0].clientX - rect.left;
-              
+
               const handleTouchMove = (moveEvent: TouchEvent) => {
                 moveEvent.preventDefault();
                 const currentX = moveEvent.touches[0].clientX - rect.left;
                 const progress = Math.min(Math.max(((currentX - startX) / rect.width) * 100, 0), 100);
                 setSwipeProgress(progress);
-                
+
                 if (progress >= 80) {
                   setIsSwipeComplete(true);
                   setTimeout(() => {
@@ -4612,7 +4622,7 @@ export default function FarcasterMiniApp() {
                   document.removeEventListener('touchend', handleTouchEnd);
                 }
               };
-              
+
               const handleTouchEnd = () => {
                 if (swipeProgress < 80) {
                   setSwipeProgress(0);
@@ -4620,13 +4630,13 @@ export default function FarcasterMiniApp() {
                 document.removeEventListener('touchmove', handleTouchMove);
                 document.removeEventListener('touchend', handleTouchEnd);
               };
-              
+
               document.addEventListener('touchmove', handleTouchMove, { passive: false });
               document.addEventListener('touchend', handleTouchEnd);
             }}
           />
         </div>
-        
+
         <div className="text-center mt-2 text-sm text-gray-400 font-medium">
           {t('pay.dragToConfirm')}
         </div>
@@ -4636,8 +4646,8 @@ export default function FarcasterMiniApp() {
 
   const renderDepositTab = () => {
     return (
-      <PretiumOnRampFlow 
-        asset={depositAsset as 'USDC' | 'USDT'} 
+      <PretiumOnRampFlow
+        asset={depositAsset as 'USDC' | 'USDT'}
         walletAddress={walletAddress}
       />
     );
@@ -4646,17 +4656,14 @@ export default function FarcasterMiniApp() {
   const renderLinkTab = () => (
     <div className="space-y-3">
       {/* Wallet Connection Status */}
-      <div className={`border rounded-lg p-2 ${
-        isConnected 
-          ? 'bg-green-600/20 border-green-600/30' 
-          : 'bg-yellow-600/20 border-yellow-600/30'
-      }`}>
-        <div className={`flex items-center gap-2 ${
-          isConnected ? 'text-green-400' : 'text-yellow-400'
+      <div className={`border rounded-lg p-2 ${isConnected
+        ? 'bg-green-600/20 border-green-600/30'
+        : 'bg-yellow-600/20 border-yellow-600/30'
         }`}>
-          <span className={`w-1.5 h-1.5 rounded-full ${
-            isConnected ? 'bg-green-400' : 'bg-yellow-400'
-          }`}></span>
+        <div className={`flex items-center gap-2 ${isConnected ? 'text-green-400' : 'text-yellow-400'
+          }`}>
+          <span className={`w-1.5 h-1.5 rounded-full ${isConnected ? 'bg-green-400' : 'bg-yellow-400'
+            }`}></span>
           <span className="text-xs font-medium flex items-center gap-1">
             {isWalletConnected ? (
               <>
@@ -4698,7 +4705,7 @@ export default function FarcasterMiniApp() {
           </div>
         </div>
       </div>
-      
+
       {/* Protocol Fee Display for Link */}
       {isProtocolEnabled() && linkAmount && Number(linkAmount) > 0 && (
         <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-2">
@@ -4717,7 +4724,7 @@ export default function FarcasterMiniApp() {
                     </div>
                   </>
                 );
-              })()} 
+              })()}
             </div>
           </div>
         </div>
@@ -4737,7 +4744,7 @@ export default function FarcasterMiniApp() {
             </div>
             <ChevronDownIcon className="w-4 h-4 text-gray-400" />
           </button>
-          
+
           {showLinkCurrencyDropdown && (
             <div className="absolute top-full left-0 right-0 mt-1 bg-slate-800 border border-slate-700 rounded-lg shadow-xl z-50 overflow-y-auto max-h-80">
               {stablecoins.map((token, index) => {
@@ -4749,9 +4756,8 @@ export default function FarcasterMiniApp() {
                       setSelectedStablecoin(token);
                       setShowLinkCurrencyDropdown(false);
                     }}
-                    className={`w-full px-3 py-2 text-left flex items-center gap-2 transition-colors hover:bg-slate-700 ${
-                      selectedStablecoin.baseToken === token.baseToken ? 'bg-blue-600/20' : ''
-                    }`}
+                    className={`w-full px-3 py-2 text-left flex items-center gap-2 transition-colors hover:bg-slate-700 ${selectedStablecoin.baseToken === token.baseToken ? 'bg-blue-600/20' : ''
+                      }`}
                   >
                     {renderTokenIcon(token, "w-4 h-4")}
                     <div className="flex flex-col">
@@ -4781,7 +4787,7 @@ export default function FarcasterMiniApp() {
       </div>
 
       {/* Generate Link Button */}
-      <button 
+      <button
         onClick={isWalletConnected ? handleGeneratePaymentLink : () => {
           if (isSmartWalletEnvironment) {
             console.log('⚠️ Smart wallet environment - connection should happen automatically');
@@ -4797,11 +4803,10 @@ export default function FarcasterMiniApp() {
           }
         }}
         disabled={!isWalletConnected || !linkAmount}
-        className={`w-full font-medium py-3 rounded-lg transition-all duration-200 flex items-center justify-center gap-2 text-sm border-2 ${
-          isWalletConnected && linkAmount
-            ? 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white transform hover:scale-105 shadow-lg border-blue-400/30 hover:border-blue-300/50' 
-            : 'bg-gray-600 text-gray-300 cursor-not-allowed border-gray-600/30'
-        }`}
+        className={`w-full font-medium py-3 rounded-lg transition-all duration-200 flex items-center justify-center gap-2 text-sm border-2 ${isWalletConnected && linkAmount
+          ? 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white transform hover:scale-105 shadow-lg border-blue-400/30 hover:border-blue-300/50'
+          : 'bg-gray-600 text-gray-300 cursor-not-allowed border-gray-600/30'
+          }`}
       >
         {isWalletConnected ? (
           <>
@@ -4985,7 +4990,7 @@ export default function FarcasterMiniApp() {
       <div className="space-y-4">
         {/* Header with Back Button */}
         <div className="flex items-center gap-3">
-          <button 
+          <button
             onClick={() => setInvoiceView('main')}
             className="p-2 rounded-lg bg-slate-700 text-white hover:bg-slate-600 transition-colors"
           >
@@ -4996,7 +5001,7 @@ export default function FarcasterMiniApp() {
             <p className="text-gray-400 text-xs">Manage your sent invoices</p>
           </div>
         </div>
-        
+
         {/* Coming Soon */}
         <div className="bg-slate-800/30 rounded-lg p-6 text-center">
           <DocumentTextIcon className="w-12 h-12 text-gray-500 mx-auto mb-3" />
@@ -5021,7 +5026,7 @@ export default function FarcasterMiniApp() {
     } else if (invoiceView === 'list') {
       return renderInvoiceList();
     }
-    
+
     return (
       <div className="space-y-4">
         {/* Invoice Header */}
@@ -5034,17 +5039,14 @@ export default function FarcasterMiniApp() {
         </div>
 
         {/* Wallet Connection Status */}
-        <div className={`border rounded-lg p-3 ${
-          isConnected 
-            ? 'bg-green-600/20 border-green-600/30' 
-            : 'bg-yellow-600/20 border-yellow-600/30'
-        }`}>
-          <div className={`flex items-center gap-2 ${
-            isConnected ? 'text-green-400' : 'text-yellow-400'
+        <div className={`border rounded-lg p-3 ${isConnected
+          ? 'bg-green-600/20 border-green-600/30'
+          : 'bg-yellow-600/20 border-yellow-600/30'
           }`}>
-            <span className={`w-2 h-2 rounded-full ${
-              isConnected ? 'bg-green-400' : 'bg-yellow-400'
-            }`}></span>
+          <div className={`flex items-center gap-2 ${isConnected ? 'text-green-400' : 'text-yellow-400'
+            }`}>
+            <span className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-400' : 'bg-yellow-400'
+              }`}></span>
             <span className="text-sm font-medium flex items-center gap-2">
               {isWalletConnected ? (
                 <>
@@ -5072,7 +5074,7 @@ export default function FarcasterMiniApp() {
 
         {/* Quick Actions */}
         <div className="grid grid-cols-2 gap-3">
-          <button 
+          <button
             onClick={() => {
               if (isWalletConnected) {
                 setInvoiceView('create');
@@ -5080,19 +5082,18 @@ export default function FarcasterMiniApp() {
                 alert('Please connect your wallet first');
               }
             }}
-            className={`p-3 rounded-xl border-2 transition-all duration-300 ${
-              isWalletConnected
-                ? 'bg-blue-600/20 border-blue-600/30 hover:bg-blue-600/30 text-blue-400'
-                : 'bg-gray-600/20 border-gray-600/30 text-gray-500 cursor-not-allowed'
-            }`}
+            className={`p-3 rounded-xl border-2 transition-all duration-300 ${isWalletConnected
+              ? 'bg-blue-600/20 border-blue-600/30 hover:bg-blue-600/30 text-blue-400'
+              : 'bg-gray-600/20 border-gray-600/30 text-gray-500 cursor-not-allowed'
+              }`}
           >
             <div className="flex flex-col items-center gap-1.5">
               <DocumentTextIcon className="w-5 h-5" />
               <span className="text-xs font-medium">{t('invoice.createInvoice')}</span>
             </div>
           </button>
-          
-          <button 
+
+          <button
             onClick={() => {
               if (isWalletConnected) {
                 setInvoiceView('list');
@@ -5100,11 +5101,10 @@ export default function FarcasterMiniApp() {
                 alert('Please connect your wallet first');
               }
             }}
-            className={`p-3 rounded-xl border-2 transition-all duration-300 ${
-              isWalletConnected
-                ? 'bg-purple-600/20 border-purple-600/30 hover:bg-purple-600/30 text-purple-400'
-                : 'bg-gray-600/20 border-gray-600/30 text-gray-500 cursor-not-allowed'
-            }`}
+            className={`p-3 rounded-xl border-2 transition-all duration-300 ${isWalletConnected
+              ? 'bg-purple-600/20 border-purple-600/30 hover:bg-purple-600/30 text-purple-400'
+              : 'bg-gray-600/20 border-gray-600/30 text-gray-500 cursor-not-allowed'
+              }`}
           >
             <div className="flex flex-col items-center gap-1.5">
               <ArrowPathIcon className="w-5 h-5" />
@@ -5182,7 +5182,7 @@ export default function FarcasterMiniApp() {
                 </div>
                 <ChevronDownIcon className="w-4 h-4 text-gray-400" />
               </button>
-              
+
               {showSwapFromDropdown && (
                 <div className="absolute top-full left-0 mt-1 bg-slate-800 rounded-lg border border-slate-600 shadow-xl z-50 max-h-64 overflow-y-auto w-80 min-w-max">
                   {stablecoins.map((token) => (
@@ -5201,7 +5201,7 @@ export default function FarcasterMiniApp() {
                 </div>
               )}
             </div>
-            <button 
+            <button
               onClick={() => {
                 const maxAmount = parseFloat(swapFromBalance);
                 if (maxAmount > 0) {
@@ -5262,24 +5262,24 @@ export default function FarcasterMiniApp() {
                 </div>
                 <ChevronDownIcon className="w-4 h-4 text-gray-400" />
               </button>
-              
+
               {showSwapToDropdown && (
                 <div className="absolute top-full left-0 mt-1 bg-slate-800 rounded-lg border border-slate-600 shadow-xl z-50 max-h-64 overflow-y-auto w-80 min-w-max">
                   {stablecoins
                     .filter(token => token.baseToken !== swapFromToken)
                     .map((token) => (
-                    <button
-                      key={token.baseToken}
-                      onClick={() => {
-                        setSwapToToken(token.baseToken);
-                        setShowSwapToDropdown(false);
-                      }}
-                      className="w-full px-4 py-3 text-left hover:bg-slate-700 flex items-center gap-3 text-sm transition-colors whitespace-nowrap"
-                    >
-                      {renderTokenIcon(token, "w-5 h-5")}
-                      <span className="text-white">{token.baseToken} - {token.name}</span>
-                    </button>
-                  ))}
+                      <button
+                        key={token.baseToken}
+                        onClick={() => {
+                          setSwapToToken(token.baseToken);
+                          setShowSwapToDropdown(false);
+                        }}
+                        className="w-full px-4 py-3 text-left hover:bg-slate-700 flex items-center gap-3 text-sm transition-colors whitespace-nowrap"
+                      >
+                        {renderTokenIcon(token, "w-5 h-5")}
+                        <span className="text-white">{token.baseToken} - {token.name}</span>
+                      </button>
+                    ))}
                 </div>
               )}
             </div>
@@ -5303,7 +5303,7 @@ export default function FarcasterMiniApp() {
               1 {swapFromToken} = {(Number(swapQuote) / Number(swapAmount)).toFixed(toTokenData?.decimals || 6)} {swapToToken}
             </div>
           )}
-          
+
           {/* Protocol Fee Display */}
           {isProtocolEnabled() && swapAmount && Number(swapAmount) > 0 && (
             <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-2 mt-2">
@@ -5334,7 +5334,7 @@ export default function FarcasterMiniApp() {
                         </div>
                       </>
                     );
-                  })()} 
+                  })()}
                 </div>
               </div>
             </div>
@@ -5357,7 +5357,7 @@ export default function FarcasterMiniApp() {
                 <p className="text-green-400 text-sm font-medium">Swap Successful!</p>
               </div>
               {swapSuccess.includes('Transaction:') && (
-                <a 
+                <a
                   href={`https://basescan.org/tx/${swapSuccess.split('Transaction: ')[1]}`}
                   target="_blank"
                   rel="noopener noreferrer"
@@ -5379,11 +5379,10 @@ export default function FarcasterMiniApp() {
         <button
           onClick={executeSwap}
           disabled={!isWalletConnected || !swapAmount || !swapToToken || swapIsLoading}
-          className={`w-full py-3 rounded-2xl font-bold text-base transition-all border-2 ${
-            isWalletConnected && swapAmount && swapToToken && !swapIsLoading
-              ? 'bg-blue-600 hover:bg-blue-500 text-white border-blue-500 hover:border-blue-400 transform hover:scale-[1.02]'
-              : 'bg-slate-700 text-slate-400 border-slate-600 cursor-not-allowed'
-          }`}
+          className={`w-full py-3 rounded-2xl font-bold text-base transition-all border-2 ${isWalletConnected && swapAmount && swapToToken && !swapIsLoading
+            ? 'bg-blue-600 hover:bg-blue-500 text-white border-blue-500 hover:border-blue-400 transform hover:scale-[1.02]'
+            : 'bg-slate-700 text-slate-400 border-slate-600 cursor-not-allowed'
+            }`}
         >
           {!isWalletConnected ? (
             t('wallet.connect')
@@ -5430,158 +5429,157 @@ export default function FarcasterMiniApp() {
       {/* Background Effects */}
       <div className={`absolute inset-0 bg-gradient-to-br transition-colors duration-500 ${isCeloToken ? 'from-[#FCFF52]/10 via-[#FDFF8B]/10 to-[#FCFF52]/10' : 'from-blue-600/10 via-purple-600/10 to-indigo-600/10'}`}></div>
       <div className={`absolute top-0 left-0 w-full h-full bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] via-transparent to-transparent transition-colors duration-500 ${isCeloToken ? 'from-[#FCFF52]/20' : 'from-blue-600/20'}`}></div>
-      
+
       <div className="max-w-sm mx-auto relative z-10">
         {/* Clean Header - Compact */}
         <div className="glass-card flex items-center justify-between mb-2 w-full px-2 py-1.5">
           {/* Left - Logo */}
           <div className="flex items-center gap-1.5">
-            <Image 
-              src="/NEDApayLogo.png" 
-              alt="NedaPay" 
-              width={24} 
-              height={24} 
+            <Image
+              src="/NEDApayLogo.png"
+              alt="NedaPay"
+              width={24}
+              height={24}
               className="rounded-md"
             />
             <span className="text-white font-bold text-sm">NEDApay</span>
           </div>
-          
+
           {/* Right Section - Profile + Menu */}
           <div className="flex items-center gap-1">
-            
+
             {/* Wallet Connection */}
             {!isWalletConnected ? (
-            <button
-              onClick={async () => {
-                try {
-                  console.log('🔗 Wallet button clicked!');
-                  console.log('Environment:', isSmartWalletEnvironment ? 'Farcaster/MiniApp' : 'Website');
-                  console.log('Available connectors:', connectors?.map(c => ({ name: c.name, id: c.id })));
-                  
-                  if (connectors && connectors.length > 0) {
-                    let preferredConnector;
-                    
-                    if (isSmartWalletEnvironment) {
-                      // For Farcaster MiniApp, prioritize farcaster connector
-                      preferredConnector = connectors.find(c => 
-                        c.name.toLowerCase().includes('farcaster') ||
-                        c.id.toLowerCase().includes('farcaster') ||
-                        c.name.toLowerCase().includes('miniapp')
-                      );
-                    } else {
-                      // For normal web browser, prioritize web wallet connectors
-                      preferredConnector = connectors.find(c => 
-                        c.name.toLowerCase().includes('coinbase') ||
-                        c.name.toLowerCase().includes('metamask') ||
-                        c.name.toLowerCase().includes('walletconnect')
-                      );
-                    }
-                    
-                    // Fallback to first available connector
-                    preferredConnector = preferredConnector || connectors[0];
-                    
-                    console.log('🔌 Connecting with:', { 
-                      name: preferredConnector.name, 
-                      id: preferredConnector.id,
-                      environment: isSmartWalletEnvironment ? 'Farcaster' : 'Web',
-                      totalConnectors: connectors.length
-                    });
-                    
-                    await connect({ connector: preferredConnector });
-                  } else {
-                    console.error('❌ No connectors available');
-                    alert('No wallet connectors available in this environment');
-                  }
-                } catch (error) {
-                  console.error('❌ Failed to connect wallet:', error);
-                  alert('Failed to connect wallet. Please try again.');
-                }
-              }}
-              className={`relative px-3 py-1.5 rounded-lg font-semibold text-xs transition-all duration-300 flex items-center gap-1.5 ${
-                isCeloToken 
-                  ? 'bg-gradient-to-r from-[#FCFF52] to-[#FDFF8B] text-slate-900' 
-                  : 'bg-gradient-to-r from-blue-500 to-purple-500 text-white'
-              }`}
-            >
-              <WalletIcon className="w-3.5 h-3.5" />
-              <span>Connect</span>
-            </button>
-          ) : (
-            <>
-              {/* Profile Display - Expanded */}
-              <div className="flex items-center gap-2 bg-slate-800/60 backdrop-blur-sm rounded-lg px-2 py-1.5 border border-slate-600/30">
-                {/* Green dot */}
-                <div className="w-2 h-2 bg-green-400 rounded-full flex-shrink-0" />
-                
-                {/* Profile Image & Username */}
-                {(farcasterProfile || farcasterUser) ? (
-                  <div className="flex items-center gap-1.5">
-                    <img
-                      src={(farcasterProfile?.pfpUrl || farcasterUser?.pfpUrl) || '/default-avatar.svg'}
-                      alt="avatar"
-                      className="w-6 h-6 rounded-full object-cover border border-purple-400/30 flex-shrink-0"
-                      onError={(e) => { (e.target as HTMLImageElement).src = '/default-avatar.svg'; }}
-                    />
-                    <span className="text-white text-xs font-medium">@{farcasterProfile?.username || farcasterUser?.username}</span>
-                  </div>
-                ) : (
-                  <span className="text-white text-xs font-mono">
-                    {walletAddress?.slice(0, 6)}...{walletAddress?.slice(-4)}
-                  </span>
-                )}
-                
-                {/* Copy button */}
-                <button
-                  onClick={async () => {
-                    if (walletAddress) {
-                      try {
-                        await navigator.clipboard.writeText(walletAddress);
-                        setAddressCopied(true);
-                        setTimeout(() => setAddressCopied(false), 2000);
-                      } catch (err) {
-                        console.error('Failed to copy:', err);
+              <button
+                onClick={async () => {
+                  try {
+                    console.log('🔗 Wallet button clicked!');
+                    console.log('Environment:', isSmartWalletEnvironment ? 'Farcaster/MiniApp' : 'Website');
+                    console.log('Available connectors:', connectors?.map(c => ({ name: c.name, id: c.id })));
+
+                    if (connectors && connectors.length > 0) {
+                      let preferredConnector;
+
+                      if (isSmartWalletEnvironment) {
+                        // For Farcaster MiniApp, prioritize farcaster connector
+                        preferredConnector = connectors.find(c =>
+                          c.name.toLowerCase().includes('farcaster') ||
+                          c.id.toLowerCase().includes('farcaster') ||
+                          c.name.toLowerCase().includes('miniapp')
+                        );
+                      } else {
+                        // For normal web browser, prioritize web wallet connectors
+                        preferredConnector = connectors.find(c =>
+                          c.name.toLowerCase().includes('coinbase') ||
+                          c.name.toLowerCase().includes('metamask') ||
+                          c.name.toLowerCase().includes('walletconnect')
+                        );
                       }
+
+                      // Fallback to first available connector
+                      preferredConnector = preferredConnector || connectors[0];
+
+                      console.log('🔌 Connecting with:', {
+                        name: preferredConnector.name,
+                        id: preferredConnector.id,
+                        environment: isSmartWalletEnvironment ? 'Farcaster' : 'Web',
+                        totalConnectors: connectors.length
+                      });
+
+                      await connect({ connector: preferredConnector });
+                    } else {
+                      console.error('❌ No connectors available');
+                      alert('No wallet connectors available in this environment');
                     }
-                  }}
-                  className="p-0.5 text-gray-400 hover:text-blue-400"
-                  title={addressCopied ? "Copied!" : "Copy"}
-                >
-                  {addressCopied ? (
-                    <svg className="w-3.5 h-3.5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
+                  } catch (error) {
+                    console.error('❌ Failed to connect wallet:', error);
+                    alert('Failed to connect wallet. Please try again.');
+                  }
+                }}
+                className={`relative px-3 py-1.5 rounded-lg font-semibold text-xs transition-all duration-300 flex items-center gap-1.5 ${isCeloToken
+                  ? 'bg-gradient-to-r from-[#FCFF52] to-[#FDFF8B] text-slate-900'
+                  : 'bg-gradient-to-r from-blue-500 to-purple-500 text-white'
+                  }`}
+              >
+                <WalletIcon className="w-3.5 h-3.5" />
+                <span>Connect</span>
+              </button>
+            ) : (
+              <>
+                {/* Profile Display - Expanded */}
+                <div className="flex items-center gap-2 bg-slate-800/60 backdrop-blur-sm rounded-lg px-2 py-1.5 border border-slate-600/30">
+                  {/* Green dot */}
+                  <div className="w-2 h-2 bg-green-400 rounded-full flex-shrink-0" />
+
+                  {/* Profile Image & Username */}
+                  {(farcasterProfile || farcasterUser) ? (
+                    <div className="flex items-center gap-1.5">
+                      <img
+                        src={(farcasterProfile?.pfpUrl || farcasterUser?.pfpUrl) || '/default-avatar.svg'}
+                        alt="avatar"
+                        className="w-6 h-6 rounded-full object-cover border border-purple-400/30 flex-shrink-0"
+                        onError={(e) => { (e.target as HTMLImageElement).src = '/default-avatar.svg'; }}
+                      />
+                      <span className="text-white text-xs font-medium">@{farcasterProfile?.username || farcasterUser?.username}</span>
+                    </div>
                   ) : (
-                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                    </svg>
+                    <span className="text-white text-xs font-mono">
+                      {walletAddress?.slice(0, 6)}...{walletAddress?.slice(-4)}
+                    </span>
                   )}
-                </button>
-              </div>
-            </>
-          )}
-          
-          {/* Notification Bell - Compact */}
-          <button
-            onClick={() => setShowNotifications(!showNotifications)}
-            className="relative p-1.5"
-          >
-            <BellIcon className="w-4 h-4 text-white" />
-            {notifications.filter(n => !n.read).length > 0 && (
-              <span className="absolute -top-0.5 -right-0.5 bg-red-500 text-white text-[8px] rounded-full w-3 h-3 flex items-center justify-center font-bold">
-                {notifications.filter(n => !n.read).length}
-              </span>
+
+                  {/* Copy button */}
+                  <button
+                    onClick={async () => {
+                      if (walletAddress) {
+                        try {
+                          await navigator.clipboard.writeText(walletAddress);
+                          setAddressCopied(true);
+                          setTimeout(() => setAddressCopied(false), 2000);
+                        } catch (err) {
+                          console.error('Failed to copy:', err);
+                        }
+                      }
+                    }}
+                    className="p-0.5 text-gray-400 hover:text-blue-400"
+                    title={addressCopied ? "Copied!" : "Copy"}
+                  >
+                    {addressCopied ? (
+                      <svg className="w-3.5 h-3.5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                    ) : (
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                      </svg>
+                    )}
+                  </button>
+                </div>
+              </>
             )}
-          </button>
-          
-          {/* Menu Button - Compact */}
-          <button
-            onClick={() => setIsSideMenuOpen(true)}
-            className="p-1.5 bg-slate-700/80 rounded-lg border border-slate-600/30"
-          >
-            <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-            </svg>
-          </button>
+
+            {/* Notification Bell - Compact */}
+            <button
+              onClick={() => setShowNotifications(!showNotifications)}
+              className="relative p-1.5"
+            >
+              <BellIcon className="w-4 h-4 text-white" />
+              {notifications.filter(n => !n.read).length > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 bg-red-500 text-white text-[8px] rounded-full w-3 h-3 flex items-center justify-center font-bold">
+                  {notifications.filter(n => !n.read).length}
+                </span>
+              )}
+            </button>
+
+            {/* Menu Button - Compact */}
+            <button
+              onClick={() => setIsSideMenuOpen(true)}
+              className="p-1.5 bg-slate-700/80 rounded-lg border border-slate-600/30"
+            >
+              <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
           </div>
         </div>
 
@@ -5600,7 +5598,7 @@ export default function FarcasterMiniApp() {
                 </div>
               );
             })}
-            
+
             {/* Static rates for currencies without live data */}
             <div className="inline-flex items-center gap-2 mx-4 text-sm">
               <span className="text-yellow-400">🇺🇬</span>
@@ -5627,7 +5625,7 @@ export default function FarcasterMiniApp() {
               <span className="text-white font-bold">KES</span>
               <span className="text-green-400 font-mono">128.50</span>
             </div>
-            
+
             {/* Duplicate set for seamless loop */}
             {Object.entries(floatingRates).map(([currency, data]) => {
               const currencyInfo = currencies.find(c => c.code === currency);
@@ -5640,7 +5638,7 @@ export default function FarcasterMiniApp() {
                 </div>
               );
             })}
-            
+
             {/* Duplicate static rates */}
             <div className="inline-flex items-center gap-2 mx-4 text-sm">
               <span className="text-yellow-400">🇺🇬</span>
@@ -5669,7 +5667,7 @@ export default function FarcasterMiniApp() {
             </div>
           </div>
         </div>
-        
+
         <style jsx>{`
           @keyframes scroll-left {
             0% {
@@ -5722,7 +5720,7 @@ export default function FarcasterMiniApp() {
           {renderTabContent()}
         </div>
       </div>
-      
+
       {/* Bottom Navigation - Glassmorphism */}
       <div className="fixed bottom-0 left-0 right-0 z-40 safe-area-bottom">
         <div className="mx-auto">
@@ -5738,31 +5736,27 @@ export default function FarcasterMiniApp() {
                 <button
                   key={key}
                   onClick={() => setActiveTab(key)}
-                  className={`relative flex flex-col items-center justify-center py-2.5 rounded-xl transition-all duration-300 group ${
-                    activeTab === key
-                      ? isCeloToken 
-                        ? 'text-[#FCFF52] bg-[#FCFF52]/10' 
-                        : 'text-blue-400 bg-blue-400/10'
-                      : 'text-gray-400 hover:text-gray-300 hover:bg-white/5'
-                  }`}
+                  className={`relative flex flex-col items-center justify-center py-2.5 rounded-xl transition-all duration-300 group ${activeTab === key
+                    ? isCeloToken
+                      ? 'text-[#FCFF52] bg-[#FCFF52]/10'
+                      : 'text-blue-400 bg-blue-400/10'
+                    : 'text-gray-400 hover:text-gray-300 hover:bg-white/5'
+                    }`}
                 >
-                  <Icon className={`w-6 h-6 mb-1.5 transition-all duration-300 ${
-                    activeTab === key 
-                      ? 'scale-110 stroke-2' 
-                      : 'stroke-[1.5] group-hover:scale-105'
-                  }`} />
-                  
-                  <span className={`text-[10px] font-medium leading-none transition-all duration-300 ${
-                    activeTab === key ? 'opacity-100' : 'opacity-70 group-hover:opacity-90'
-                  }`}>
+                  <Icon className={`w-6 h-6 mb-1.5 transition-all duration-300 ${activeTab === key
+                    ? 'scale-110 stroke-2'
+                    : 'stroke-[1.5] group-hover:scale-105'
+                    }`} />
+
+                  <span className={`text-[10px] font-medium leading-none transition-all duration-300 ${activeTab === key ? 'opacity-100' : 'opacity-70 group-hover:opacity-90'
+                    }`}>
                     {label}
                   </span>
 
                   {/* Active indicator dot */}
                   {activeTab === key && (
-                    <div className={`absolute -bottom-0.5 w-1 h-1 rounded-full ${
-                      isCeloToken ? 'bg-[#FCFF52]' : 'bg-blue-400'
-                    }`} />
+                    <div className={`absolute -bottom-0.5 w-1 h-1 rounded-full ${isCeloToken ? 'bg-[#FCFF52]' : 'bg-blue-400'
+                      }`} />
                   )}
                 </button>
               ))}
@@ -5770,22 +5764,22 @@ export default function FarcasterMiniApp() {
           </div>
         </div>
       </div>
-      
+
       {/* Success Modal */}
       <SuccessModal />
-      
+
       {/* Error Modal */}
       <ErrorModal />
-      
+
       {/* Notification Panel */}
       {showNotifications && (
         <>
           {/* Backdrop */}
-          <div 
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40" 
+          <div
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40"
             onClick={() => setShowNotifications(false)}
           />
-          
+
           {/* Notification Panel */}
           <div className="fixed top-20 right-4 w-80 max-w-[calc(100vw-16px)] glass-card shadow-2xl z-50 max-h-[65vh] flex flex-col overflow-hidden animate-slide-in">
             {/* Header */}
@@ -5801,7 +5795,7 @@ export default function FarcasterMiniApp() {
               </div>
               <div className="flex items-center gap-1">
                 {notifications.length > 0 && (
-                  <button 
+                  <button
                     className="text-xs text-blue-400 hover:text-blue-300 bg-blue-500/20 hover:bg-blue-500/30 px-2 py-1 rounded-lg transition-all font-medium"
                     onClick={clearAllNotifications}
                   >
@@ -5836,52 +5830,48 @@ export default function FarcasterMiniApp() {
               ) : (
                 <div className="p-2">
                   {notifications.map((notification, index) => (
-                    <div 
-                      key={notification.id} 
-                      className={`mb-2 rounded-xl border transition-all duration-300 cursor-pointer group ${
-                        !notification.read 
-                          ? (isCeloToken ? 'bg-gradient-to-r from-[#FCFF52]/10 to-[#FDFF8B]/10 border-[#FCFF52]/30 hover:from-[#FCFF52]/15 hover:to-[#FDFF8B]/15' : 'bg-gradient-to-r from-blue-500/10 to-purple-500/10 border-blue-500/30 hover:from-blue-500/15 hover:to-purple-500/15')
-                          : 'bg-gradient-to-r from-slate-800/50 to-slate-700/50 border-slate-600/20 hover:from-slate-700/60 hover:to-slate-600/60'
-                      }`}
+                    <div
+                      key={notification.id}
+                      className={`mb-2 rounded-xl border transition-all duration-300 cursor-pointer group ${!notification.read
+                        ? (isCeloToken ? 'bg-gradient-to-r from-[#FCFF52]/10 to-[#FDFF8B]/10 border-[#FCFF52]/30 hover:from-[#FCFF52]/15 hover:to-[#FDFF8B]/15' : 'bg-gradient-to-r from-blue-500/10 to-purple-500/10 border-blue-500/30 hover:from-blue-500/15 hover:to-purple-500/15')
+                        : 'bg-gradient-to-r from-slate-800/50 to-slate-700/50 border-slate-600/20 hover:from-slate-700/60 hover:to-slate-600/60'
+                        }`}
                       onClick={() => handleNotificationClick(notification)}
                     >
                       <div className="p-3">
                         <div className="flex items-start gap-2">
                           {/* Status Indicator & Icon */}
                           <div className="flex-shrink-0 relative">
-                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center border text-sm ${
-                              notification.type === 'send' 
-                                ? 'bg-green-500/20 text-green-400 border-green-500/30'
-                                : notification.type === 'pay'
+                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center border text-sm ${notification.type === 'send'
+                              ? 'bg-green-500/20 text-green-400 border-green-500/30'
+                              : notification.type === 'pay'
                                 ? 'bg-blue-500/20 text-blue-400 border-blue-500/30'
                                 : 'bg-gray-500/20 text-gray-400 border-gray-500/30'
-                            }`}>
+                              }`}>
                               {notification.type === 'send' ? '💸' : notification.type === 'pay' ? '💳' : '📄'}
                             </div>
                             {!notification.read && (
                               <div className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-blue-500 rounded-full border border-slate-800 animate-pulse"></div>
                             )}
                           </div>
-                          
+
                           {/* Content */}
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center justify-between mb-1">
-                              <span className={`text-xs px-2 py-0.5 rounded-md font-medium ${
-                                notification.type === 'send' 
-                                  ? 'bg-green-500/20 text-green-300'
-                                  : notification.type === 'pay'
+                              <span className={`text-xs px-2 py-0.5 rounded-md font-medium ${notification.type === 'send'
+                                ? 'bg-green-500/20 text-green-300'
+                                : notification.type === 'pay'
                                   ? 'bg-blue-500/20 text-blue-300'
                                   : 'bg-gray-500/20 text-gray-300'
-                              }`}>
+                                }`}>
                                 {notification.type === 'send' ? t('navigation.send') : notification.type === 'pay' ? t('navigation.pay') : t('common.general') || 'General'}
                               </span>
                               <span className="text-xs text-gray-500">
                                 {notification.timestamp}
                               </span>
                             </div>
-                            <div className={`text-xs leading-relaxed break-words ${
-                              !notification.read ? 'text-white font-medium' : 'text-gray-300'
-                            }`}>
+                            <div className={`text-xs leading-relaxed break-words ${!notification.read ? 'text-white font-medium' : 'text-gray-300'
+                              }`}>
                               {notification.message}
                             </div>
                           </div>
@@ -5897,9 +5887,9 @@ export default function FarcasterMiniApp() {
       )}
 
       {/* Sidebar Menu */}
-      <Sidebar 
-        isOpen={isSideMenuOpen} 
-        onClose={() => setIsSideMenuOpen(false)} 
+      <Sidebar
+        isOpen={isSideMenuOpen}
+        onClose={() => setIsSideMenuOpen(false)}
         authenticated={authenticated || isWalletConnected}
         onOpenFAQ={() => setShowFAQModal(true)}
         onOpenProfile={() => { loadUserTransactions(); setShowProfileModal(true); }}
@@ -5950,8 +5940,8 @@ export default function FarcasterMiniApp() {
             <div className="sticky top-0 bg-slate-900 border-b border-slate-700/50 p-4 flex items-center justify-between">
               <h2 className="text-lg font-bold text-white">My Profile</h2>
               <div className="flex items-center gap-2">
-                <button 
-                  onClick={loadUserTransactions} 
+                <button
+                  onClick={loadUserTransactions}
                   className={`p-2 hover:bg-slate-800 rounded-full ${transactionsLoading ? 'animate-spin' : ''}`}
                   disabled={transactionsLoading}
                 >
@@ -6030,15 +6020,14 @@ export default function FarcasterMiniApp() {
                         <p className="text-sm text-white font-medium">{tx.amount} USD</p>
                         <p className="text-xs text-gray-500">{new Date(tx.createdAt).toLocaleDateString()}</p>
                       </div>
-                      <span className={`text-xs px-2 py-1 rounded-full ${
-                        tx.status?.toLowerCase().includes('settled') || tx.status?.toLowerCase().includes('completed') || tx.status?.toLowerCase().includes('success')
-                          ? 'bg-green-500/20 text-green-400'
-                          : tx.status?.toLowerCase().includes('pending') || tx.status?.toLowerCase().includes('processing')
+                      <span className={`text-xs px-2 py-1 rounded-full ${tx.status?.toLowerCase().includes('settled') || tx.status?.toLowerCase().includes('completed') || tx.status?.toLowerCase().includes('success')
+                        ? 'bg-green-500/20 text-green-400'
+                        : tx.status?.toLowerCase().includes('pending') || tx.status?.toLowerCase().includes('processing')
                           ? 'bg-yellow-500/20 text-yellow-400'
                           : tx.status?.toLowerCase().includes('failed') || tx.status?.toLowerCase().includes('refunded')
-                          ? 'bg-red-500/20 text-red-400'
-                          : 'bg-gray-500/20 text-gray-400'
-                      }`}>{tx.status}</span>
+                            ? 'bg-red-500/20 text-red-400'
+                            : 'bg-gray-500/20 text-gray-400'
+                        }`}>{tx.status}</span>
                     </div>
                   ))}
                 </div>
@@ -6084,16 +6073,15 @@ export default function FarcasterMiniApp() {
                           <p className="text-white font-bold">{tx.amount} {tx.currency}</p>
                           <p className="text-xs text-gray-500">{tx.type || 'Transaction'}</p>
                         </div>
-                        <span className={`text-xs px-2 py-1 rounded-full ${
-                          tx.status === 'Completed' || tx.status === 'Success' ? 'bg-green-500/20 text-green-400' :
+                        <span className={`text-xs px-2 py-1 rounded-full ${tx.status === 'Completed' || tx.status === 'Success' ? 'bg-green-500/20 text-green-400' :
                           tx.status === 'Pending' ? 'bg-yellow-500/20 text-yellow-400' :
-                          'bg-red-500/20 text-red-400'
-                        }`}>{tx.status}</span>
+                            'bg-red-500/20 text-red-400'
+                          }`}>{tx.status}</span>
                       </div>
                       <div className="flex justify-between items-center text-xs">
                         <span className="text-gray-500">{new Date(tx.createdAt).toLocaleString()}</span>
                         {tx.txHash && (
-                          <a 
+                          <a
                             href={`https://basescan.org/tx/${tx.txHash}`}
                             target="_blank"
                             rel="noopener noreferrer"
