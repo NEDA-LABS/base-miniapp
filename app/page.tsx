@@ -305,6 +305,40 @@ export default function FarcasterMiniApp() {
     }
   }, [i18n]);
 
+  // Auto-detect country based on geolocation for send tab
+  useEffect(() => {
+    const detectCountry = async () => {
+      try {
+        // Use ipapi.co for geolocation (free, no API key required)
+        const response = await fetch('https://ipapi.co/json/');
+        const data = await response.json();
+        
+        if (data.country_code) {
+          // Find matching country in sendCountries
+          const detectedCountry = sendCountries.find(
+            country => country.code === data.country_code
+          );
+          
+          if (detectedCountry && !detectedCountry.comingSoon) {
+            console.log('🌍 Auto-detected country:', detectedCountry.name);
+            setSelectedCountry(detectedCountry);
+          } else {
+            // Fallback to Tanzania if country not supported
+            const fallbackCountry = sendCountries.find(c => c.code === 'TZ');
+            if (fallbackCountry) {
+              setSelectedCountry(fallbackCountry);
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Failed to detect country:', error);
+        // Keep default country (Uganda) if geolocation fails
+      }
+    };
+
+    detectCountry();
+  }, []);
+
   // MiniKit and Wagmi hooks for smart wallet (Farcaster/Coinbase) - moved up
   const { address, isConnected } = useAccount();
   const { connect, connectors, error: connectError } = useConnect();
@@ -1088,38 +1122,31 @@ export default function FarcasterMiniApp() {
 
         setInstitutions(filteredInstitutions);
 
-        // Set default institution if none selected
-        if (filteredInstitutions.length > 0 && !selectedInstitution) {
+        // Always set default institution to the first one when institutions are loaded
+        if (filteredInstitutions.length > 0) {
           setSelectedInstitution(filteredInstitutions[0].code);
+          console.log('🏦 Auto-selected institution:', filteredInstitutions[0].name);
         }
 
         // Load initial floating rates for supported currencies (limit to prevent API spam)
-        const priorityCurrencies = ['NGN', 'KES', 'GHS', 'TZS', 'UGX']; // Focus on main supported currencies
+        const priorityCurrencies = ['NGN', 'KES', 'GHS', 'TZS', 'UGX'];
         const currenciesToLoad = supportedCurrencies
           .filter(currency => priorityCurrencies.includes(currency.code))
-          .slice(0, 5); // Limit to 5 to avoid API rate limits
+          .slice(0, 5);
 
         console.log(`💱 Loading rates for ${currenciesToLoad.length} priority currencies...`);
 
         for (const currency of currenciesToLoad) {
           try {
-            // Add small delay between requests to avoid rate limiting
-            if (currenciesToLoad.indexOf(currency) > 0) {
-              await new Promise(resolve => setTimeout(resolve, 500));
+            const rateData = await fetchTokenRate('USDC', currency.code);
+            if (rateData) {
+              setFloatingRates(prev => ({
+                ...prev,
+                [currency.code]: rateData
+              }));
             }
-
-            const rate = await fetchTokenRate(selectedSendToken as 'USDC' | 'USDT', 1, currency.code);
-            setFloatingRates(prev => ({
-              ...prev,
-              [currency.code]: {
-                rate,
-                timestamp: Date.now()
-              }
-            }));
-            console.log(`✅ Loaded rate for ${currency.code}: ${rate}`);
-          } catch (error: any) {
-            console.warn(`⚠️ Failed to load rate for ${currency.code}:`, error?.message || 'API Error');
-            // Don't spam the console with full error objects
+          } catch (err) {
+            console.error(`Failed to load rate for ${currency.code}:`, err);
           }
         }
 
@@ -1129,7 +1156,7 @@ export default function FarcasterMiniApp() {
     };
 
     loadData();
-  }, [selectedCountry, selectedInstitution]);
+  }, [selectedCountry]);
 
   // Fetch rate when country or token changes
   useEffect(() => {
