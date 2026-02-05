@@ -8,7 +8,7 @@ import {
   Globe,
   User,
 } from "lucide-react";
-import LanguageSwitcher from "../../components/LanguageSwitcher";
+import LanguageSwitcher from "./LanguageSwitcher";
 
 interface SidebarProps {
   isOpen: boolean;

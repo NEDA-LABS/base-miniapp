@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Redis } from '@upstash/redis';
 
-import prisma from '@/lib/prisma';
+
 const redis = new Redis({
   url: process.env.KV_REST_API_URL,
   token: process.env.KV_REST_API_TOKEN,
@@ -31,17 +31,20 @@ const rateLimit = async (ip: string) => {
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
   // Await params before accessing its properties
   const resolvedParams = await params;
-  
+
   const ip = req.headers.get('x-forwarded-for') || 'unknown';
-  
+
   if (!(await rateLimit(ip))) {
     return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 });
   }
 
   console.log("Resolved params:", resolvedParams); //debug
-  const link = await prisma.paymentLink.findUnique({
-    where: { linkId: resolvedParams.id },
-  });
+  // TODO: Validate with dedicated backend
+  const link = {
+    linkId: resolvedParams.id,
+    status: 'Active',
+    expiresAt: new Date(Date.now() + 86400000) // Tomorrow
+  };
 
   if (!link) {
     return NextResponse.json({ error: 'Payment link not found' }, { status: 404 });
@@ -52,10 +55,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   }
 
   if (new Date() > link.expiresAt) {
-    await prisma.paymentLink.update({
-      where: { linkId: resolvedParams.id },
-      data: { status: 'Expired' },
-    });
+    // TODO: Expire in dedicated backend
     return NextResponse.json({ error: 'Payment link has expired' }, { status: 400 });
   }
 

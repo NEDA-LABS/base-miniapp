@@ -26,7 +26,6 @@ A comprehensive Farcaster MiniApp for seamless crypto payments, built on Base ne
 - **Blockchain**: Base network (Ethereum L2)
 - **Wallet**: Privy Auth + Coinbase OnchainKit MiniKit
 - **Payments**: Paycrest API integration
-- **Database**: Prisma with PostgreSQL
 - **Deployment**: Vercel
 
 ## 🚀 Quick Start
@@ -73,11 +72,7 @@ A comprehensive Farcaster MiniApp for seamless crypto payments, built on Base ne
    NEXT_PUBLIC_URL=your_deployment_url
    ```
 
-4. **Database Setup**
-   ```bash
-   npx prisma generate
-   npx prisma db push
-   ```
+
 
 5. **Run Development Server**
    ```bash

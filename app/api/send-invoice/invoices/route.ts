@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 
-import prisma from '@/lib/prisma';
+
 
 export async function GET(req: Request) {
   try {
@@ -23,20 +23,12 @@ export async function GET(req: Request) {
       where.status = status.toLowerCase();
     }
 
-    // Fetch invoices
-    const invoices = await prisma.invoice.findMany({
-      where,
-      skip,
-      take: limit,
-      orderBy: { createdAt: 'desc' },
-      include: {
-        paymentLink: { select: { url: true } },
-      },
-    });
+    // TODO: Fetch from dedicated backend
+    const invoices: any[] = []; // Mock empty list for now
 
     // Get total count for pagination
-    const totalInvoices = await prisma.invoice.count({ where });
-    const totalPages = Math.ceil(totalInvoices / limit);
+    const totalInvoices = 0;
+    const totalPages = 0;
 
     // Format response to match frontend expectations
     const formattedInvoices = invoices.map((invoice) => ({
@@ -57,8 +49,6 @@ export async function GET(req: Request) {
   } catch (error) {
     console.error('Error fetching invoices:', error);
     return NextResponse.json({ error: 'Failed to fetch invoices' }, { status: 500 });
-  } finally {
-    await prisma.$disconnect();
   }
 }
 
@@ -77,38 +67,12 @@ export async function PUT(req: Request) {
       );
     }
 
-    // Find the payment link first
-    const paymentLink = await prisma.paymentLink.findUnique({
-      where: { linkId },
-      include: { invoice: true }
-    });
-
-    if (!paymentLink) {
-      return NextResponse.json(
-        { error: 'Payment link not found' },
-        { status: 404 }
-      );
-    }
-
-    if (!paymentLink.invoice) {
-      return NextResponse.json(
-        { error: 'No invoice associated with this payment link' },
-        { status: 404 }
-      );
-    }
-
-    // Update the invoice to paid status
-    const updatedInvoice = await prisma.invoice.update({
-      where: { id: paymentLink.invoice.id },
-      data: {
-        status: 'paid',
-        paidAt: new Date(paidAt)
-      }
-    });
+    // TODO: Update invoice in dedicated backend
+    console.log('Update invoice requested:', { linkId, paidAt });
 
     return NextResponse.json({
       message: 'Invoice updated successfully',
-      invoice: updatedInvoice
+      invoice: { id: 'mock_id' }
     });
 
   } catch (error) {
@@ -117,10 +81,10 @@ export async function PUT(req: Request) {
       { error: 'Failed to update invoice' },
       { status: 500 }
     );
-  } finally {
-    await prisma.$disconnect();
   }
+
 }
+
 
 export async function DELETE() {
   return NextResponse.json({ error: 'Method not allowed' }, { status: 405 });

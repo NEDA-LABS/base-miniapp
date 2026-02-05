@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useMiniKit, useOpenUrl, useComposeCast, useViewProfile } from '@coinbase/onchainkit/minikit';
-import { ConnectWallet, Wallet } from '@coinbase/onchainkit/wallet';
 import { Avatar, Name, Address, EthBalance, Identity } from '@coinbase/onchainkit/identity';
 import { useAccount, useConnect, useDisconnect, useSwitchChain } from 'wagmi';
 import { useConnectorClient } from 'wagmi';
@@ -10,7 +9,6 @@ import { ChevronDownIcon, LinkIcon, CurrencyDollarIcon, ArrowUpIcon, ArrowDownIc
 import { base } from 'wagmi/chains';
 import { ethers } from 'ethers';
 import { stablecoins } from './data/stablecoins';
-import { initiatePaymentOrder } from './utils/paycrest';
 import { executeUSDCTransaction, executeTokenTransaction, getUSDCBalance, getTokenBalance } from './utils/wallet';
 import { fetchTokenRate, fetchSupportedCurrencies, fetchSupportedInstitutions } from './utils/paycrest';
 import { getAerodromeQuote, swapAerodrome, AERODROME_FACTORY_ADDRESS } from './utils/aerodrome';
@@ -18,7 +16,6 @@ import { calculateDynamicFee, formatFeeInfo, isProtocolEnabled } from './utils/n
 import { getNedaPayProtocolAddress } from './config/contracts';
 import Image from 'next/image';
 import { useTranslation } from 'react-i18next';
-import LanguageSwitcher from '../components/LanguageSwitcher';
 import { useFarcasterProfile } from './hooks/useFarcasterProfile';
 import Sidebar from './components/Sidebar';
 import PretiumOffRampFlow from './components/PretiumOffRampFlow';
@@ -1138,11 +1135,14 @@ export default function FarcasterMiniApp() {
 
         for (const currency of currenciesToLoad) {
           try {
-            const rateData = await fetchTokenRate('USDC', currency.code);
+            const rateData = await fetchTokenRate('USDC', 1, currency.code);
             if (rateData) {
               setFloatingRates(prev => ({
                 ...prev,
-                [currency.code]: rateData
+                [currency.code]: {
+                  rate: rateData,
+                  timestamp: Date.now()
+                }
               }));
             }
           } catch (err) {

@@ -1,13 +1,23 @@
 import { NextResponse } from 'next/server';
 
-import prisma from '@/lib/prisma';
+
 
 export async function GET(req: Request, { params }: { params: { id: string } }) {
   try {
-    const invoice = await prisma.invoice.findUnique({
-      where: { id: params.id },
-      include: { lineItems: true, paymentLink: { select: { url: true } } },
-    });
+    // TODO: Fetch from dedicated backend
+    const invoice = {
+      id: params.id,
+      createdAt: new Date(),
+      recipient: 'Mock Recipient',
+      email: 'mock@example.com',
+      status: 'outstanding',
+      totalAmount: 100.00,
+      currency: 'USDC',
+      paymentLink: { url: 'https://mock-link.com' },
+      lineItems: [],
+      dueDate: new Date(),
+      paymentCollection: 'USDC'
+    };
 
     if (!invoice) {
       return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
@@ -29,7 +39,5 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
   } catch (error) {
     console.error('Error fetching invoice:', error);
     return NextResponse.json({ error: 'Failed to fetch invoice' }, { status: 500 });
-  } finally {
-    await prisma.$disconnect();
   }
 }

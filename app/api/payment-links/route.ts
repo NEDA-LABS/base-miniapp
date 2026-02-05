@@ -3,7 +3,7 @@ import crypto from 'crypto';
 import { Redis } from '@upstash/redis';
 
 
-import prisma from '@/lib/prisma';
+
 const redis = new Redis({
   url: process.env.KV_REST_API_URL,
   token: process.env.KV_REST_API_TOKEN,
@@ -43,14 +43,8 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid merchantId' }, { status: 400 });
   }
 
-  const links = await prisma.paymentLink.findMany({
-    where: { 
-      merchantId,
-      status: 'Active',
-      expiresAt: { gt: new Date() }
-    },
-    orderBy: { createdAt: 'desc' },
-  });
+  // TODO: Fetch from dedicated backend
+  const links: any[] = [];
 
   return NextResponse.json(links);
 }
@@ -108,12 +102,12 @@ export async function POST(req: NextRequest) {
       const host = req.headers.get('host');
       return `${protocol}://${host}`;
     }
-    return typeof window !== 'undefined' 
+    return typeof window !== 'undefined'
       ? `${window.location.protocol}//${window.location.host}`
       : 'http://localhost:3000';
   };
 
-  const baseUrl =getBaseUrl(req);
+  const baseUrl = getBaseUrl(req);
   const queryString = `amount=${parsedAmount}&currency=${currency}&to=${merchantId}&description=${encodeURIComponent(description || '')}`;
   const signature = crypto.createHmac('sha256', process.env.HMAC_SECRET || 'default-secret')
     .update(queryString)
@@ -121,19 +115,19 @@ export async function POST(req: NextRequest) {
   const url = `${baseUrl}/pay/${linkId}?${queryString}&sig=${signature}`;
 
   try {
-    const newLink = await prisma.paymentLink.create({
-      data: {
-        merchantId,
-        url,
-        amount: parsedAmount,
-        currency,
-        description,
-        status,
-        expiresAt: new Date(expiresAt),
-        signature,
-        linkId,
-      },
-    });
+    // TODO: Create in dedicated backend
+    const newLink = {
+      merchantId,
+      url,
+      amount: parsedAmount,
+      currency,
+      description,
+      status,
+      expiresAt: new Date(expiresAt),
+      signature,
+      linkId,
+      createdAt: new Date(),
+    };
     return NextResponse.json(newLink, { status: 201 });
   } catch (error) {
     console.error('Error creating payment link:', error);

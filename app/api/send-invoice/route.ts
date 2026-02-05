@@ -1,7 +1,7 @@
 import { MailtrapClient } from 'mailtrap';
 import { NextResponse } from 'next/server';
 
-import prisma from '@/lib/prisma';
+
 
 // Setup Mailtrap client
 const client = new MailtrapClient({
@@ -10,57 +10,32 @@ const client = new MailtrapClient({
 
 export async function POST(req: Request) {
   try {
-    const { merchantId, recipient,sender, email, paymentCollection, dueDate, currency, lineItems, paymentLink } = await req.json();
+    const { merchantId, recipient, sender, email, paymentCollection, dueDate, currency, lineItems, paymentLink } = await req.json();
 
     // Validate payment link if provided
-    let paymentLinkRecord = null;
-    if (paymentLink) {
-      // First try to find the payment link in the database
-      paymentLinkRecord = await prisma.paymentLink.findUnique({
-        where: { url: paymentLink },
-      });
-      
-      // If found in database, validate it's active
-      if (paymentLinkRecord && paymentLinkRecord.status !== 'Active') {
-        return NextResponse.json({ error: 'Payment link is not active' }, { status: 400 });
-      }
-      
-      // If not found in database, allow external payment links
-      // Just validate that it's a valid URL format
-      if (!paymentLinkRecord) {
-        try {
-          new URL(paymentLink);
-          console.log('Using external payment link:', paymentLink);
-        } catch (error) {
-          return NextResponse.json({ error: 'Invalid payment link format' }, { status: 400 });
-        }
-      }
-    }
+    // Validate payment link if provided
+    // TODO: Validate against dedicated backend API
+    const paymentLinkRecord = null;
 
     // Calculate total amount
     const totalAmount = lineItems.reduce((sum: number, item: any) => sum + parseFloat(item.amount || 0), 0);
 
     // Create invoice with payment link reference
-    const invoice = await prisma.invoice.create({
-      data: {
-        merchantId,
-        recipient,
-        sender,
-        email,
-        paymentCollection,
-        dueDate: new Date(dueDate),
-        currency,
-        totalAmount,
-        status: 'draft',
-        paymentLinkId: paymentLinkRecord?.id || null,
-        lineItems: {
-          create: lineItems.map((item: any) => ({
-            description: item.description,
-            amount: parseFloat(item.amount || 0),
-          })),
-        },
-      },
-    });
+    // TODO: Create invoice in dedicated backend
+    const invoice = {
+      id: "MOCK_ID_" + Date.now(),
+      merchantId,
+      recipient,
+      sender,
+      email,
+      paymentCollection,
+      dueDate: new Date(dueDate),
+      currency,
+      totalAmount,
+      status: 'draft',
+      paymentLinkId: null,
+      lineItems
+    };
 
     // Generate line items HTML
     const htmlItems = lineItems
@@ -119,11 +94,11 @@ export async function POST(req: Request) {
               </div>
               <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #e5e7eb;">
                 <span style="color: #6b7280; font-weight: 500;">Due Date:</span>
-                <span style="color: #dc2626; font-weight: 600;">${new Date(dueDate).toLocaleDateString('en-US', { 
-                  year: 'numeric', 
-                  month: 'long', 
-                  day: 'numeric' 
-                })}</span>
+                <span style="color: #dc2626; font-weight: 600;">${new Date(dueDate).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    })}</span>
               </div>
               <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 0;">
                 <span style="color: #6b7280; font-weight: 500;">Currency:</span>
@@ -209,14 +184,8 @@ export async function POST(req: Request) {
 
       console.log('Email sent successfully:', emailResult);
 
-      // Update invoice status to 'sent' and record sentAt timestamp
-      await prisma.invoice.update({
-        where: { id: invoice.id },
-        data: {
-          status: 'sent',
-          sentAt: new Date(),
-        },
-      });
+      // Create invoice with payment link reference
+      // TODO: Update invoice status in dedicated backend
 
     } catch (emailError) {
       console.error('Email sending failed:', emailError);

@@ -18,7 +18,6 @@
   NEXT_TELEMETRY_DISABLED = "1"
 
 [functions]
-  included_files = ["node_modules/.prisma/client/**"]
   node_bundler = "esbuild"
 
 # Static export mode doesn't need the Next.js plugin

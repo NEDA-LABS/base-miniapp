@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 
-import prisma from '@/lib/prisma';
+
 
 export async function GET(request: Request) {
   try {
@@ -16,11 +16,9 @@ export async function GET(request: Request) {
       );
     }
 
+    // TODO: Connect to dedicated backend
     // Find user by wallet address
-    const user = await prisma.user.findUnique({
-      where: { wallet },
-      select: { wallet: true },
-    });
+    const user = { wallet }; // Mock user
 
     if (!user) {
       return NextResponse.json(
@@ -30,34 +28,10 @@ export async function GET(request: Request) {
     }
 
     // Fetch offramp transactions for the user's merchantId with all fields
-    const transactions = await prisma.offRampTransaction.findMany({
-      where: {
-        merchantId: user.wallet!,
-      },
-      select: {
-        id: true,
-        createdAt: true,
-        status: true,
-        merchantId: true,
-        amount: true,
-        currency: true,
-        accountName: true,
-        accountNumber: true,
-        institution: true,
-      },
-      skip: (page - 1) * pageSize,
-      take: pageSize,
-      orderBy: {
-        createdAt: 'desc',
-      },
-    });
+    const transactions: any[] = []; // Mock empty transactions
 
     // Count total transactions for pagination
-    const total = await prisma.offRampTransaction.count({
-      where: {
-        merchantId: user.wallet!,
-      },
-    });
+    const total = 0;
 
     return NextResponse.json({
       status: 'success',
@@ -74,7 +48,5 @@ export async function GET(request: Request) {
       { status: 'error', message: 'Failed to fetch transactions' },
       { status: 500 }
     );
-  } finally {
-    await prisma.$disconnect();
   }
 }

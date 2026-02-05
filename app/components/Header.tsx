@@ -26,7 +26,7 @@ import Image from "next/image";
 // Import your actual components
 import WalletSelector from "./WalletSelector";
 import NotificationTab from "./NotificationTab";
-import LanguageSwitcher from "../../components/LanguageSwitcher";
+import LanguageSwitcher from "./LanguageSwitcher";
 import { FaGear } from "react-icons/fa6";
 import { usePrivy } from "@privy-io/react-auth";
 

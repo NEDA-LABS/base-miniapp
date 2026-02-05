@@ -5,9 +5,9 @@
   "private": true,
   "repository": {
     "type": "git",
-    "url": "https://github.com/0xMgwan/nedapayminiapp.git"
+    "url": "https://github.com/NEDA-LABS/base-miniapp.git"
   },
-  "author": "David Machuche <david@nedapay.com>",
+  "author": "NEDA Labs <devops@nedapay.xyz>",
   "keywords": [
     "farcaster",
     "miniapp",
@@ -21,8 +21,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
-    "postinstall": "prisma generate"
+    "lint": "next lint"
   },
   "dependencies": {
     "@base-org/account": "^2.4.0",
@@ -38,8 +37,6 @@
     "@openzeppelin/contracts": "^5.4.0",
     "@openzeppelin/contracts-upgradeable": "^5.4.0",
     "@permissionless/wagmi": "^0.1.4",
-    "@prisma/adapter-pg": "^7.0.1",
-    "@prisma/client": "^7.0.1",
     "@privy-io/react-auth": "^2.16.0",
     "@privy-io/wagmi": "^1.0.3",
     "@radix-ui/react-accordion": "^1.2.11",
@@ -147,7 +144,6 @@
     "netlify-cli": "^21.2.1",
     "pino-pretty": "^13.0.0",
     "postcss": "^8.5.4",
-    "prisma": "^7.0.1",
     "tailwindcss": "^3.4.1",
     "typescript": "^5"
   }

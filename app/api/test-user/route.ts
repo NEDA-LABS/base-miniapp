@@ -7,8 +7,8 @@ export async function GET(request: NextRequest) {
   // Return mock user data to test the display
   const mockUser = {
     fid: 999999,
-    username: 'machuche',
-    displayName: 'David Machuche',
+    username: '',
+    displayName: '',
     pfpUrl: 'https://i.imgur.com/default-avatar.png',
     bio: 'Software Developer',
     followerCount: 100,

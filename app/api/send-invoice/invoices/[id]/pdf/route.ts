@@ -2,14 +2,26 @@ import { NextResponse } from 'next/server';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
-import prisma from '@/lib/prisma';
+
 
 export async function GET(req: Request, { params }: { params: { id: string } }) {
   try {
-    const invoice = await prisma.invoice.findUnique({
-      where: { id: params.id },
-      include: { lineItems: true, paymentLink: true },
-    });
+    // TODO: Fetch from dedicated backend
+    const invoice = {
+      id: params.id,
+      status: 'outstanding',
+      createdAt: new Date(),
+      recipient: 'Mock Recipient',
+      email: 'mock@example.com',
+      paymentCollection: 'USDC',
+      dueDate: new Date(),
+      currency: 'USDC',
+      totalAmount: 100.00,
+      paymentLink: { url: 'https://mock.com' },
+      lineItems: [
+        { description: 'Mock Item', amount: 100.00 }
+      ]
+    }; // Mock invoice
 
     if (!invoice) {
       return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
@@ -33,7 +45,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     doc.setDrawColor('#7c3aed');
     doc.setFillColor('#7c3aed');
     doc.rect(0, 0, pageWidth, 120, 'FD');
-    
+
     // Header text
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(32);
@@ -76,7 +88,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     doc.setDrawColor(103, 58, 183);
     doc.setLineWidth(3);
     doc.line(margin, yPosition, margin, yPosition + 40);
-    
+
     doc.setTextColor(...statusColors.text);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(12);
@@ -87,7 +99,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
       margin + 20,
       yPosition + 35
     );
-    
+
     // Created date
     doc.setTextColor(75, 85, 99);
     doc.setFont('helvetica', 'normal');
@@ -101,7 +113,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
         month: 'long',
         day: 'numeric'
       }),
-      pageWidth - margin-5,
+      pageWidth - margin - 5,
       yPosition + 30,
       { align: 'right' }
     );
@@ -120,7 +132,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(14);
     doc.text('Bill To', leftX + 15, yPosition + 25);
-    
+
     doc.setTextColor(0, 0, 0);
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(12);
@@ -128,7 +140,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(12);
     doc.text(invoice.recipient, leftX + 15, yPosition + 70);
-    
+
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(12);
     doc.text('Email', leftX + 15, yPosition + 90);
@@ -143,7 +155,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(14);
     doc.text('Payment Details', rightX + 15, yPosition + 25);
-    
+
     doc.setTextColor(0, 0, 0);
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(12);
@@ -151,7 +163,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(12);
     doc.text(invoice.paymentCollection || 'Crypto', rightX + 15, yPosition + 70);
-    
+
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(12);
     doc.text('Due Date', rightX + 15, yPosition + 90);
@@ -241,37 +253,37 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
       doc.setDrawColor(34, 197, 94);
       doc.setLineWidth(1);
       doc.rect(margin, yPosition, contentWidth, 80, 'S');
-      
+
       doc.setTextColor(21, 128, 61);
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(16);
       doc.text('Payment Link Available', pageWidth / 2, yPosition + 25, { align: 'center' });
-      
+
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(12);
       doc.text(
-        'Visit the link below to make your payment:', 
+        'Visit the link below to make your payment:',
         pageWidth / 2,
         yPosition + 45,
         { align: 'center' }
       );
-      
+
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(11);
       const url = invoice.paymentLink.url;
       const shortUrl = url.length > 60 ? url.substring(0, 57) + '...' : url;
       doc.text(shortUrl, pageWidth / 2, yPosition + 65, { align: 'center' });
-      
+
       yPosition += 100;
     }
 
     // Footer
     yPosition = Math.max(yPosition + 30, doc.internal.pageSize.getHeight() - 60);
-    
+
     doc.setDrawColor(200, 200, 200);
     doc.setLineWidth(1);
     doc.line(margin, yPosition, pageWidth - margin, yPosition);
-    
+
     doc.setTextColor(107, 114, 128);
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(12);
@@ -296,7 +308,5 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
   } catch (error) {
     console.error('Error generating PDF:', error);
     return NextResponse.json({ error: 'Failed to generate PDF' }, { status: 500 });
-  } finally {
-    await prisma.$disconnect();
   }
 }
