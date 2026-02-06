@@ -11,48 +11,32 @@ export async function GET() {
     "frame": {
       "version": "1",
       "name": "NEDApay",
+      "iconUrl": "https://miniapp.nedapay.xyz/icon-512.png",
+      "homeUrl": "https://miniapp.nedapay.xyz",
+      "imageUrl": "https://miniapp.nedapay.xyz/og-image.png",
+      "buttonTitle": "Launch App",
+      "splashImageUrl": "https://miniapp.nedapay.xyz/splash.png",
+      "splashBackgroundColor": "#1e40af",
+      "webhookUrl": "https://miniapp.nedapay.xyz/api/webhook",
       "subtitle": "Global Stablecoin payments",
       "description": "NedaPay is a stablecoin payment solution for Africa. Send money to mobile money, create payment links, generate invoices, and accept crypto payments seamlessly.",
       "screenshotUrls": [
-        "https://miniapp.nedapay.xyz/screenshot-send.png",
-        "https://miniapp.nedapay.xyz/screenshot-invoice.png",
-        "https://miniapp.nedapay.xyz/screenshot-link.png"
+        "https://miniapp.nedapay.xyz/screenshot-send.png"
       ],
-      "iconUrl": "https://miniapp.nedapay.xyz/icon-512.png",
-      "imageUrl": "https://miniapp.nedapay.xyz/og-image.png",
-      "buttonTitle": "☄️ Launch NEDApay",
-      "splashImageUrl": "https://miniapp.nedapay.xyz/splash.png",
-      "splashBackgroundColor": "#1e40af",
-      "homeUrl": "https://miniapp.nedapay.xyz",
-      "webhookUrl": "https://miniapp.nedapay.xyz/api/webhook",
       "primaryCategory": "finance",
-      "tags": ["payments", "stablecoins", "mobile-money", "africa", "crypto"],
+      "tags": [
+        "finance",
+        "payments",
+        "community"
+      ],
       "heroImageUrl": "https://miniapp.nedapay.xyz/og-image.png",
-      "tagline": "Pay anywhere, Settle instantly",
       "ogTitle": "NEDApay - Stablecoin Payments",
       "ogDescription": "Send stablecoins to mobile money and bank accounts globally instantly.",
       "ogImageUrl": "https://miniapp.nedapay.xyz/og-image.png",
       "castShareUrl": "https://miniapp.nedapay.xyz"
-    },
-    "baseBuilder": {
-      "allowedAddresses": ["0x9BdBE16907547C1C0751FD15c1101B74cC0ba0F4"],
-      "appType": "miniapp",
-      "supportedNetworks": ["base"],
-      "supportedWallets": ["coinbase_wallet", "metamask"],
-      "launchOptions": {
-        "type": "miniapp",
-        "theme": "dark",
-        "features": ["wallet_connect"]
-      },
-      "metadata": {
-        "short_name": "NEDApay",
-        "orientation": "portrait",
-        "display": "standalone",
-        "theme_color": "#1e293b",
-        "background_color": "#1e293b"
-      }
     }
   };
+
 
   return NextResponse.json(farcasterConfig, {
     headers: {
