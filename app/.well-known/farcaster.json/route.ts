@@ -2,13 +2,13 @@ import { NextResponse } from 'next/server';
 
 export async function GET() {
   const farcasterConfig = {
-  "accountAssociation": {
-    "header": "eyJmaWQiOjg2OTUyNywidHlwZSI6ImF1dGgiLCJrZXkiOiIweDdFMzQ3N2M0RWQ2OUE4RTdBMDAxQzg3ZTlFQTI4ODJlOTc2NERDMzEifQ",
-    "payload": "eyJkb21haW4iOiJtaW5pYXBwLm5lZGFwYXkueHl6In0",
-    "signature": "eRFq8YzRNq1OTMQFm/3ph+TvcbS7vKRjc7iqpNohnNAjfLWi3f8fuzwMcNgzkmgMWyu31iUoQUf+dVzHVZw4MBw="
+    "accountAssociation": {
+      "header": "eyJmaWQiOjg2OTUyNywidHlwZSI6ImF1dGgiLCJrZXkiOiIweDdFMzQ3N2M0RWQ2OUE4RTdBMDAxQzg3ZTlFQTI4ODJlOTc2NERDMzEifQ",
+      "payload": "eyJkb21haW4iOiJtaW5pYXBwLm5lZGFwYXkueHl6In0",
+      "signature": "eRFq8YzRNq1OTMQFm/3ph+TvcbS7vKRjc7iqpNohnNAjfLWi3f8fuzwMcNgzkmgMWyu31iUoQUf+dVzHVZw4MBw="
     },
-  
-    "miniapp": {
+
+    "frame": {
       "version": "1",
       "name": "NEDApay",
       "subtitle": "Global Stablecoin payments",
