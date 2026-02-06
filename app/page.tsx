@@ -5459,7 +5459,7 @@ export default function FarcasterMiniApp() {
 
       <div className="max-w-sm mx-auto relative z-10">
         {/* Clean Header - Compact */}
-        <div className="glass-card flex items-center justify-between mb-2 w-full px-2 py-1.5">
+        <div className="glass-card flex items-center justify-between mb-2 w-full px-2 py-1.5 !overflow-visible z-50">
           {/* Left - Logo */}
           <div className="flex items-center gap-1.5">
             <Image
@@ -5599,125 +5599,7 @@ export default function FarcasterMiniApp() {
                 )}
               </button>
 
-              {/* Notification Panel - Anchored */}
-              {showNotifications && (
-                <>
-                  {/* Backdrop for mobile closes */}
-                  <div
-                    className="fixed inset-0 z-40 bg-transparent"
-                    onClick={() => setShowNotifications(false)}
-                  />
 
-                  {/* Panel */}
-                  <div className="absolute top-full right-0 mt-2 w-80 max-w-[calc(100vw-32px)] glass-card shadow-2xl z-50 max-h-[60vh] flex flex-col overflow-hidden animate-slide-in origin-top-right">
-                    {/* Header */}
-                    <div className={`p-3 border-b border-slate-600/20 flex justify-between items-center bg-gradient-to-r ${isCeloToken ? 'from-[#FCFF52]/10 to-[#FDFF8B]/10' : 'from-blue-500/10 to-purple-500/10'}`}>
-                      <div className="flex items-center gap-2">
-                        <div className={`p-1.5 ${isCeloToken ? 'bg-[#FCFF52]/20 border-[#FCFF52]/30' : 'bg-blue-500/20 border-blue-500/30'} rounded-lg border`}>
-                          <BellIcon className={`w-3.5 h-3.5 ${isCeloToken ? 'text-[#FCFF52]' : 'text-blue-400'}`} />
-                        </div>
-                        <div>
-                          <h3 className="font-semibold text-white text-xs">{t('notifications.title')}</h3>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        {notifications.length > 0 && (
-                          <button
-                            className="text-[10px] text-blue-400 hover:text-blue-300 bg-blue-500/20 hover:bg-blue-500/30 px-2 py-0.5 rounded-lg transition-all font-medium"
-                            onClick={clearAllNotifications}
-                          >
-                            {t('notifications.clearAll')}
-                          </button>
-                        )}
-                        <button
-                          className="p-1 hover:bg-slate-700/50 rounded-lg transition-colors"
-                          onClick={() => setShowNotifications(false)}
-                        >
-                          <svg className="w-3 h-3 text-gray-400 hover:text-white transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                          </svg>
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Notifications List */}
-                    <div className="flex-1 overflow-y-auto custom-scrollbar max-h-[300px]">
-                      {notifications.length === 0 ? (
-                        <div className="p-4 text-center">
-                          <div className="bg-gradient-to-br from-slate-700/30 to-slate-800/30 rounded-xl p-4 border border-slate-600/20">
-                            <div className="bg-blue-500/20 rounded-full w-10 h-10 flex items-center justify-center mx-auto mb-2 border border-blue-500/30">
-                              <BellIcon className="w-5 h-5 text-blue-400" />
-                            </div>
-                            <h4 className="text-white font-semibold mb-1 text-xs">{t('notifications.noNotifications')}</h4>
-                            <p className="text-gray-400 text-[10px] leading-relaxed">
-                              {t('send.subtitle')}
-                            </p>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="p-2">
-                          {notifications.map((notification, index) => (
-                            <div
-                              key={notification.id}
-                              className={`mb-2 rounded-xl border transition-all duration-300 cursor-pointer group ${!notification.read
-                                ? (isCeloToken ? 'bg-gradient-to-r from-[#FCFF52]/10 to-[#FDFF8B]/10 border-[#FCFF52]/30 hover:from-[#FCFF52]/15 hover:to-[#FDFF8B]/15' : 'bg-gradient-to-r from-blue-500/10 to-purple-500/10 border-blue-500/30 hover:from-blue-500/15 hover:to-purple-500/15')
-                                : 'bg-gradient-to-r from-slate-800/50 to-slate-700/50 border-slate-600/20 hover:from-slate-700/60 hover:to-slate-600/60'
-                                }`}
-                              onClick={() => handleNotificationClick(notification)}
-                            >
-                              <div className="p-2.5">
-                                <div className="flex items-start gap-2">
-                                  {/* Status Indicator & Icon */}
-                                  <div className="mt-0.5">
-                                    {!notification.read ? (
-                                      <div className={`w-2 h-2 rounded-full ${isCeloToken ? 'bg-[#FCFF52] animate-pulse shadow-[0_0_8px_rgba(252,255,82,0.5)]' : 'bg-blue-500 animate-pulse shadow-[0_0_8px_rgba(59,130,246,0.5)]'}`} />
-                                    ) : (
-                                      <div className="w-2 h-2 rounded-full bg-slate-600" />
-                                    )}
-                                  </div>
-
-                                  <div className="flex-1 min-w-0">
-                                    <p className={`text-xs font-medium mb-0.5 break-words ${!notification.read ? 'text-white' : 'text-gray-400'}`}>
-                                      {notification.message}
-                                    </p>
-                                    <div className="flex items-center gap-2">
-                                      <span className="text-[10px] text-gray-500">
-                                        {notification.timestamp}
-                                      </span>
-                                      {notification.type && (
-                                        <span className={`text-[9px] px-1.5 py-0.5 rounded-full border ${notification.type === 'send' || notification.type === 'pay'
-                                          ? 'bg-blue-500/10 border-blue-500/20 text-blue-400'
-                                          : notification.type === 'deposit'
-                                            ? 'bg-green-500/10 border-green-500/20 text-green-400'
-                                            : 'bg-slate-500/10 border-slate-500/20 text-slate-400'
-                                          }`}>
-                                          {notification.type.toUpperCase()}
-                                        </span>
-                                      )}
-                                    </div>
-                                  </div>
-
-                                  {/* <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      deleteNotification(notification.id);
-                                    }}
-                                    className="p-1 text-gray-500 hover:text-red-400 hover:bg-red-400/10 rounded transition-colors opacity-0 group-hover:opacity-100"
-                                  >
-                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                    </svg>
-                                  </button> */}
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </>
-              )}
             </div>
 
             {/* Menu Button - Compact */}
@@ -5731,6 +5613,126 @@ export default function FarcasterMiniApp() {
             </button>
           </div>
         </div>
+
+        {/* Notification Panel - Floating Independent */}
+        {showNotifications && (
+          <div className="absolute top-14 right-2 z-50 w-80 max-w-[calc(100vw-32px)]">
+            {/* Backdrop for mobile closes */}
+            <div
+              className="fixed inset-0 z-40 bg-transparent"
+              onClick={() => setShowNotifications(false)}
+            />
+
+            {/* Panel */}
+            <div className="relative glass-card shadow-2xl z-50 max-h-[60vh] flex flex-col overflow-hidden animate-slide-in origin-top-right">
+              {/* Header */}
+              <div className={`p-3 border-b border-slate-600/20 flex justify-between items-center bg-gradient-to-r ${isCeloToken ? 'from-[#FCFF52]/10 to-[#FDFF8B]/10' : 'from-blue-500/10 to-purple-500/10'}`}>
+                <div className="flex items-center gap-2">
+                  <div className={`p-1.5 ${isCeloToken ? 'bg-[#FCFF52]/20 border-[#FCFF52]/30' : 'bg-blue-500/20 border-blue-500/30'} rounded-lg border`}>
+                    <BellIcon className={`w-3.5 h-3.5 ${isCeloToken ? 'text-[#FCFF52]' : 'text-blue-400'}`} />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-white text-xs">{t('notifications.title')}</h3>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1">
+                  {notifications.length > 0 && (
+                    <button
+                      className="text-[10px] text-blue-400 hover:text-blue-300 bg-blue-500/20 hover:bg-blue-500/30 px-2 py-0.5 rounded-lg transition-all font-medium"
+                      onClick={clearAllNotifications}
+                    >
+                      {t('notifications.clearAll')}
+                    </button>
+                  )}
+                  <button
+                    className="p-1 hover:bg-slate-700/50 rounded-lg transition-colors"
+                    onClick={() => setShowNotifications(false)}
+                  >
+                    <svg className="w-3 h-3 text-gray-400 hover:text-white transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+
+              {/* Notifications List */}
+              <div className="flex-1 overflow-y-auto custom-scrollbar max-h-[300px]">
+                {notifications.length === 0 ? (
+                  <div className="p-4 text-center">
+                    <div className="bg-gradient-to-br from-slate-700/30 to-slate-800/30 rounded-xl p-4 border border-slate-600/20">
+                      <div className="bg-blue-500/20 rounded-full w-10 h-10 flex items-center justify-center mx-auto mb-2 border border-blue-500/30">
+                        <BellIcon className="w-5 h-5 text-blue-400" />
+                      </div>
+                      <h4 className="text-white font-semibold mb-1 text-xs">{t('notifications.noNotifications')}</h4>
+                      <p className="text-gray-400 text-[10px] leading-relaxed">
+                        {t('send.subtitle')}
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="p-2">
+                    {notifications.map((notification, index) => (
+                      <div
+                        key={notification.id}
+                        className={`mb-2 rounded-xl border transition-all duration-300 cursor-pointer group ${!notification.read
+                          ? (isCeloToken ? 'bg-gradient-to-r from-[#FCFF52]/10 to-[#FDFF8B]/10 border-[#FCFF52]/30 hover:from-[#FCFF52]/15 hover:to-[#FDFF8B]/15' : 'bg-gradient-to-r from-blue-500/10 to-purple-500/10 border-blue-500/30 hover:from-blue-500/15 hover:to-purple-500/15')
+                          : 'bg-gradient-to-r from-slate-800/50 to-slate-700/50 border-slate-600/20 hover:from-slate-700/60 hover:to-slate-600/60'
+                          }`}
+                        onClick={() => handleNotificationClick(notification)}
+                      >
+                        <div className="p-2.5">
+                          <div className="flex items-start gap-2">
+                            {/* Status Indicator & Icon */}
+                            <div className="mt-0.5">
+                              {!notification.read ? (
+                                <div className={`w-2 h-2 rounded-full ${isCeloToken ? 'bg-[#FCFF52] animate-pulse shadow-[0_0_8px_rgba(252,255,82,0.5)]' : 'bg-blue-500 animate-pulse shadow-[0_0_8px_rgba(59,130,246,0.5)]'}`} />
+                              ) : (
+                                <div className="w-2 h-2 rounded-full bg-slate-600" />
+                              )}
+                            </div>
+
+                            <div className="flex-1 min-w-0">
+                              <p className={`text-xs font-medium mb-0.5 break-words ${!notification.read ? 'text-white' : 'text-gray-400'}`}>
+                                {notification.message}
+                              </p>
+                              <div className="flex items-center gap-2">
+                                <span className="text-[10px] text-gray-500">
+                                  {notification.timestamp}
+                                </span>
+                                {notification.type && (
+                                  <span className={`text-[9px] px-1.5 py-0.5 rounded-full border ${notification.type === 'send' || notification.type === 'pay'
+                                    ? 'bg-blue-500/10 border-blue-500/20 text-blue-400'
+                                    : notification.type === 'deposit'
+                                      ? 'bg-green-500/10 border-green-500/20 text-green-400'
+                                      : 'bg-slate-500/10 border-slate-500/20 text-slate-400'
+                                    }`}>
+                                    {notification.type.toUpperCase()}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                deleteNotification(notification.id);
+                              }}
+                              className="p-1 text-gray-500 hover:text-red-400 hover:bg-red-400/10 rounded transition-colors opacity-0 group-hover:opacity-100"
+                            >
+                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
+                            </button> */}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Floating Rates Ticker */}
         <div className="mb-4 relative overflow-hidden glass-card py-3">
