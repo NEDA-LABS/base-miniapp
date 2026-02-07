@@ -530,6 +530,7 @@ export default function FarcasterMiniApp() {
   const [currencies, setCurrencies] = useState<Array<{ code: string; name: string; symbol: string }>>([]);
   const [floatingRates, setFloatingRates] = useState<{ [key: string]: RateData }>({});
   const [institutions, setInstitutions] = useState<Array<{ name: string; code: string; type: string }>>([]);
+  const [isLoadingInstitutions, setIsLoadingInstitutions] = useState(false);
   const [sendCurrency, setSendCurrency] = useState<'local' | 'usdc'>('usdc');
   const [payCurrency, setPayCurrency] = useState<'local' | 'usdc'>('usdc');
   const [selectedSendToken, setSelectedSendToken] = useState('USDC');
@@ -1090,6 +1091,12 @@ export default function FarcasterMiniApp() {
   useEffect(() => {
     const loadData = async () => {
       try {
+        console.log('🔄 Country changed, loading institutions for:', selectedCountry.name, selectedCountry.currency);
+
+        // Set loading state and clear selected institution to prevent mismatch
+        setIsLoadingInstitutions(true);
+        setSelectedInstitution('');
+
         const [supportedCurrencies, supportedInstitutions] = await Promise.all([
           fetchSupportedCurrencies(),
           fetchSupportedInstitutions(selectedCountry.currency)
@@ -1122,7 +1129,9 @@ export default function FarcasterMiniApp() {
         // Always set default institution to the first one when institutions are loaded
         if (filteredInstitutions.length > 0) {
           setSelectedInstitution(filteredInstitutions[0].code);
-          console.log('🏦 Auto-selected institution:', filteredInstitutions[0].name);
+          console.log('🏦 Auto-selected institution for', selectedCountry.name, ':', filteredInstitutions[0].name);
+        } else {
+          console.warn('⚠️ No institutions found for', selectedCountry.name, selectedCountry.currency);
         }
 
         // Load initial floating rates for supported currencies (limit to prevent API spam)
@@ -1152,6 +1161,8 @@ export default function FarcasterMiniApp() {
 
       } catch (error) {
         console.error('Failed to load currencies and institutions:', error);
+      } finally {
+        setIsLoadingInstitutions(false);
       }
     };
 
@@ -3474,10 +3485,19 @@ export default function FarcasterMiniApp() {
               <div className="relative">
                 <button
                   onClick={() => setShowProviderDropdown(!showProviderDropdown)}
-                  className="w-full bg-slate-800/50 border border-slate-700/50 text-white rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 hover:bg-slate-700/50 transition-colors flex items-center justify-between"
+                  disabled={isLoadingInstitutions}
+                  className="w-full bg-slate-800/50 border border-slate-700/50 text-white rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 hover:bg-slate-700/50 transition-colors flex items-center justify-between disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <div className="flex items-center gap-2">
-                    {selectedInstitution ? (
+                    {isLoadingInstitutions ? (
+                      <>
+                        <svg className="animate-spin h-4 w-4 text-blue-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span className="text-gray-400">Loading providers...</span>
+                      </>
+                    ) : selectedInstitution ? (
                       <>
                         {institutions.find(i => i.code === selectedInstitution)?.type === 'mobile_money' ? (
                           <svg className="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -4178,10 +4198,19 @@ export default function FarcasterMiniApp() {
         <div className="relative">
           <button
             onClick={() => setShowProviderDropdown(!showProviderDropdown)}
-            className="w-full bg-slate-800/50 border border-slate-700/50 text-white rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 hover:bg-slate-700/50 transition-colors flex items-center justify-between"
+            disabled={isLoadingInstitutions}
+            className="w-full bg-slate-800/50 border border-slate-700/50 text-white rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 hover:bg-slate-700/50 transition-colors flex items-center justify-between disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <div className="flex items-center gap-2">
-              {selectedInstitution ? (
+              {isLoadingInstitutions ? (
+                <>
+                  <svg className="animate-spin h-4 w-4 text-blue-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  <span className="text-gray-400">Loading providers...</span>
+                </>
+              ) : selectedInstitution ? (
                 <>
                   {institutions.find(i => i.code === selectedInstitution)?.type === 'mobile_money' ? (
                     <svg className="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
