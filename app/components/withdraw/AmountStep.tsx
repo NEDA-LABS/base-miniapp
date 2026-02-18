@@ -73,6 +73,7 @@ export default function AmountStep({ walletBalance, onRefreshBalance, onBack }: 
       setError('Insufficient balance');
       return;
     }
+    setAmount(displayAmount);
     goToCountry();
   };
 
