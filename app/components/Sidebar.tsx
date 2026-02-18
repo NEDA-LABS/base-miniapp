@@ -7,6 +7,7 @@ import {
   X,
   Globe,
   User,
+  ChevronRight,
 } from "lucide-react";
 import LanguageSwitcher from "./LanguageSwitcher";
 
@@ -43,38 +44,39 @@ export default function Sidebar({ isOpen, onClose, authenticated, onOpenFAQ, onO
     <>
       {/* Backdrop */}
       <div 
-        className="fixed inset-0 bg-indigo-900/60 backdrop-blur-sm z-50 transition-opacity duration-300"
+        className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 transition-opacity duration-300"
         onClick={onClose}
       />
       
       {/* Sidebar */}
       <div className={`
-        fixed top-0 right-0 bg-white rounded-l-2xl
-        shadow-xl z-50 w-72 transform transition-transform duration-300 ease-in-out
+        fixed top-0 right-0 bg-[#0F1419] rounded-l-3xl
+        shadow-2xl z-50 w-80 h-full transform transition-transform duration-300 ease-out
+        border-l border-slate-800/50
         ${isOpen ? "translate-x-0" : "translate-x-full"}
       `}>
         
         {/* Header */}
-        <div className="flex justify-between items-center p-6 border-b border-blue-100">
-          <h2 className="text-xl font-bold text-indigo-900">Menu</h2>
+        <div className="flex justify-between items-center px-6 py-5 border-b border-slate-800/50">
+          <h2 className="text-xl font-bold text-white">Menu</h2>
           <button
             onClick={onClose}
-            className="text-blue-500 hover:text-indigo-600 transition-colors"
+            className="w-9 h-9 flex items-center justify-center rounded-full bg-slate-800/50 hover:bg-slate-700/50 text-slate-400 hover:text-white transition-all"
             aria-label="Close sidebar"
           >
-            <X className="w-6 h-6" />
+            <X className="w-5 h-5" />
           </button>
         </div>
         
         {/* Navigation */}
-        <nav className="p-4 space-y-2 h-[calc(100vh-80px)] overflow-y-auto pb-24">
+        <nav className="p-5 space-y-1 h-[calc(100vh-80px)] overflow-y-auto">
           {/* Language Selector */}
-          <div className="flex items-center justify-between p-3 rounded-xl bg-gradient-to-r from-blue-50 to-indigo-50 mb-4">
+          <div className="flex items-center justify-between p-4 rounded-2xl bg-slate-800/30 border border-slate-700/30 mb-6 hover:bg-slate-800/40 transition-colors">
             <div className="flex items-center space-x-3">
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <Globe className="w-5 h-5 text-blue-600" />
+              <div className="w-10 h-10 flex items-center justify-center bg-blue-500/10 rounded-xl">
+                <Globe className="w-5 h-5 text-blue-400" />
               </div>
-              <span className="text-slate-700 font-semibold">Language</span>
+              <span className="text-white font-semibold text-sm">Language</span>
             </div>
             <LanguageSwitcher />
           </div>
@@ -82,62 +84,71 @@ export default function Sidebar({ isOpen, onClose, authenticated, onOpenFAQ, onO
           {/* Profile Section - When authenticated */}
           {authenticated && (
             <>
-              <p className="text-xs text-slate-400 uppercase tracking-wider px-3 pt-2 font-semibold">Account</p>
+              <p className="text-xs text-slate-500 uppercase tracking-wider px-3 pt-2 pb-2 font-bold">Account</p>
               
               <button
                 onClick={() => { onClose(); onOpenProfile?.(); }}
-                className="flex items-center space-x-3 p-3 rounded-xl hover:bg-blue-50 text-slate-700 hover:text-blue-600 transition-all font-medium group w-full text-left"
+                className="flex items-center justify-between p-4 rounded-2xl hover:bg-slate-800/40 text-white transition-all group w-full text-left border border-transparent hover:border-slate-700/30"
               >
-                <div className="p-2 bg-gradient-to-br from-blue-100 to-indigo-100 group-hover:from-blue-200 group-hover:to-indigo-200 rounded-lg transition-colors">
-                  <User className="w-5 h-5 text-blue-600" />
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 flex items-center justify-center bg-gradient-to-br from-blue-500/20 to-purple-500/20 rounded-xl group-hover:from-blue-500/30 group-hover:to-purple-500/30 transition-colors">
+                    <User className="w-5 h-5 text-blue-400" />
+                  </div>
+                  <div className="flex-1">
+                    <span className="block font-semibold text-sm">My Profile</span>
+                    <span className="text-xs text-slate-400">Volume & Stats</span>
+                  </div>
                 </div>
-                <div className="flex-1">
-                  <span className="block">My Profile</span>
-                  <span className="text-xs text-slate-400">Volume & Stats</span>
-                </div>
+                <ChevronRight className="w-4 h-4 text-slate-500 group-hover:text-slate-400 transition-colors" />
               </button>
               
-              <div className="border-t border-slate-200 my-4"></div>
+              <div className="border-t border-slate-800/50 my-5"></div>
             </>
           )}
           
-          <p className="text-xs text-slate-400 uppercase tracking-wider px-3 pt-2 font-semibold">Support</p>
+          <p className="text-xs text-slate-500 uppercase tracking-wider px-3 pt-2 pb-2 font-bold">Support</p>
           
           {/* FAQ */}
           <button
             onClick={() => { onClose(); onOpenFAQ?.(); }}
-            className="flex items-center space-x-3 p-3 rounded-xl hover:bg-blue-50 text-slate-700 hover:text-blue-600 transition-all font-medium group w-full text-left"
+            className="flex items-center justify-between p-4 rounded-2xl hover:bg-slate-800/40 text-white transition-all group w-full text-left border border-transparent hover:border-slate-700/30"
           >
-            <div className="p-2 bg-slate-100 group-hover:bg-blue-100 rounded-lg transition-colors">
-              <HelpCircle className="w-5 h-5 text-slate-600 group-hover:text-blue-600" />
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 flex items-center justify-center bg-slate-800/50 group-hover:bg-slate-700/50 rounded-xl transition-colors">
+                <HelpCircle className="w-5 h-5 text-slate-400 group-hover:text-slate-300" />
+              </div>
+              <span className="font-semibold text-sm">FAQ</span>
             </div>
-            <span>FAQ</span>
+            <ChevronRight className="w-4 h-4 text-slate-500 group-hover:text-slate-400 transition-colors" />
           </button>
           
           {/* Settings - Always visible when authenticated */}
           {authenticated && (
             <>
-              <div className="border-t border-slate-200 my-4"></div>
+              <div className="border-t border-slate-800/50 my-5"></div>
               
-              <p className="text-xs text-slate-400 uppercase tracking-wider px-3 pt-2 font-semibold">Settings</p>
+              <p className="text-xs text-slate-500 uppercase tracking-wider px-3 pt-2 pb-2 font-bold">Settings</p>
               
               <button
                 onClick={() => { onClose(); /* Settings can stay as page or modal */ }}
-                className="flex items-center space-x-3 p-3 rounded-xl hover:bg-blue-50 text-slate-700 hover:text-blue-600 transition-all font-medium group w-full text-left"
+                className="flex items-center justify-between p-4 rounded-2xl hover:bg-slate-800/40 text-white transition-all group w-full text-left border border-transparent hover:border-slate-700/30"
               >
-                <div className="p-2 bg-slate-100 group-hover:bg-blue-100 rounded-lg transition-colors">
-                  <Settings className="w-5 h-5 text-slate-600 group-hover:text-blue-600" />
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 flex items-center justify-center bg-slate-800/50 group-hover:bg-slate-700/50 rounded-xl transition-colors">
+                    <Settings className="w-5 h-5 text-slate-400 group-hover:text-slate-300" />
+                  </div>
+                  <span className="font-semibold text-sm">App Settings</span>
                 </div>
-                <span>App Settings</span>
+                <ChevronRight className="w-4 h-4 text-slate-500 group-hover:text-slate-400 transition-colors" />
               </button>
             </>
           )}
           
           {/* Version Info */}
-          <div className="absolute bottom-6 left-0 right-0 p-4 text-center">
-            <div className="border-t border-slate-200 pt-4">
-              <p className="text-xs text-slate-400 font-medium">NEDApay v1.0.0</p>
-              <p className="text-xs text-slate-300">© 2025 NEDApay</p>
+          <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-[#0F1419] via-[#0F1419] to-transparent">
+            <div className="border-t border-slate-800/50 pt-4 text-center">
+              <p className="text-xs text-slate-500 font-semibold">NEDApay v1.0.0</p>
+              <p className="text-xs text-slate-600 mt-1">© 2025 NEDApay</p>
             </div>
           </div>
         </nav>

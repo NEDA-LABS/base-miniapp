@@ -79,7 +79,7 @@ export default function RootLayout({
         />
         <link rel="icon" type="image/png" href="/favicon.png" />
       </head>
-      <body className="bg-slate-900 text-white">
+      <body className="bg-[#0d1117] text-white min-h-screen">
         <div className="flex flex-col min-h-screen">
           <Providers>
             <AppToaster />

@@ -152,7 +152,6 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
-  background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%);
   min-height: 100vh;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -452,27 +451,22 @@ input:-webkit-autofill:focus {
 
 /* Modern Glass Cards */
 .glass-card {
-  background: rgba(15, 23, 42, 0.8);
-  backdrop-filter: blur(20px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 20px;
+  background: #11141F; /* Darker solid background */
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 24px;
   box-shadow: 
-    0 8px 32px rgba(0, 0, 0, 0.4),
-    0 2px 8px rgba(59, 130, 246, 0.1),
-    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+    0 4px 24px -1px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   overflow: hidden;
 }
 
 .glass-card-bottom {
-  background: rgba(15, 23, 42, 0.9);
+  background: #0A0F1C;
   backdrop-filter: blur(20px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  box-shadow: 
-    0 8px 32px rgba(0, 0, 0, 0.4),
-    0 2px 8px rgba(59, 130, 246, 0.1),
-    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 -4px 20px rgba(0,0,0,0.3);
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   overflow: hidden;
@@ -486,34 +480,32 @@ input:-webkit-autofill:focus {
   left: 0;
   right: 0;
   height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+  opacity: 0.5;
 }
 
 .glass-card:hover {
-  transform: translateY(-4px) scale(1.02);
+  transform: translateY(-2px);
+  border-color: rgba(255, 255, 255, 0.12);
   box-shadow: 
-    0 20px 60px rgba(0, 0, 0, 0.5),
-    0 0 0 1px rgba(59, 130, 246, 0.4),
-    0 4px 20px rgba(59, 130, 246, 0.2),
-    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    0 20px 40px -4px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 
 /* Enhanced Input Styling */
 .modern-input {
-  background: rgba(15, 23, 42, 0.6);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: #0A0F1C;
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 16px;
-  backdrop-filter: blur(8px);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
+  color: white;
 }
 
 .modern-input:focus {
-  border-color: rgba(59, 130, 246, 0.6);
-  box-shadow: 
-    0 0 0 4px rgba(59, 130, 246, 0.1),
-    0 8px 25px rgba(59, 130, 246, 0.15);
-  background: rgba(15, 23, 42, 0.8);
+  border-color: rgba(59, 130, 246, 0.5);
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+  background: #0F1623;
   transform: translateY(-1px);
 }
 
