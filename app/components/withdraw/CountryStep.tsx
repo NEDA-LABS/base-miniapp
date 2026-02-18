@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useWithdraw, WITHDRAW_COUNTRIES, Stablecoin } from '@/contexts/WithdrawContext';
 import { ArrowLeftIcon, ChevronDownIcon, CheckCircleIcon } from '@heroicons/react/24/solid';
 
@@ -15,9 +15,28 @@ export default function CountryStep({ walletBalance, stablecoins }: CountryStepP
   const [rate, setRate] = useState<string | null>(null);
   const [loadingRate, setLoadingRate] = useState(false);
 
+  const fetchRate = useCallback(async (targetCountry: typeof WITHDRAW_COUNTRIES[0]) => {
+    if (!amount) return;
+    setLoadingRate(true);
+    try {
+      const res = await fetch(`/api/paycrest/rate?token=USDC&amount=${amount}&fiat=${targetCountry.currency}`);
+      const data = await res.json();
+      if (data.rate) {
+        setRate(data.rate);
+      }
+    } catch (error) {
+      console.error('Error fetching rate:', error);
+    } finally {
+      setLoadingRate(false);
+    }
+  }, [amount]);
+
   // Auto-select country based on geolocation or default to first country
   useEffect(() => {
-    if (country) return;
+    if (country) {
+      fetchRate(country);
+      return;
+    }
 
     const autoSelectCountry = async () => {
       try {
@@ -25,49 +44,25 @@ export default function CountryStep({ walletBalance, stablecoins }: CountryStepP
         const data = await response.json();
         const userCountryCode = data.country;
         
-        const matchedCountry = WITHDRAW_COUNTRIES.find(c => c.code === userCountryCode);
-        
-        if (matchedCountry) {
-          selectCountry(matchedCountry);
-        } else {
-          selectCountry(WITHDRAW_COUNTRIES[0]); // Default to first country
-        }
+        const matched = WITHDRAW_COUNTRIES.find(c => c.code === userCountryCode) ?? WITHDRAW_COUNTRIES[0];
+        selectCountry(matched);
+        fetchRate(matched);
       } catch (error) {
         console.error('Error fetching geolocation:', error);
-        selectCountry(WITHDRAW_COUNTRIES[0]); // Default on error
+        selectCountry(WITHDRAW_COUNTRIES[0]);
+        fetchRate(WITHDRAW_COUNTRIES[0]);
       }
     };
 
     autoSelectCountry();
-  }, [country, selectCountry]);
-
-  // Fetch rate when country or amount changes
-  useEffect(() => {
-    if (!country || !amount) return;
-
-    const fetchRate = async () => {
-      setLoadingRate(true);
-      try {
-        const network = 'base'; 
-        const res = await fetch(`/api/paycrest/rate?token=USDC&amount=${amount}&fiat=${country.currency}&network=${network}`);
-        const data = await res.json();
-        if (data.rate) {
-          setRate(data.rate);
-        }
-      } catch (error) {
-        console.error('Error fetching rate:', error);
-      } finally {
-        setLoadingRate(false);
-      }
-    };
-
-    fetchRate();
-  }, [country, amount]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const toggleDropdown = () => setIsOpen(!isOpen);
 
   const handleCountrySelect = (c: typeof WITHDRAW_COUNTRIES[0]) => {
     selectCountry(c);
+    fetchRate(c);
     setIsOpen(false);
   };
 
