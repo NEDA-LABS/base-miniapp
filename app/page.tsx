@@ -5522,7 +5522,6 @@ export default function FarcasterMiniApp() {
 
         {/* Send Money Globally Banner */}
         <div 
-          onClick={() => setActiveTab('send')}
           className="bg-[#151925] rounded-[1.5rem] p-5 flex items-center justify-between cursor-pointer hover:bg-[#1c2230] transition-colors border border-slate-800/50 shadow-lg group"
         >
           <div className="flex-1">
@@ -5530,19 +5529,19 @@ export default function FarcasterMiniApp() {
           </div>
           <div className="flex items-center gap-4">
             <div className="flex -space-x-3">
-              <div className="w-9 h-9 rounded-full bg-blue-600/20 border-2 border-[#151925] flex items-center justify-center z-10">
-                <span className="text-sm">💲</span>
+              <div className="w-9 h-9 rounded-full bg-white border-2 border-[#151925] overflow-hidden flex items-center justify-center z-10">
+                <Image src="/base.svg" alt="Base" width={36} height={36} className="object-cover" />
               </div>
-              <div className="w-9 h-9 rounded-full bg-green-600/20 border-2 border-[#151925] flex items-center justify-center z-20">
-                <span className="text-sm">₮</span>
+              <div className="w-9 h-9 rounded-full bg-white border-2 border-[#151925] overflow-hidden flex items-center justify-center z-20">
+                <Image src="/celo.svg" alt="Celo" width={36} height={36} className="object-cover" />
               </div>
               <div className="w-9 h-9 rounded-full bg-slate-700 border-2 border-[#151925] flex items-center justify-center text-gray-400 text-[10px] z-30">
                 +
               </div>
             </div>
-            <div className="w-10 h-10 rounded-full border border-slate-700 flex items-center justify-center group-hover:border-slate-500 transition-colors">
+            {/* <div className="w-10 h-10 rounded-full border border-slate-700 flex items-center justify-center group-hover:border-slate-500 transition-colors">
               <ArrowRightIcon className="w-5 h-5 text-white" />
-            </div>
+            </div> */}
           </div>
         </div>
 
@@ -6142,44 +6141,38 @@ export default function FarcasterMiniApp() {
         `}</style>
 
         {/* Main Content - with bottom padding for fixed nav */}
-        <div className="p-4 pb-28 mb-20">
+        <div className="p-4 pb-32">
           {renderTabContent()}
         </div>
       </div>
 
-      {/* Bottom Navigation - Glassmorphism */}
-      <div className="fixed bottom-0 left-0 right-0 z-40 safe-area-bottom">
-        <div className="mx-auto">
-          <div className="bg-[#0A0F1C]/95 backdrop-blur-xl border-t border-white/5 px-6 py-3">
-            <div className="grid grid-cols-4 gap-2">
+      {/* Bottom Navigation - Pill Style */}
+      <div className="fixed bottom-0 left-0 right-0 z-40 px-6 pb-[calc(env(safe-area-inset-bottom)+1.5rem)] flex justify-center pointer-events-none">
+        <div className="w-full max-w-[400px] pointer-events-auto">
+          <div className="bg-slate-800/95 backdrop-blur-3xl border border-white/10 rounded-2xl px-2 py-3 shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
+            <div className="flex justify-around items-center">
               {[
                 { key: 'home' as Tab, label: 'Home', icon: HomeIcon },
-                { key: 'invoice' as Tab, label: 'Invoice', icon: DocumentTextIcon },
-                { key: 'profile' as Tab, label: 'Profile', icon: UserIcon },
+                { key: 'invoice' as Tab, label: 'Invoice', icon: WalletIcon },
+                { key: 'profile' as Tab, label: 'Profile', icon: ListBulletIcon },
                 { key: 'settings' as Tab, label: 'Settings', icon: Cog6ToothIcon },
               ].map(({ key, label, icon: Icon }) => (
                 <button
                   key={key}
                   onClick={() => setActiveTab(key)}
-                  className={`relative flex flex-col items-center justify-center py-2 rounded-xl transition-all duration-300 group ${activeTab === key
+                  className={`flex flex-col items-center justify-center flex-1 transition-all duration-300 ${activeTab === key
                     ? 'text-white'
-                    : 'text-gray-500 hover:text-gray-400'
+                    : 'text-slate-250 hover:text-gray-400'
                     }`}
                 >
-                  <Icon className={`w-6 h-6 mb-1.5 transition-all duration-300 ${activeTab === key
-                    ? 'stroke-2'
-                    : 'stroke-[1.5] group-hover:scale-105'
+                  <Icon className={`w-6 h-6 mb-1 transition-all duration-300 ${activeTab === key
+                    ? 'stroke-[2.5] scale-110'
+                    : 'stroke-[1.5]'
                     }`} />
-
-                  <span className={`text-[10px] font-medium leading-none transition-all duration-300 ${activeTab === key ? 'opacity-100' : 'opacity-70 group-hover:opacity-90'
+                  <span className={`text-[10px] font-bold tracking-tight transition-all duration-300 ${activeTab === key ? 'opacity-100' : 'opacity-60'
                     }`}>
                     {label}
                   </span>
-
-                  {/* Active indicator - subtle glow */}
-                  {activeTab === key && (
-                     <div className="absolute inset-0 bg-white/5 rounded-xl blur-sm -z-10" />
-                  )}
                 </button>
               ))}
             </div>
