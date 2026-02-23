@@ -10,8 +10,9 @@ import { useToast } from '@/components/ui/use-toast';
 import type { PretiumAsset, PretiumExchangeRateResponse, PretiumNetwork, PretiumStatusResponse } from '@/utils/pretium/types';
 import { motion } from 'framer-motion';
 import { stablecoins } from '@/data/stablecoins';
+import SnavilleOnRampFlow from '@/components/SnavilleOnRampFlow';
 
-type SupportedFiat = 'KES' | 'MWK' | 'CDF' | 'GHS' | 'UGX';
+type SupportedFiat = 'KES' | 'MWK' | 'CDF' | 'GHS' | 'UGX' | 'TZS';
 
 const getCountryFlag = (countryCode: string): string => {
   const flags: Record<string, string> = {
@@ -20,6 +21,7 @@ const getCountryFlag = (countryCode: string): string => {
     'MW': 'https://purecatamphetamine.github.io/country-flag-icons/3x2/MW.svg',
     'CD': 'https://purecatamphetamine.github.io/country-flag-icons/3x2/CD.svg',
     'UG': 'https://purecatamphetamine.github.io/country-flag-icons/3x2/UG.svg',
+    'TZ': 'https://purecatamphetamine.github.io/country-flag-icons/3x2/TZ.svg',
   };
   return flags[countryCode] || '';
 };
@@ -29,9 +31,10 @@ const getTokenIcon = (symbol: string): string => {
   return token?.flag || '/default-token-icon.png';
 };
 
-const FIAT_OPTIONS: Array<{ code: SupportedFiat; countryCode: string; label: string; flag: string }> = [
+const FIAT_OPTIONS: Array<{ code: SupportedFiat; countryCode: string; label: string; flag: string; p2p?: boolean }> = [
   { code: 'GHS', countryCode: 'GH', label: 'Ghana (GHS)', flag: getCountryFlag('GH') },
   { code: 'KES', countryCode: 'KE', label: 'Kenya (KES)', flag: getCountryFlag('KE') },
+  { code: 'TZS', countryCode: 'TZ', label: 'Tanzania (TZS)', flag: getCountryFlag('TZ'), p2p: true },
   { code: 'MWK', countryCode: 'MW', label: 'Malawi (MWK)', flag: getCountryFlag('MW') },
   { code: 'CDF', countryCode: 'CD', label: 'DR Congo (CDF)', flag: getCountryFlag('CD') },
   { code: 'UGX', countryCode: 'UG', label: 'Uganda (UGX)', flag: getCountryFlag('UG') },
@@ -117,6 +120,12 @@ export default function PretiumOnRampFlow({ walletAddress, asset, onBack }: Pret
 
   useEffect(() => {
     const fetchNetworks = async () => {
+      // Tanzania uses Snaville (P2P), not Pretium networks
+      if (fiat === 'TZS') {
+        setNetworks([]);
+        setLoadingNetworks(false);
+        return;
+      }
       setLoadingNetworks(true);
       try {
         if (!NEDAPAY_API_KEY) {
@@ -161,10 +170,16 @@ export default function PretiumOnRampFlow({ walletAddress, asset, onBack }: Pret
     };
 
     fetchNetworks();
-  }, [selectedFiatMeta.countryCode, toast]);
+  }, [fiat, selectedFiatMeta.countryCode, toast]);
 
   useEffect(() => {
     const fetchRate = async () => {
+      // Tanzania uses Snaville (P2P) rates, not Pretium
+      if (fiat === 'TZS') {
+        setExchangeRate(null);
+        setLoadingRate(false);
+        return;
+      }
       setLoadingRate(true);
       try {
         if (!NEDAPAY_API_KEY) {
@@ -370,6 +385,40 @@ export default function PretiumOnRampFlow({ walletAddress, asset, onBack }: Pret
     }
   }, [currentStep, transactionCode, pollStatus]);
 
+  // Tanzania P2P: delegate to SnavilleOnRampFlow with a currency switcher
+  if (fiat === 'TZS') {
+    return (
+      <div className="max-w-4xl mx-auto space-y-3">
+        <div className="bg-slate-800/60 border border-slate-700/60 rounded-2xl px-4 py-3 flex items-center gap-3">
+          <span className="text-xs text-slate-400 flex-shrink-0">Currency:</span>
+          <Select value={fiat} onValueChange={(v) => setFiat(v as SupportedFiat)}>
+            <SelectTrigger showIcon={false} className="h-auto px-2.5 py-1.5 bg-slate-900/30 border border-slate-700/60 rounded-xl shadow-none focus:ring-0 flex-1">
+              <SelectValue>
+                <div className="flex items-center gap-1.5">
+                  <img src={selectedFiatMeta.flag} alt={selectedFiatMeta.code} className="w-4 h-3 rounded-sm object-cover flex-shrink-0" />
+                  <span className="text-xs font-medium text-white">{selectedFiatMeta.label}</span>
+                  <ChevronDown className="h-3.5 w-3.5 text-slate-500 ml-1" />
+                </div>
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent className="bg-slate-800/95 backdrop-blur-xl border border-slate-700/60 rounded-xl shadow-2xl">
+              {FIAT_OPTIONS.map((opt) => (
+                <SelectItem key={opt.code} value={opt.code} className="text-white hover:bg-purple-500/10 focus:bg-purple-500/15 cursor-pointer rounded-lg transition-colors my-1 py-2">
+                  <div className="flex items-center gap-1.5">
+                    <img src={opt.flag} alt={opt.code} className="w-4 h-3 rounded-sm object-cover flex-shrink-0" />
+                    <span className="text-xs">{opt.label}</span>
+                    {opt.p2p && <span className="text-[9px] bg-green-500/20 text-green-300 border border-green-500/30 rounded px-1 py-0.5 ml-1">P2P</span>}
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <SnavilleOnRampFlow walletAddress={walletAddress} onBack={onBack} />
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-4xl mx-auto">
       <Card className="bg-gradient-to-br from-slate-900/95 via-slate-900/90 to-slate-800/95 backdrop-blur-xl border border-slate-700/60 shadow-2xl !rounded-3xl overflow-hidden">
@@ -438,6 +487,7 @@ export default function PretiumOnRampFlow({ walletAddress, asset, onBack }: Pret
                               <div className="flex items-center gap-1.5">
                                 <img src={opt.flag} alt={opt.code} className="w-4 h-3 rounded-sm object-cover flex-shrink-0" />
                                 <span className="text-xs truncate">{opt.label}</span>
+                                {opt.p2p && <span className="text-[9px] bg-green-500/20 text-green-300 border border-green-500/30 rounded px-1 py-0.5 ml-1">P2P</span>}
                               </div>
                             </SelectItem>
                           ))}

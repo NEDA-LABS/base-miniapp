@@ -21,6 +21,7 @@ import Sidebar from './components/Sidebar';
 import PretiumOffRampFlow from './components/PretiumOffRampFlow';
 import PretiumOnRampFlow from './components/PretiumOnRampFlow';
 import WithdrawFlow from './components/withdraw/WithdrawFlow';
+import CurrencyTicker from './components/CurrencyTicker';
 import { usePrivy } from '@privy-io/react-auth';
 import '../lib/i18n';
 
@@ -135,10 +136,7 @@ interface Currency {
   marketRate: string;
 }
 
-interface RateData {
-  rate: string;
-  timestamp: number;
-}
+
 
 export default function FarcasterMiniApp() {
   console.log('🚀🚀🚀 NedaPay MiniApp Loading - DEPLOYMENT TEST v6 - FIX CORS ISSUE...');
@@ -529,7 +527,7 @@ export default function FarcasterMiniApp() {
   const [isLoadingRate, setIsLoadingRate] = useState(false);
   const [currentRate, setCurrentRate] = useState('2547');
   const [currencies, setCurrencies] = useState<Array<{ code: string; name: string; symbol: string }>>([]);
-  const [floatingRates, setFloatingRates] = useState<{ [key: string]: RateData }>({});
+
   const [institutions, setInstitutions] = useState<Array<{ name: string; code: string; type: string }>>([]);
   const [isLoadingInstitutions, setIsLoadingInstitutions] = useState(false);
   const [sendCurrency, setSendCurrency] = useState<'local' | 'usdc'>('usdc');
@@ -1041,14 +1039,7 @@ export default function FarcasterMiniApp() {
 
       console.log(`✅ Rate fetched successfully for ${currency}: ${rate}`);
 
-      // Update floating rates
-      setFloatingRates(prev => ({
-        ...prev,
-        [currency]: {
-          rate,
-          timestamp: Date.now()
-        }
-      }));
+
     } catch (error: any) {
       console.error(`❌ Failed to fetch rate for ${currency}:`, error?.message || 'API Error');
       setCurrentRate('0');
@@ -1142,30 +1133,7 @@ export default function FarcasterMiniApp() {
           console.warn('⚠️ No institutions found for', selectedCountry.name, selectedCountry.currency);
         }
 
-        // Load initial floating rates for supported currencies (limit to prevent API spam)
-        const priorityCurrencies = ['NGN', 'KES', 'GHS', 'TZS', 'UGX'];
-        const currenciesToLoad = supportedCurrencies
-          .filter(currency => priorityCurrencies.includes(currency.code))
-          .slice(0, 5);
 
-        console.log(`💱 Loading rates for ${currenciesToLoad.length} priority currencies...`);
-
-        for (const currency of currenciesToLoad) {
-          try {
-            const rateData = await fetchTokenRate('USDC', 1, currency.code);
-            if (rateData) {
-              setFloatingRates(prev => ({
-                ...prev,
-                [currency.code]: {
-                  rate: rateData,
-                  timestamp: Date.now()
-                }
-              }));
-            }
-          } catch (err) {
-            console.error(`Failed to load rate for ${currency.code}:`, err);
-          }
-        }
 
       } catch (error) {
         console.error('Failed to load currencies and institutions:', error);
@@ -5473,7 +5441,7 @@ export default function FarcasterMiniApp() {
     return (
       <div className="space-y-4">
         {/* Balance Card */}
-        <div className="relative w-full h-64 rounded-3xl overflow-hidden shadow-2xl">
+         <div className="relative w-full h-64 rounded-3xl overflow-hidden shadow-2xl">
           <Image
             src="/Balance Card.png"
             alt="Balance Card"
@@ -5500,7 +5468,7 @@ export default function FarcasterMiniApp() {
                 <ArrowDownIcon className="w-4 h-4 text-white flex-shrink-0" />
                 <span className="text-[10px] font-semibold truncate">Deposit</span>
               </button>
-              
+
               <button
                 onClick={() => setActiveTab('withdraw')}
                 className="flex-1 flex items-center justify-center gap-2 bg-[#1A1F2E]/80 backdrop-blur-md hover:bg-[#1A1F2E] border border-white/10 rounded-full px-2 py-2.5 transition-all duration-300 min-w-0"
@@ -5521,7 +5489,7 @@ export default function FarcasterMiniApp() {
         </div>
 
         {/* Send Money Globally Banner */}
-        <div 
+        <div
           className="bg-[#151925] rounded-[1.5rem] p-5 flex items-center justify-between cursor-pointer hover:bg-[#1c2230] transition-colors border border-slate-800/50 shadow-lg group"
         >
           <div className="flex-1">
@@ -5548,15 +5516,15 @@ export default function FarcasterMiniApp() {
         {/* Recent Activity */}
         <div className="space-y-3">
           <h3 className="text-white font-bold text-lg px-1">Recent activity</h3>
-          
+
           <div className="space-y-2">
             {userTransactions.length > 0 ? (
               userTransactions.slice(0, 5).map((tx) => (
                 <div key={tx.id} className="bg-[#151925] rounded-2xl p-3 flex items-center justify-between border border-slate-800/50 hover:bg-[#1c2230] transition-colors cursor-pointer group">
                   <div className="flex items-center gap-3">
                     {/* <div className="w-10 h-10 rounded-full bg-slate-800/50 flex items-center justify-center border border-slate-700/50 group-hover:border-slate-600 transition-colors"> */}
-                       {/* Icon based on type */}
-                       {/* {tx.type === 'send' || tx.type === 'pay' ? (
+                    {/* Icon based on type */}
+                    {/* {tx.type === 'send' || tx.type === 'pay' ? (
                           <ArrowUpIcon className="w-5 h-5 text-white" />
                         ) : (
                           <ArrowDownIcon className="w-5 h-5 text-white" />
@@ -5564,21 +5532,20 @@ export default function FarcasterMiniApp() {
                     {/* </div> */}
                     <div>
                       <h4 className="text-white font-bold text-sm mb-0.5">
-                        {tx.type === 'send' ? 'Sent Money' : 
-                         tx.type === 'pay' ? 'Payment' : 
-                         tx.type === 'deposit' ? 'Deposit' : 'Transaction'}
+                        {tx.type === 'send' ? 'Sent Money' :
+                          tx.type === 'pay' ? 'Payment' :
+                            tx.type === 'deposit' ? 'Deposit' : 'Transaction'}
                       </h4>
                       <p className="text-gray-500 text-[10px] font-medium">{new Date(tx.createdAt).toLocaleDateString()}</p>
                     </div>
                   </div>
                   <div className="text-right">
                     <p className="text-white font-bold text-sm mb-0.5">
-                      {tx.type === 'send' || tx.type === 'pay' ? '-' : '+'}{tx.amount} {tx.currency}
+                      {tx.type === 'send' || tx.type === 'pay' ? '-' : '+'}{tx.amount} USD
                     </p>
-                    <p className={`text-[9px] font-bold tracking-wider ${
-                      tx.status?.toLowerCase() === 'completed' || tx.status?.toLowerCase() === 'success' || tx.status?.toLowerCase() === 'settled' ? 'text-green-500' :
+                    <p className={`text-[9px] font-bold tracking-wider ${tx.status?.toLowerCase() === 'completed' || tx.status?.toLowerCase() === 'success' || tx.status?.toLowerCase() === 'settled' ? 'text-green-500' :
                       tx.status?.toLowerCase() === 'pending' ? 'text-yellow-500' : 'text-blue-500'
-                    }`}>
+                      }`}>
                       {tx.status?.toUpperCase() || 'COMPLETED'}
                     </p>
                   </div>
@@ -5697,16 +5664,15 @@ export default function FarcasterMiniApp() {
                 {userTransactions.slice(0, 5).map((tx) => (
                   <div key={tx.id} className="bg-[#151925] rounded-xl p-3 border border-slate-800/50 flex justify-between items-center">
                     <div>
-                      <p className="text-sm text-white font-semibold">{tx.amount} {tx.currency}</p>
+                      <p className="text-sm text-white font-semibold">{tx.amount} USD</p>
                       <p className="text-xs text-gray-500">{new Date(tx.createdAt).toLocaleDateString()}</p>
                     </div>
-                    <span className={`text-xs px-2 py-1 rounded-full font-semibold ${
-                      tx.status?.toLowerCase() === 'completed' || tx.status?.toLowerCase() === 'success' || tx.status?.toLowerCase() === 'settled'
-                        ? 'bg-green-500/20 text-green-400'
-                        : tx.status?.toLowerCase() === 'pending'
-                          ? 'bg-yellow-500/20 text-yellow-400'
-                          : 'bg-blue-500/20 text-blue-400'
-                    }`}>{tx.status}</span>
+                    <span className={`text-xs px-2 py-1 rounded-full font-semibold ${tx.status?.toLowerCase() === 'completed' || tx.status?.toLowerCase() === 'success' || tx.status?.toLowerCase() === 'settled'
+                      ? 'bg-green-500/20 text-green-400'
+                      : tx.status?.toLowerCase() === 'pending'
+                        ? 'bg-yellow-500/20 text-yellow-400'
+                        : 'bg-blue-500/20 text-blue-400'
+                      }`}>{tx.status}</span>
                   </div>
                 ))}
               </div>
@@ -5714,31 +5680,31 @@ export default function FarcasterMiniApp() {
           </div>
         );
       case 'settings':
-         return (
+        return (
           <div className="space-y-4">
-             <h2 className="text-white text-2xl font-bold px-2">Settings</h2>
-             <div className="bg-[#151925] rounded-2xl p-4 border border-slate-800/50">
-                <div className="flex items-center gap-4 mb-6">
-                  <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-2xl font-bold">
-                     {farcasterProfile?.username?.[0]?.toUpperCase() || 'U'}
-                  </div>
-                  <div>
-                     <h3 className="text-white font-bold text-lg">@{farcasterProfile?.username || 'User'}</h3>
-                     <p className="text-gray-400 text-sm font-mono">{walletAddress?.slice(0, 6)}...{walletAddress?.slice(-4)}</p>
-                  </div>
+            <h2 className="text-white text-2xl font-bold px-2">Settings</h2>
+            <div className="bg-[#151925] rounded-2xl p-4 border border-slate-800/50">
+              <div className="flex items-center gap-4 mb-6">
+                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-2xl font-bold">
+                  {farcasterProfile?.username?.[0]?.toUpperCase() || 'U'}
                 </div>
-                
-                <div className="space-y-2">
-                   {['Account', 'Security', 'Notifications', 'Help & Support'].map((item) => (
-                      <button key={item} className="w-full flex items-center justify-between p-3 hover:bg-white/5 rounded-xl transition-colors">
-                         <span className="text-white font-medium">{item}</span>
-                         <ArrowRightIcon className="w-4 h-4 text-gray-500" />
-                      </button>
-                   ))}
+                <div>
+                  <h3 className="text-white font-bold text-lg">@{farcasterProfile?.username || 'User'}</h3>
+                  <p className="text-gray-400 text-sm font-mono">{walletAddress?.slice(0, 6)}...{walletAddress?.slice(-4)}</p>
                 </div>
-             </div>
+              </div>
+
+              <div className="space-y-2">
+                {['Account', 'Security', 'Notifications', 'Help & Support'].map((item) => (
+                  <button key={item} className="w-full flex items-center justify-between p-3 hover:bg-white/5 rounded-xl transition-colors">
+                    <span className="text-white font-medium">{item}</span>
+                    <ArrowRightIcon className="w-4 h-4 text-gray-500" />
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
-         );
+        );
       case 'send':
         return renderSendTab();
       case 'pay':
@@ -5775,7 +5741,7 @@ export default function FarcasterMiniApp() {
       <div className="absolute top-[-20%] right-[-20%] w-[500px] h-[500px] bg-purple-900/10 rounded-full blur-[128px] pointer-events-none" />
       <div className="absolute bottom-[-10%] left-[-10%] w-[400px] h-[400px] bg-blue-900/10 rounded-full blur-[128px] pointer-events-none" />
 
-      <div className="max-w-md mx-auto relative z-10">
+      <div className="w-full mx-auto relative z-10">
         {/* Clean Header - Compact */}
         <div className="flex items-center justify-between mb-6 w-full px-1 pt-2 !overflow-visible z-50">
           {/* Left - Logo */}
@@ -6023,125 +5989,10 @@ export default function FarcasterMiniApp() {
         )}
 
         {/* Floating Rates Ticker */}
-        <div className="mb-3 relative overflow-hidden bg-[#0A0F1C]/50 backdrop-blur-md border-y border-white/5 py-2.5 w-full">
-          <div className="flex animate-scroll-left whitespace-nowrap">
-            {/* First set of rates */}
-            {Object.entries(floatingRates).length > 0 ? (
-              Object.entries(floatingRates).map(([currency, data]) => (
-                <div key={`${currency}-1`} className="inline-flex items-center gap-2 mx-6 text-xs font-mono">
-                  <span className="text-slate-400 font-bold">{currency}</span>
-                  <span className="text-[10px] bg-green-500/20 text-green-400 px-1 py-0.5 rounded">BUY</span>
-                  <span className="text-white">{parseFloat(data.rate).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                </div>
-              ))
-            ) : (
-              // Fallback static rates if no data
-              <>
-                <div className="inline-flex items-center gap-2 mx-6 text-xs font-mono">
-                  <span className="text-slate-400 font-bold">UGX</span>
-                  <span className="text-[10px] bg-green-500/20 text-green-400 px-1 py-0.5 rounded">BUY</span>
-                  <span className="text-white">3,720.00</span>
-                </div>
-                <div className="inline-flex items-center gap-2 mx-6 text-xs font-mono">
-                  <span className="text-slate-400 font-bold">KES</span>
-                  <span className="text-[10px] bg-green-500/20 text-green-400 px-1 py-0.5 rounded">BUY</span>
-                  <span className="text-white">128.50</span>
-                </div>
-                <div className="inline-flex items-center gap-2 mx-6 text-xs font-mono">
-                  <span className="text-slate-400 font-bold">GHS</span>
-                  <span className="text-[10px] bg-green-500/20 text-green-400 px-1 py-0.5 rounded">BUY</span>
-                  <span className="text-white">15.20</span>
-                </div>
-                <div className="inline-flex items-center gap-2 mx-6 text-xs font-mono">
-                  <span className="text-slate-400 font-bold">NGN</span>
-                  <span className="text-[10px] bg-green-500/20 text-green-400 px-1 py-0.5 rounded">BUY</span>
-                  <span className="text-white">1,650.00</span>
-                </div>
-                <div className="inline-flex items-center gap-2 mx-6 text-xs font-mono">
-                  <span className="text-slate-400 font-bold">ZAR</span>
-                  <span className="text-[10px] bg-green-500/20 text-green-400 px-1 py-0.5 rounded">BUY</span>
-                  <span className="text-white">18.75</span>
-                </div>
-              </>
-            )}
-            
-            {/* Duplicate set for seamless scrolling */}
-             {Object.entries(floatingRates).length > 0 ? (
-              Object.entries(floatingRates).map(([currency, data]) => (
-                <div key={`${currency}-2`} className="inline-flex items-center gap-2 mx-6 text-xs font-mono">
-                  <span className="text-slate-400 font-bold">{currency}</span>
-                  <span className="text-[10px] bg-green-500/20 text-green-400 px-1 py-0.5 rounded">BUY</span>
-                  <span className="text-white">{parseFloat(data.rate).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                </div>
-              ))
-            ) : (
-              <>
-                <div className="inline-flex items-center gap-2 mx-6 text-xs font-mono">
-                  <span className="text-slate-400 font-bold">UGX</span>
-                  <span className="text-[10px] bg-green-500/20 text-green-400 px-1 py-0.5 rounded">BUY</span>
-                  <span className="text-white">3,720.00</span>
-                </div>
-                <div className="inline-flex items-center gap-2 mx-6 text-xs font-mono">
-                  <span className="text-slate-400 font-bold">KES</span>
-                  <span className="text-[10px] bg-green-500/20 text-green-400 px-1 py-0.5 rounded">BUY</span>
-                  <span className="text-white">128.50</span>
-                </div>
-                <div className="inline-flex items-center gap-2 mx-6 text-xs font-mono">
-                  <span className="text-slate-400 font-bold">GHS</span>
-                  <span className="text-[10px] bg-green-500/20 text-green-400 px-1 py-0.5 rounded">BUY</span>
-                  <span className="text-white">15.20</span>
-                </div>
-                <div className="inline-flex items-center gap-2 mx-6 text-xs font-mono">
-                  <span className="text-slate-400 font-bold">NGN</span>
-                  <span className="text-[10px] bg-green-500/20 text-green-400 px-1 py-0.5 rounded">BUY</span>
-                  <span className="text-white">1,650.00</span>
-                </div>
-                <div className="inline-flex items-center gap-2 mx-6 text-xs font-mono">
-                  <span className="text-slate-400 font-bold">ZAR</span>
-                  <span className="text-[10px] bg-green-500/20 text-green-400 px-1 py-0.5 rounded">BUY</span>
-                  <span className="text-white">18.75</span>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-        
-        <style jsx>{`
-          @keyframes scroll-left {
-            0% {
-              transform: translateX(0%);
-            }
-            100% {
-              transform: translateX(-50%);
-            }
-          }
-          
-          @keyframes slide-up {
-            from {
-              transform: translateY(100%);
-              opacity: 0;
-            }
-            to {
-              transform: translateY(0);
-              opacity: 1;
-            }
-          }
-          
-          .animate-scroll-left {
-            animation: scroll-left 20s linear infinite;
-          }
-          
-          .animate-scroll-left:hover {
-            animation-play-state: paused;
-          }
-          
-          .animate-slide-up {
-            animation: slide-up 0.3s ease-out;
-          }
-        `}</style>
+        <CurrencyTicker />
 
         {/* Main Content - with bottom padding for fixed nav */}
-        <div className="p-4 pb-32">
+        <div className="px-2 py-4 pb-32">
           {renderTabContent()}
         </div>
       </div>
@@ -6372,7 +6223,7 @@ export default function FarcasterMiniApp() {
                     <div key={tx.id} className="bg-slate-800/60 rounded-xl p-4 border border-slate-700/50">
                       <div className="flex justify-between items-start mb-2">
                         <div>
-                          <p className="text-white font-bold">{tx.amount} {tx.currency}</p>
+                          <p className="text-white font-bold">{tx.amount} USD</p>
                           <p className="text-xs text-gray-500">{tx.type || 'Transaction'}</p>
                         </div>
                         <span className={`text-xs px-2 py-1 rounded-full ${tx.status === 'Completed' || tx.status === 'Success' ? 'bg-green-500/20 text-green-400' :
