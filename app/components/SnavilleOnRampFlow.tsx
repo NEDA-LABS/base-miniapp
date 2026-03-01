@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { CheckCircle2, ChevronDown, Copy, Loader2 } from 'lucide-react';
+import { AlertCircle, CheckCircle2, ChevronDown, Copy, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -353,12 +353,13 @@ export default function SnavilleOnRampFlow({
             </div>
             <div className="space-y-2">
               <span className="text-xs font-medium text-slate-400">Phone Number</span>
-              <Input type="tel" placeholder="e.g., 0712345678" value={phone} onChange={(e) => setPhone(e.target.value)} className="w-full px-2.5 py-2 bg-slate-900/30 border border-slate-700/60 rounded-xl text-white text-xs placeholder:text-slate-500 focus:ring-2 focus:ring-green-500/50 focus:border-transparent" />
+              <Input type="tel" placeholder="e.g., 0672535159" value={phone} onChange={(e) => setPhone(e.target.value)} className="w-full px-2.5 py-2 bg-slate-900/30 border border-slate-700/60 rounded-xl text-white text-xs placeholder:text-slate-500 focus:ring-2 focus:ring-green-500/50 focus:border-transparent" />
+              <p className="text-[10px] text-slate-500">Format: 07XXXXXXXX</p>
             </div>
           </div>
 
           <div className="bg-slate-700/40 rounded-2xl p-4 border border-slate-600/40">
-            <span className="text-xs font-medium text-slate-400 block mb-2">Receive Address (Base)</span>
+            <span className="text-xs font-medium text-slate-400 block mb-2">Receive Address (BSC)</span>
             <div className="p-2.5 rounded-xl border border-slate-700/60 bg-slate-900/30 flex items-center justify-between gap-2">
               <p className="text-[10px] text-slate-200 truncate font-mono flex-1">{resolvedAddress || 'No wallet address available'}</p>
               {resolvedAddress && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />}
@@ -369,6 +370,13 @@ export default function SnavilleOnRampFlow({
               </div>
             )}
           </div>
+
+          {createOrderError && (
+            <div className="bg-red-500/10 border border-red-500/50 rounded-xl p-3 flex items-start gap-3">
+              <AlertCircle className="w-4 h-4 text-red-400 mt-0.5 flex-shrink-0" />
+              <p className="text-xs text-red-200">{createOrderError}</p>
+            </div>
+          )}
 
           <div className="flex gap-3 pt-2">
             {onBack && <Button onClick={onBack} variant="ghost" className="flex-1 h-12 text-slate-400 hover:text-white hover:bg-slate-800/50 rounded-xl">Back</Button>}
