@@ -1,13 +1,13 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { AlertCircle, CheckCircle2, ChevronDown, Copy, Loader2 } from 'lucide-react';
+import { CheckCircle2, ChevronDown, Copy, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
 import { motion } from 'framer-motion';
+import { cn } from '../lib/utils';
 
 interface SnavillePaymentMethod {
   id: string;
@@ -160,8 +160,8 @@ export default function SnavilleOnRampFlow({
   }, [order?.expires_at]);
 
   const handleNext = () => {
-    if (currentStep === 1 && isAmountValid) setCurrentStep(2);
-    else if (currentStep === 2 && canContinueStep2) handleCreateOrder();
+    if (currentStep === 1 && isAmountValid) handleCreateOrder();
+    else if (currentStep === 2 && transactionId.trim()) handleVerifyPayment();
   };
 
   const handleBack = () => {
@@ -199,7 +199,7 @@ export default function SnavilleOnRampFlow({
         return;
       }
       setOrder(data.order);
-      setCurrentStep(3);
+      setCurrentStep(2);
       toast({ title: 'Order Created', description: 'Please complete the mobile money payment' });
     } catch (err: any) {
       const msg = err?.message || 'Failed to create order';
@@ -228,7 +228,7 @@ export default function SnavilleOnRampFlow({
         toast({ title: 'Verification Failed', description: data.error || 'Failed to verify payment', variant: 'destructive' });
         return;
       }
-      setCurrentStep(4);
+      setCurrentStep(3);
       setOrderStatus('processing');
       toast({ title: 'Payment Submitted', description: 'Your payment is being verified' });
     } catch (err: any) {
@@ -259,7 +259,7 @@ export default function SnavilleOnRampFlow({
   }, [order, toast]);
 
   useEffect(() => {
-    if (currentStep !== 4 || !order) return;
+    if (currentStep !== 3 || !order) return;
     const interval = setInterval(() => {
       if (orderStatus !== 'completed' && orderStatus !== 'failed') pollOrderStatus();
     }, 5000);
@@ -290,17 +290,17 @@ export default function SnavilleOnRampFlow({
     <div className="space-y-4">
       {/* Step indicator */}
       <div className="flex items-center justify-center gap-2 mb-2">
-        {[1, 2, 3, 4].map((step) => (
+        {[1, 2, 3].map((step) => (
           <div key={step} className="flex items-center">
             <div className={`w-6 h-6 rounded-full text-[10px] font-medium flex items-center justify-center border transition-colors ${currentStep >= step ? 'bg-purple-500/20 border-purple-500/50 text-purple-200' : 'bg-foreground/5 border-border/40 text-muted-foreground'}`}>
               {step}
             </div>
-            {step < 4 && <div className={`w-6 h-px mx-1 transition-colors ${currentStep > step ? 'bg-purple-500/50' : 'bg-border/40'}`} />}
+            {step < 3 && <div className={`w-6 h-px mx-1 transition-colors ${currentStep > step ? 'bg-purple-500/50' : 'bg-border/40'}`} />}
           </div>
         ))}
       </div>
 
-      {/* Step 1: Amount */}
+      {/* Step 1: Amount & Details */}
       {currentStep === 1 && (
         <motion.div key="step1" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.3 }} className="space-y-4">
           <div className="bg-slate-700/40 rounded-2xl p-4 border border-slate-600/40">
@@ -372,15 +372,16 @@ export default function SnavilleOnRampFlow({
 
           <div className="flex gap-3 pt-2">
             {onBack && <Button onClick={onBack} variant="ghost" className="flex-1 h-12 text-slate-400 hover:text-white hover:bg-slate-800/50 rounded-xl">Back</Button>}
-            <Button onClick={handleCreateOrder} disabled={!isValidStep1 || submitting} className={`flex-[2] h-12 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-medium rounded-xl shadow-lg shadow-green-500/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all ${!onBack ? 'w-full' : ''}`}>
-              <span className="flex items-center justify-center gap-2">
+            <div className="flex-[2]">
+              <CTA onClick={handleCreateOrder} disabled={!isValidStep1 || submitting}>
                 {submitting ? <><Loader2 className="w-4 h-4 animate-spin" /><span>Creating Order...</span></> : 'Get Payment Instructions'}
-              </span>
-            </Button>
+              </CTA>
+            </div>
           </div>
         </motion.div>
       )}
 
+      {/* Step 2: Payment Instructions */}
       {currentStep === 2 && order && (
         <motion.div key="step2" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.3 }} className="space-y-4">
           <div className="bg-slate-700/40 rounded-2xl p-4 border border-slate-600/40">
@@ -423,21 +424,22 @@ export default function SnavilleOnRampFlow({
 
           <div className="bg-slate-700/40 rounded-2xl p-4 border border-slate-600/40 space-y-3">
             <span className="text-xs font-medium text-slate-400 block">Mobile Money Transaction ID</span>
-            <Input type="text" placeholder="e.g., MPESA12345XYZ" value={transactionId} onChange={(e) => setTransactionId(e.target.value)} className="w-full px-2.5 py-2 bg-slate-900/30 border border-slate-700/60 rounded-xl text-white text-xs placeholder:text-slate-500 focus:ring-2 focus:ring-green-500/50 focus:border-transparent" />
+            <Input type="text" placeholder="e.g., MPESA12345XYZ" value={transactionId} onChange={(e) => setTransactionId(e.target.value.toUpperCase())} className="w-full px-2.5 py-2 bg-slate-900/30 border border-slate-700/60 rounded-xl text-white text-xs placeholder:text-slate-500 focus:ring-2 focus:ring-green-500/50 focus:border-transparent" />
             <p className="text-[10px] text-slate-500">Find this in your mobile money SMS confirmation after sending.</p>
           </div>
 
           <div className="flex gap-3 pt-2">
             <Button onClick={() => setCurrentStep(1)} variant="ghost" className="flex-1 h-12 text-slate-400 hover:text-white hover:bg-slate-800/50 rounded-xl">Back</Button>
-            <Button onClick={handleVerifyPayment} disabled={!transactionId.trim() || verifying} className="flex-[2] h-12 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-medium rounded-xl shadow-lg shadow-green-500/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all">
-              <span className="flex items-center justify-center gap-2">
+            <div className="flex-[2]">
+              <CTA onClick={handleVerifyPayment} disabled={!transactionId.trim() || verifying}>
                 {verifying ? <><Loader2 className="w-4 h-4 animate-spin" /><span>Verifying...</span></> : 'I Have Sent the Payment'}
-              </span>
-            </Button>
+              </CTA>
+            </div>
           </div>
         </motion.div>
       )}
 
+      {/* Step 3: Status */}
       {currentStep === 3 && order && (
         <motion.div key="step3" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.3 }} className="space-y-4">
           <div className="bg-slate-700/40 rounded-2xl p-4 border border-slate-600/40">
@@ -446,14 +448,23 @@ export default function SnavilleOnRampFlow({
                 <p className="text-[10px] font-medium text-slate-400">Order Number</p>
                 <p className="text-xs font-mono text-white mt-0.5 break-all">{order.order_number}</p>
               </div>
-              <div className={`px-2 py-1 rounded-full text-[10px] font-medium border flex items-center gap-1 ${statusTone === 'success' ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-200' : statusTone === 'failed' ? 'bg-red-500/15 border-red-500/40 text-red-200' : 'bg-amber-500/15 border-amber-500/40 text-amber-200'}`}>
+              <div className={cn(
+                "px-2 py-1 rounded-full text-[10px] font-medium border flex items-center gap-1",
+                getStatusBg(orderStatus)
+              )}>
                 {statusTone === 'success' ? <CheckCircle2 className="w-3 h-3" /> : statusTone === 'failed' ? <span>✕</span> : <Loader2 className="w-3 h-3 animate-spin" />}
-                <span>{orderStatus || 'PROCESSING'}</span>
+                <span>{orderStatus?.toUpperCase() || 'PROCESSING'}</span>
               </div>
             </div>
             <div className="mt-4 bg-slate-900/30 border border-slate-700/60 rounded-xl p-3">
               <p className="text-[10px] text-slate-400 font-medium">NEXT STEPS</p>
-              <p className="text-xs text-slate-200 mt-1 leading-relaxed">Your payment is being verified. Once confirmed, USDT will be sent to your wallet on Base. This may take a few minutes.</p>
+              <p className="text-xs text-slate-200 mt-1 leading-relaxed">
+                {orderStatus === 'completed'
+                  ? 'Your deposit is complete! USDT has been sent to your wallet.'
+                  : orderStatus === 'failed'
+                    ? 'Verification failed. Please contact support if you have already sent payment.'
+                    : 'Your payment is being verified. Once confirmed, USDT will be sent to your wallet on BSC. This may take a few minutes.'}
+              </p>
             </div>
           </div>
 
