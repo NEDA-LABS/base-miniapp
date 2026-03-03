@@ -18,20 +18,21 @@ interface RampaPaymentMethod {
 
 interface RampaBuyOrder {
     order_number: string;
-    partner_order_id: string;
     status: string;
-    amount_usdt: number;
-    amount_mwk: number;
-    rate: number;
-    payment_method_id: string;
-    payment_provider: string;
-    payment_account_number: string;
-    payment_account_name: string;
-    destination_address: string;
-    network: string;
-    token: string;
-    user_full_name: string;
-    user_phone: string;
+    amount_crypto: number;
+    crypto_type?: string;
+    amount_fiat: number;
+    currency?: string;
+    network?: string;
+    payment_instructions: {
+        provider: string;
+        payment_type?: string;
+        agent_code?: string;
+        account_number?: string;
+        account_name: string;
+        amount_to_send: number;
+        instructions: string;
+    };
     expires_at: string;
 }
 
@@ -477,7 +478,7 @@ export default function RampaOnRampFlow({
                             </div>
                             <div className="text-right">
                                 <p className="text-[10px] font-medium text-slate-400">You Receive</p>
-                                <p className="text-sm font-bold text-emerald-400">{order.amount_usdt} {selectedToken}</p>
+                                <p className="text-sm font-bold text-emerald-400">{order.amount_crypto} {selectedToken}</p>
                             </div>
                         </div>
                         {order.expires_at && (
@@ -489,18 +490,18 @@ export default function RampaOnRampFlow({
                         <span className="text-xs font-medium text-slate-400 block">Send Payment To</span>
                         <div className="space-y-2">
                             <div className="flex items-center justify-between p-2.5 rounded-xl border border-slate-700/60 bg-slate-900/30">
-                                <div><p className="text-[10px] text-slate-400">Provider</p><p className="text-xs font-semibold text-white">{order.payment_provider}</p></div>
+                                <div><p className="text-[10px] text-slate-400">Provider</p><p className="text-xs font-semibold text-white">{order.payment_instructions.provider}</p></div>
                             </div>
                             <div className="flex items-center justify-between p-2.5 rounded-xl border border-slate-700/60 bg-slate-900/30">
-                                <div className="min-w-0 flex-1"><p className="text-[10px] text-slate-400">Account Number</p><p className="text-xs font-semibold text-white font-mono">{order.payment_account_number}</p></div>
-                                <button onClick={() => copyToClipboard(order.payment_account_number, 'Account number')} className="ml-2 p-1.5 rounded-lg hover:bg-slate-700/60 transition-colors flex-shrink-0"><Copy className="w-3.5 h-3.5 text-slate-400" /></button>
+                                <div className="min-w-0 flex-1"><p className="text-[10px] text-slate-400">Account Number</p><p className="text-xs font-semibold text-white font-mono">{order.payment_instructions.agent_code || order.payment_instructions.account_number || ''}</p></div>
+                                <button onClick={() => copyToClipboard(order.payment_instructions.agent_code || order.payment_instructions.account_number || '', 'Account number')} className="ml-2 p-1.5 rounded-lg hover:bg-slate-700/60 transition-colors flex-shrink-0"><Copy className="w-3.5 h-3.5 text-slate-400" /></button>
                             </div>
                             <div className="flex items-center justify-between p-2.5 rounded-xl border border-slate-700/60 bg-slate-900/30">
-                                <div><p className="text-[10px] text-slate-400">Account Name</p><p className="text-xs font-semibold text-white">{order.payment_account_name}</p></div>
+                                <div><p className="text-[10px] text-slate-400">Account Name</p><p className="text-xs font-semibold text-white">{order.payment_instructions.account_name}</p></div>
                             </div>
                             <div className="flex items-center justify-between p-2.5 rounded-xl border border-amber-500/30 bg-amber-500/10">
-                                <div className="min-w-0 flex-1"><p className="text-[10px] text-amber-400">Amount to Send (MWK)</p><p className="text-sm font-bold text-amber-300">{order.amount_mwk.toLocaleString()} MWK</p></div>
-                                <button onClick={() => copyToClipboard(String(order.amount_mwk), 'Amount')} className="ml-2 p-1.5 rounded-lg hover:bg-amber-500/20 transition-colors flex-shrink-0"><Copy className="w-3.5 h-3.5 text-amber-400" /></button>
+                                <div className="min-w-0 flex-1"><p className="text-[10px] text-amber-400">Amount to Send (MWK)</p><p className="text-sm font-bold text-amber-300">{order.amount_fiat.toLocaleString()} MWK</p></div>
+                                <button onClick={() => copyToClipboard(order.amount_fiat.toString(), 'Amount')} className="ml-2 p-1.5 rounded-lg hover:bg-amber-500/20 transition-colors flex-shrink-0"><Copy className="w-3.5 h-3.5 text-amber-400" /></button>
                             </div>
                         </div>
                         <div className="bg-slate-900/30 border border-slate-700/60 rounded-xl p-3">
