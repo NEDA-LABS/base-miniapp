@@ -356,7 +356,7 @@ export default function RampaOnRampFlow({
                             className="w-full px-2.5 py-2 bg-slate-900/30 border border-slate-700/60 rounded-xl text-white text-xs placeholder:text-slate-500 focus:ring-2 focus:ring-blue-500/50 focus:border-transparent"
                         />
                         {amountMwk !== null && (
-                            <p className="text-[10px] text-slate-400 text-right mt-1">You send ≈ {amountMwk.toLocaleString()} MWK</p>
+                            <p className="text-[10px] text-slate-400 text-right mt-1">You send ≈ {Number(amountMwk).toLocaleString()} MWK</p>
                         )}
                     </div>
 
@@ -437,7 +437,7 @@ export default function RampaOnRampFlow({
                     <div className="bg-slate-900/40 rounded-2xl p-3 border border-slate-700/40 space-y-1.5">
                         <div className="flex justify-between text-[10px]">
                             <span className="text-slate-400">You pay</span>
-                            <span className="text-white font-semibold">{amountMwk ? `${amountMwk.toLocaleString()} MWK` : '—'}</span>
+                            <span className="text-white font-semibold">{amountMwk ? `${Number(amountMwk).toLocaleString()} MWK` : '—'}</span>
                         </div>
                         <div className="flex justify-between text-[10px]">
                             <span className="text-slate-400">You receive</span>
