@@ -56,6 +56,11 @@ export default function RampaOnRampFlow({
     // Steps: 1=Amount, 2=Details, 3=Instructions, 4=Status
     const [currentStep, setCurrentStep] = useState<1 | 2 | 3 | 4>(1);
 
+    // Token/Network selection
+    const [selectedToken, setSelectedToken] = useState<'USDT' | 'USDC'>('USDT');
+    const selectedNetwork = selectedToken === 'USDC' ? 'BASE' : 'BEP20';
+    const networkLabel = selectedToken === 'USDC' ? 'Base' : 'BSC (BEP20)';
+
     const [buyRate, setBuyRate] = useState<number | null>(null);
     const [minUsdt, setMinUsdt] = useState(1);
     const [maxUsdt, setMaxUsdt] = useState(10000);
@@ -168,8 +173,8 @@ export default function RampaOnRampFlow({
                     payment_method_id: selectedMethodId,
                     user_full_name: fullName.trim(),
                     user_phone: phone.trim(),
-                    network: 'BEP20',
-                    token: 'USDT',
+                    network: selectedNetwork,
+                    token: selectedToken,
                 }),
             });
             const data = await res.json();
@@ -231,7 +236,7 @@ export default function RampaOnRampFlow({
             if (res.ok && data.order?.status) {
                 const s = data.order.status as RampaOrderStatus;
                 setOrderStatus(s);
-                if (s === 'COMPLETED') toast({ title: 'Success!', description: 'Your USDT has been sent to your wallet.' });
+                if (s === 'COMPLETED') toast({ title: 'Success!', description: `Your ${selectedToken} has been sent to your wallet.` });
                 else if (s === 'FAILED') toast({ title: 'Order Failed', description: 'Payment verification failed.', variant: 'destructive' });
             }
         } catch { /* silent */ } finally {
@@ -297,8 +302,30 @@ export default function RampaOnRampFlow({
                         </div>
                     </div>
 
+                    {/* Token Selector */}
                     <div className="bg-slate-700/40 rounded-2xl p-4 border border-slate-600/40">
-                        <span className="text-xs font-medium text-slate-400 block mb-3">Amount to Receive (USDT)</span>
+                        <span className="text-xs font-medium text-slate-400 block mb-3">Receive Token</span>
+                        <div className="grid grid-cols-2 gap-2">
+                            {(['USDT', 'USDC'] as const).map((t) => (
+                                <button
+                                    key={t}
+                                    onClick={() => setSelectedToken(t)}
+                                    className={cn(
+                                        'flex items-center justify-center gap-2 p-2.5 rounded-xl border text-xs font-semibold transition-all',
+                                        selectedToken === t
+                                            ? 'bg-blue-600/20 border-blue-500/40 text-white'
+                                            : 'bg-slate-900/30 border-slate-700/60 text-slate-400 hover:border-slate-600'
+                                    )}
+                                >
+                                    <span>{t}</span>
+                                    <span className="text-[9px] text-slate-500 font-normal">{t === 'USDC' ? 'Base' : 'BEP20'}</span>
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="bg-slate-700/40 rounded-2xl p-4 border border-slate-600/40">
+                        <span className="text-xs font-medium text-slate-400 block mb-3">Amount to Receive ({selectedToken})</span>
                         <Input
                             type="number"
                             placeholder={`Min ${minUsdt} USDT`}
@@ -372,7 +399,7 @@ export default function RampaOnRampFlow({
                     </div>
 
                     <div className="bg-slate-700/40 rounded-2xl p-4 border border-slate-600/40">
-                        <span className="text-xs font-medium text-slate-400 block mb-2">Receive Address (BSC/BEP20)</span>
+                        <span className="text-xs font-medium text-slate-400 block mb-2">Receive Address ({networkLabel})</span>
                         <div className="p-2.5 rounded-xl border border-slate-700/60 bg-slate-900/30 flex items-center justify-between gap-2">
                             <p className="text-[10px] text-slate-200 truncate font-mono flex-1">{resolvedAddress || 'No wallet address available'}</p>
                             {resolvedAddress && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />}
@@ -392,11 +419,11 @@ export default function RampaOnRampFlow({
                         </div>
                         <div className="flex justify-between text-[10px]">
                             <span className="text-slate-400">You receive</span>
-                            <span className="text-emerald-400 font-semibold">{amountUsdt ? `${Number(amountUsdt).toFixed(2)} USDT` : '—'}</span>
+                            <span className="text-emerald-400 font-semibold">{amountUsdt ? `${Number(amountUsdt).toFixed(2)} ${selectedToken}` : '—'}</span>
                         </div>
                         <div className="flex justify-between text-[10px]">
                             <span className="text-slate-400">Network</span>
-                            <span className="text-slate-300">BSC (BEP20)</span>
+                            <span className="text-slate-300">{networkLabel}</span>
                         </div>
                     </div>
 
@@ -429,7 +456,7 @@ export default function RampaOnRampFlow({
                             </div>
                             <div className="text-right">
                                 <p className="text-[10px] font-medium text-slate-400">You Receive</p>
-                                <p className="text-sm font-bold text-emerald-400">{order.amount_usdt} USDT</p>
+                                <p className="text-sm font-bold text-emerald-400">{order.amount_usdt} {selectedToken}</p>
                             </div>
                         </div>
                         {order.expires_at && (
@@ -496,10 +523,10 @@ export default function RampaOnRampFlow({
                             <p className="text-[10px] text-slate-400 font-medium">NEXT STEPS</p>
                             <p className="text-xs text-slate-200 mt-1 leading-relaxed">
                                 {orderStatus === 'COMPLETED'
-                                    ? 'Your deposit is complete! USDT has been sent to your wallet on BSC.'
+                                    ? `Your deposit is complete! ${selectedToken} has been sent to your wallet on ${networkLabel}.`
                                     : orderStatus === 'FAILED'
                                         ? 'Verification failed. Please contact support if you have already sent payment.'
-                                        : 'Your payment is being verified. Once confirmed, USDT will be sent to your wallet on BSC. This may take a few minutes.'}
+                                        : `Your payment is being verified. Once confirmed, ${selectedToken} will be sent to your wallet on ${networkLabel}. This may take a few minutes.`}
                             </p>
                         </div>
                     </div>

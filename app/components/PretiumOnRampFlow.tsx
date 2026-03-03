@@ -121,8 +121,8 @@ export default function PretiumOnRampFlow({ walletAddress, asset, onBack }: Pret
 
   useEffect(() => {
     const fetchNetworks = async () => {
-      // Tanzania uses Snaville (P2P), not Pretium networks
-      if (fiat === 'TZS') {
+      // Tanzania and Malawi use P2P flows, not Pretium networks
+      if (fiat === 'TZS' || fiat === 'MWK') {
         setNetworks([]);
         setLoadingNetworks(false);
         return;
@@ -175,8 +175,8 @@ export default function PretiumOnRampFlow({ walletAddress, asset, onBack }: Pret
 
   useEffect(() => {
     const fetchRate = async () => {
-      // Tanzania uses Snaville (P2P) rates, not Pretium
-      if (fiat === 'TZS') {
+      // Tanzania and Malawi use P2P flows, not Pretium rates
+      if (fiat === 'TZS' || fiat === 'MWK') {
         setExchangeRate(null);
         setLoadingRate(false);
         return;
