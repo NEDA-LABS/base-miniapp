@@ -38,6 +38,7 @@ interface RampaBuyOrder {
 type RampaOrderStatus = 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED' | 'EXPIRED' | 'CANCELLED';
 
 const NEDAPAY_API_BASE = 'https://api.nedapay.xyz';
+const NEDAPAY_API_KEY = process.env.NEXT_PUBLIC_NEDAPAY_API_KEY;
 
 interface RampaOnRampFlowProps {
     walletAddress?: string;
@@ -85,19 +86,13 @@ export default function RampaOnRampFlow({
     // Fetch Rates
     useEffect(() => {
         const fetchRates = async () => {
-            const apiKey = process.env.NEXT_PUBLIC_NEDAPAY_API_KEY;
-            console.log('[Rampa] Fetching rates...', { url: `${NEDAPAY_API_BASE}/api/v1/ramp/rampa/rates`, hasKey: !!apiKey });
+            if (!NEDAPAY_API_KEY) return;
             setLoadingRates(true);
             try {
-                if (!apiKey) {
-                    console.warn('[Rampa] No API key found for rates');
-                    return;
-                }
                 const res = await fetch(`${NEDAPAY_API_BASE}/api/v1/ramp/rampa/rates`, {
-                    headers: { 'x-api-key': apiKey },
+                    headers: { 'x-api-key': NEDAPAY_API_KEY },
                 });
                 const data = await res.json();
-                console.log('[Rampa] Rates response:', data);
                 if (res.ok && data.success) {
                     // Try different possible field names from backend/service variations
                     const rate = data.rates?.buy_rate_usdt || data.rates?.buy_rate;
@@ -107,12 +102,8 @@ export default function RampaOnRampFlow({
                     const max = data.limits?.max_usdt || data.limits?.max || 10000;
                     setMinUsdt(min);
                     setMaxUsdt(max);
-                } else {
-                    console.error('[Rampa] Rates fetch failed:', data);
                 }
-            } catch (err) {
-                console.error('[Rampa] Rates fetch error:', err);
-            } finally {
+            } catch { /* silent */ } finally {
                 setLoadingRates(false);
             }
         };
@@ -122,19 +113,13 @@ export default function RampaOnRampFlow({
     // Fetch Payment Methods
     useEffect(() => {
         const fetchMethods = async () => {
-            const apiKey = process.env.NEXT_PUBLIC_NEDAPAY_API_KEY;
-            console.log('[Rampa] Fetching payment methods...', { url: `${NEDAPAY_API_BASE}/api/v1/ramp/rampa/payment-methods`, hasKey: !!apiKey });
+            if (!NEDAPAY_API_KEY) return;
             setLoadingMethods(true);
             try {
-                if (!apiKey) {
-                    console.warn('[Rampa] No API key found for payment methods');
-                    return;
-                }
                 const res = await fetch(`${NEDAPAY_API_BASE}/api/v1/ramp/rampa/payment-methods`, {
-                    headers: { 'x-api-key': apiKey },
+                    headers: { 'x-api-key': NEDAPAY_API_KEY },
                 });
                 const data = await res.json();
-                console.log('[Rampa] Payment methods response:', data);
                 if (res.ok && Array.isArray(data.payment_methods)) {
                     // Map name to provider if needed to match frontend expectation
                     const methods = data.payment_methods.map((m: any) => ({
@@ -143,11 +128,8 @@ export default function RampaOnRampFlow({
                     }));
                     setPaymentMethods(methods);
                     if (methods.length > 0) setSelectedMethodId(methods[0].id);
-                } else {
-                    console.error('[Rampa] Payment methods fetch failed:', data);
                 }
-            } catch (err) {
-                console.error('[Rampa] Payment methods fetch error:', err);
+            } catch {
                 toast({ title: 'Error', description: 'Failed to load payment methods.', variant: 'destructive' });
             } finally {
                 setLoadingMethods(false);
@@ -164,8 +146,8 @@ export default function RampaOnRampFlow({
 
     const isAmountValid = useMemo(() => {
         const usdt = Number(amountUsdt);
-        return Number.isFinite(usdt) && usdt >= minUsdt && usdt <= maxUsdt;
-    }, [amountUsdt, minUsdt, maxUsdt]);
+        return buyRate !== null && Number.isFinite(usdt) && usdt >= minUsdt && usdt <= maxUsdt;
+    }, [amountUsdt, buyRate, minUsdt, maxUsdt]);
 
     const selectedMethod = paymentMethods.find(m => m.id === selectedMethodId) || null;
     const canProceed = isAmountValid && Boolean(fullName.trim()) && Boolean(phone.trim()) && Boolean(selectedMethodId) && Boolean(resolvedAddress);
@@ -191,14 +173,13 @@ export default function RampaOnRampFlow({
         }
         setSubmitting(true);
         try {
-            const apiKey = process.env.NEXT_PUBLIC_NEDAPAY_API_KEY;
-            if (!apiKey) {
+            if (!NEDAPAY_API_KEY) {
                 toast({ title: 'Config Error', description: 'API Key missing', variant: 'destructive' });
                 return;
             }
             const res = await fetch(`${NEDAPAY_API_BASE}/api/v1/ramp/rampa/onramp`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey },
+                headers: { 'Content-Type': 'application/json', 'x-api-key': NEDAPAY_API_KEY },
                 body: JSON.stringify({
                     amount_usdt: Number(amountUsdt),
                     destination_address: resolvedAddress,
@@ -235,11 +216,10 @@ export default function RampaOnRampFlow({
         }
         setVerifying(true);
         try {
-            const apiKey = process.env.NEXT_PUBLIC_NEDAPAY_API_KEY;
-            if (!apiKey) return;
+            if (!NEDAPAY_API_KEY) return;
             const res = await fetch(`${NEDAPAY_API_BASE}/api/v1/ramp/rampa/onramp/verify`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey },
+                headers: { 'Content-Type': 'application/json', 'x-api-key': NEDAPAY_API_KEY },
                 body: JSON.stringify({ order_number: order.order_number, transaction_id: transactionId.trim() }),
             });
             const data = await res.json();
@@ -261,10 +241,9 @@ export default function RampaOnRampFlow({
         if (!order) return;
         setPolling(true);
         try {
-            const apiKey = process.env.NEXT_PUBLIC_NEDAPAY_API_KEY;
-            if (!apiKey) return;
+            if (!NEDAPAY_API_KEY) return;
             const res = await fetch(`${NEDAPAY_API_BASE}/api/v1/ramp/rampa/orders/${order.order_number}`, {
-                headers: { 'x-api-key': apiKey },
+                headers: { 'x-api-key': NEDAPAY_API_KEY },
             });
             const data = await res.json();
             if (res.ok && data.order?.status) {
@@ -324,7 +303,15 @@ export default function RampaOnRampFlow({
                             <span className="text-xs font-medium text-slate-400">Exchange Rate (MWK)</span>
                             {loadingRates && <Loader2 className="w-3 h-3 animate-spin text-slate-400" />}
                         </div>
-                        <div className="grid grid-cols-2 gap-3">
+                        <div className="grid grid-cols-2 gap-3 relative">
+                            {loadingRates && (
+                                <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-[1px] rounded-xl flex items-center justify-center z-10 border border-blue-500/20">
+                                    <div className="flex items-center gap-2">
+                                        <Loader2 className="w-4 h-4 animate-spin text-blue-400" />
+                                        <span className="text-[10px] font-medium text-blue-200">Fetching rates...</span>
+                                    </div>
+                                </div>
+                            )}
                             <div className="p-2.5 rounded-xl border border-slate-700/60 bg-slate-900/30">
                                 <span className="text-[10px] text-slate-400 block">Buy Rate</span>
                                 <span className="text-xs font-semibold text-white">{buyRate ? `1 USDT ≈ ${buyRate.toLocaleString()} MWK` : '—'}</span>
@@ -424,7 +411,7 @@ export default function RampaOnRampFlow({
                         <span className="text-xs font-medium text-slate-400 block">Your Details</span>
                         <div className="space-y-2">
                             <span className="text-xs font-medium text-slate-400">Full Name (as on Mobile Money)</span>
-                            <Input type="text" placeholder="e.g., John Phiri" value={fullName} onChange={(e) => setFullName(e.target.value)} className="w-full px-2.5 py-2 bg-slate-900/30 border border-slate-700/60 rounded-xl text-white text-xs placeholder:text-slate-500 focus:ring-2 focus:ring-blue-500/50 focus:border-transparent" />
+                            <Input type="text" placeholder="e.g., John Doe" value={fullName} onChange={(e) => setFullName(e.target.value)} className="w-full px-2.5 py-2 bg-slate-900/30 border border-slate-700/60 rounded-xl text-white text-xs placeholder:text-slate-500 focus:ring-2 focus:ring-blue-500/50 focus:border-transparent" />
                         </div>
                         <div className="space-y-2">
                             <span className="text-xs font-medium text-slate-400">Phone Number</span>
