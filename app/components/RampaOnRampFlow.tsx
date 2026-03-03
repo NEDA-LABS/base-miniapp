@@ -350,7 +350,7 @@ export default function RampaOnRampFlow({
                         <span className="text-xs font-medium text-slate-400 block mb-3">Amount to Receive ({selectedToken})</span>
                         <Input
                             type="number"
-                            placeholder={`Min ${minUsdt} USDT`}
+                            placeholder={`Min ${minUsdt} USD`}
                             value={amountUsdt}
                             onChange={(e) => setAmountUsdt(e.target.value)}
                             className="w-full px-2.5 py-2 bg-slate-900/30 border border-slate-700/60 rounded-xl text-white text-xs placeholder:text-slate-500 focus:ring-2 focus:ring-blue-500/50 focus:border-transparent"
@@ -505,8 +505,8 @@ export default function RampaOnRampFlow({
                             </div>
                         </div>
                         <div className="bg-slate-900/30 border border-slate-700/60 rounded-xl p-3">
-                            <p className="text-[10px] text-slate-400 font-medium">IMPORTANT</p>
-                            <p className="text-xs text-slate-200 mt-1 leading-relaxed">Send exactly the MWK amount above to the account number. After sending, enter your mobile money transaction ID below to verify.</p>
+                            <p className="text-[10px] text-slate-400 font-medium uppercase tracking-[0.2em]">Instructions</p>
+                            <p className="text-xs text-slate-200 mt-1 leading-relaxed">{order.payment_instructions.instructions}</p>
                         </div>
                     </div>
 
