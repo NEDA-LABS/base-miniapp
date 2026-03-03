@@ -11,6 +11,7 @@ import type { PretiumAsset, PretiumExchangeRateResponse, PretiumNetwork, Pretium
 import { motion } from 'framer-motion';
 import { stablecoins } from '@/data/stablecoins';
 import SnavilleOnRampFlow from '@/components/SnavilleOnRampFlow';
+import RampaOnRampFlow from '@/components/RampaOnRampFlow';
 
 type SupportedFiat = 'KES' | 'MWK' | 'CDF' | 'GHS' | 'UGX' | 'TZS';
 
@@ -35,7 +36,7 @@ const FIAT_OPTIONS: Array<{ code: SupportedFiat; countryCode: string; label: str
   { code: 'GHS', countryCode: 'GH', label: 'Ghana (GHS)', flag: getCountryFlag('GH') },
   { code: 'KES', countryCode: 'KE', label: 'Kenya (KES)', flag: getCountryFlag('KE') },
   { code: 'TZS', countryCode: 'TZ', label: 'Tanzania (TZS)', flag: getCountryFlag('TZ'), p2p: true },
-  { code: 'MWK', countryCode: 'MW', label: 'Malawi (MWK)', flag: getCountryFlag('MW') },
+  { code: 'MWK', countryCode: 'MW', label: 'Malawi (MWK)', flag: getCountryFlag('MW'), p2p: true },
   { code: 'CDF', countryCode: 'CD', label: 'DR Congo (CDF)', flag: getCountryFlag('CD') },
   { code: 'UGX', countryCode: 'UG', label: 'Uganda (UGX)', flag: getCountryFlag('UG') },
 ];
@@ -385,6 +386,40 @@ export default function PretiumOnRampFlow({ walletAddress, asset, onBack }: Pret
     }
   }, [currentStep, transactionCode, pollStatus]);
 
+  // Malawi P2P: delegate to RampaOnRampFlow with a currency switcher
+  if (fiat === 'MWK') {
+    return (
+      <div className="max-w-4xl mx-auto space-y-3">
+        <div className="bg-slate-800/60 border border-slate-700/60 rounded-2xl px-4 py-3 flex items-center gap-3">
+          <span className="text-xs text-slate-400 flex-shrink-0">Currency:</span>
+          <Select value={fiat} onValueChange={(v) => setFiat(v as SupportedFiat)}>
+            <SelectTrigger showIcon={false} className="h-auto px-2.5 py-1.5 bg-slate-900/30 border border-slate-700/60 rounded-xl shadow-none focus:ring-0 flex-1">
+              <SelectValue>
+                <div className="flex items-center gap-1.5">
+                  <img src={selectedFiatMeta.flag} alt={selectedFiatMeta.code} className="w-4 h-3 rounded-sm object-cover flex-shrink-0" />
+                  <span className="text-xs font-medium text-white">{selectedFiatMeta.label}</span>
+                  <ChevronDown className="h-3.5 w-3.5 text-slate-500 ml-1" />
+                </div>
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent className="bg-slate-800/95 backdrop-blur-xl border border-slate-700/60 rounded-xl shadow-2xl">
+              {FIAT_OPTIONS.map((opt) => (
+                <SelectItem key={opt.code} value={opt.code} className="text-white hover:bg-blue-500/10 focus:bg-blue-500/15 cursor-pointer rounded-lg transition-colors my-1 py-2">
+                  <div className="flex items-center gap-1.5">
+                    <img src={opt.flag} alt={opt.code} className="w-4 h-3 rounded-sm object-cover flex-shrink-0" />
+                    <span className="text-xs">{opt.label}</span>
+                    {opt.p2p && <span className="text-[9px] bg-blue-500/20 text-blue-300 border border-blue-500/30 rounded px-1 py-0.5 ml-1">P2P</span>}
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <RampaOnRampFlow walletAddress={walletAddress} onBack={onBack} />
+      </div>
+    );
+  }
+
   // Tanzania P2P: delegate to SnavilleOnRampFlow with a currency switcher
   if (fiat === 'TZS') {
     return (
@@ -434,8 +469,8 @@ export default function PretiumOnRampFlow({ walletAddress, asset, onBack }: Pret
               <div key={step} className="flex items-center">
                 <div
                   className={`w-6 h-6 rounded-full text-[10px] font-medium flex items-center justify-center border transition-colors ${currentStep >= step
-                      ? 'bg-purple-500/20 border-purple-500/50 text-purple-200'
-                      : 'bg-slate-800/60 border-slate-700/60 text-slate-500'
+                    ? 'bg-purple-500/20 border-purple-500/50 text-purple-200'
+                    : 'bg-slate-800/60 border-slate-700/60 text-slate-500'
                     }`}
                 >
                   {step}
@@ -692,10 +727,10 @@ export default function PretiumOnRampFlow({ walletAddress, asset, onBack }: Pret
                   </div>
                   <div
                     className={`px-2 py-1 rounded-full text-[10px] font-medium border flex items-center gap-1 ${statusTone === 'success'
-                        ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-200'
-                        : statusTone === 'failed'
-                          ? 'bg-red-500/15 border-red-500/40 text-red-200'
-                          : 'bg-amber-500/15 border-amber-500/40 text-amber-200'
+                      ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-200'
+                      : statusTone === 'failed'
+                        ? 'bg-red-500/15 border-red-500/40 text-red-200'
+                        : 'bg-amber-500/15 border-amber-500/40 text-amber-200'
                       }`}
                   >
                     {statusTone === 'success' ? (
