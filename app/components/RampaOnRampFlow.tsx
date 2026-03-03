@@ -38,7 +38,6 @@ interface RampaBuyOrder {
 type RampaOrderStatus = 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED' | 'EXPIRED' | 'CANCELLED';
 
 const NEDAPAY_API_BASE = 'https://api.nedapay.xyz';
-const NEDAPAY_API_KEY = process.env.NEXT_PUBLIC_NEDAPAY_API_KEY;
 
 interface RampaOnRampFlowProps {
     walletAddress?: string;
@@ -86,19 +85,34 @@ export default function RampaOnRampFlow({
     // Fetch Rates
     useEffect(() => {
         const fetchRates = async () => {
+            const apiKey = process.env.NEXT_PUBLIC_NEDAPAY_API_KEY;
+            console.log('[Rampa] Fetching rates...', { url: `${NEDAPAY_API_BASE}/api/v1/ramp/rampa/rates`, hasKey: !!apiKey });
             setLoadingRates(true);
             try {
-                if (!NEDAPAY_API_KEY) return;
+                if (!apiKey) {
+                    console.warn('[Rampa] No API key found for rates');
+                    return;
+                }
                 const res = await fetch(`${NEDAPAY_API_BASE}/api/v1/ramp/rampa/rates`, {
-                    headers: { 'x-api-key': NEDAPAY_API_KEY },
+                    headers: { 'x-api-key': apiKey },
                 });
                 const data = await res.json();
+                console.log('[Rampa] Rates response:', data);
                 if (res.ok && data.success) {
-                    setBuyRate(data.rates?.buy_rate ?? null);
-                    setMinUsdt(data.limits?.min_usdt ?? 1);
-                    setMaxUsdt(data.limits?.max_usdt ?? 10000);
+                    // Try different possible field names from backend/service variations
+                    const rate = data.rates?.buy_rate_usdt || data.rates?.buy_rate;
+                    setBuyRate(rate ?? null);
+
+                    const min = data.limits?.min_usdt || data.limits?.min || 1;
+                    const max = data.limits?.max_usdt || data.limits?.max || 10000;
+                    setMinUsdt(min);
+                    setMaxUsdt(max);
+                } else {
+                    console.error('[Rampa] Rates fetch failed:', data);
                 }
-            } catch { /* silent */ } finally {
+            } catch (err) {
+                console.error('[Rampa] Rates fetch error:', err);
+            } finally {
                 setLoadingRates(false);
             }
         };
@@ -108,18 +122,32 @@ export default function RampaOnRampFlow({
     // Fetch Payment Methods
     useEffect(() => {
         const fetchMethods = async () => {
+            const apiKey = process.env.NEXT_PUBLIC_NEDAPAY_API_KEY;
+            console.log('[Rampa] Fetching payment methods...', { url: `${NEDAPAY_API_BASE}/api/v1/ramp/rampa/payment-methods`, hasKey: !!apiKey });
             setLoadingMethods(true);
             try {
-                if (!NEDAPAY_API_KEY) return;
+                if (!apiKey) {
+                    console.warn('[Rampa] No API key found for payment methods');
+                    return;
+                }
                 const res = await fetch(`${NEDAPAY_API_BASE}/api/v1/ramp/rampa/payment-methods`, {
-                    headers: { 'x-api-key': NEDAPAY_API_KEY },
+                    headers: { 'x-api-key': apiKey },
                 });
                 const data = await res.json();
+                console.log('[Rampa] Payment methods response:', data);
                 if (res.ok && Array.isArray(data.payment_methods)) {
-                    setPaymentMethods(data.payment_methods);
-                    if (data.payment_methods.length > 0) setSelectedMethodId(data.payment_methods[0].id);
+                    // Map name to provider if needed to match frontend expectation
+                    const methods = data.payment_methods.map((m: any) => ({
+                        ...m,
+                        provider: m.provider || m.name // Handle backend 'name' vs frontend 'provider'
+                    }));
+                    setPaymentMethods(methods);
+                    if (methods.length > 0) setSelectedMethodId(methods[0].id);
+                } else {
+                    console.error('[Rampa] Payment methods fetch failed:', data);
                 }
-            } catch {
+            } catch (err) {
+                console.error('[Rampa] Payment methods fetch error:', err);
                 toast({ title: 'Error', description: 'Failed to load payment methods.', variant: 'destructive' });
             } finally {
                 setLoadingMethods(false);
@@ -163,10 +191,14 @@ export default function RampaOnRampFlow({
         }
         setSubmitting(true);
         try {
-            if (!NEDAPAY_API_KEY) return;
+            const apiKey = process.env.NEXT_PUBLIC_NEDAPAY_API_KEY;
+            if (!apiKey) {
+                toast({ title: 'Config Error', description: 'API Key missing', variant: 'destructive' });
+                return;
+            }
             const res = await fetch(`${NEDAPAY_API_BASE}/api/v1/ramp/rampa/onramp`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'x-api-key': NEDAPAY_API_KEY },
+                headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey },
                 body: JSON.stringify({
                     amount_usdt: Number(amountUsdt),
                     destination_address: resolvedAddress,
@@ -203,10 +235,11 @@ export default function RampaOnRampFlow({
         }
         setVerifying(true);
         try {
-            if (!NEDAPAY_API_KEY) return;
+            const apiKey = process.env.NEXT_PUBLIC_NEDAPAY_API_KEY;
+            if (!apiKey) return;
             const res = await fetch(`${NEDAPAY_API_BASE}/api/v1/ramp/rampa/onramp/verify`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'x-api-key': NEDAPAY_API_KEY },
+                headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey },
                 body: JSON.stringify({ order_number: order.order_number, transaction_id: transactionId.trim() }),
             });
             const data = await res.json();
@@ -228,9 +261,10 @@ export default function RampaOnRampFlow({
         if (!order) return;
         setPolling(true);
         try {
-            if (!NEDAPAY_API_KEY) return;
+            const apiKey = process.env.NEXT_PUBLIC_NEDAPAY_API_KEY;
+            if (!apiKey) return;
             const res = await fetch(`${NEDAPAY_API_BASE}/api/v1/ramp/rampa/orders/${order.order_number}`, {
-                headers: { 'x-api-key': NEDAPAY_API_KEY },
+                headers: { 'x-api-key': apiKey },
             });
             const data = await res.json();
             if (res.ok && data.order?.status) {
