@@ -76,11 +76,13 @@ export default function RampaOffRampFlow({
                 const ratesData = await ratesRes.json();
                 const methodsData = await methodsRes.json();
 
-                if (ratesRes.ok && ratesData.success) {
+                // Backend returns raw data (rates.rates, limits); accept both wrapped and unwrapped
+                if (ratesRes.ok && (ratesData.rates || ratesData.data?.rates)) {
                     setRates(ratesData.data || ratesData);
                 }
 
-                if (methodsRes.ok && (methodsData.success || methodsData.payment_methods)) {
+                // Payment methods: backend returns { payment_methods: [...] }; include both mobile_money and bank_transfer
+                if (methodsRes.ok && !methodsData.error) {
                     const mths = methodsData.data?.payment_methods || methodsData.payment_methods || [];
                     setPaymentMethods(mths);
 
@@ -272,6 +274,15 @@ export default function RampaOffRampFlow({
                 {/* Recipient Card */}
                 <div className="bg-[#151925] rounded-2xl p-4 border border-slate-800/50">
                     <p className="text-gray-400 text-xs font-medium mb-3">Recipient Information (via Rampa)</p>
+                    {/* Rate in this step */}
+                    {amount && (
+                        <div className="mb-3 p-2 rounded-lg bg-slate-800/40 border border-slate-700/40">
+                            <span className="text-gray-400 text-[10px]">Exchange rate: </span>
+                            <span className="text-white text-xs font-medium">
+                                1 USDC ≈ {loadingRates ? '...' : (activeRate?.toLocaleString() ?? '—')} {country.currency}
+                            </span>
+                        </div>
+                    )}
                     <div className="space-y-3">
                         {/* Payment Type Toggle */}
                         <div className="flex bg-slate-900/40 p-1 rounded-xl border border-slate-700/40 mb-3">

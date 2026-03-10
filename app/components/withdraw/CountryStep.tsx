@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { useWithdraw, WITHDRAW_COUNTRIES, Stablecoin } from '@/contexts/WithdrawContext';
+import { useWithdraw, WITHDRAW_COUNTRIES, getProviderForCountry, Stablecoin } from '@/contexts/WithdrawContext';
 import { ArrowLeftIcon, ChevronDownIcon, CheckCircleIcon } from '@heroicons/react/24/solid';
 
 interface CountryStepProps {
@@ -16,16 +16,41 @@ export default function CountryStep({ walletBalance, stablecoins }: CountryStepP
   const [loadingRate, setLoadingRate] = useState(false);
   const geoFetched = useRef(false);
 
-  // Fetch rate whenever country or amount changes
+  // Fetch rate whenever country or amount changes. Use Rampa for Malawi (MW), Paycrest for others.
   useEffect(() => {
     if (!country || !amount) return;
     let cancelled = false;
     setLoadingRate(true);
-    fetch(`/api/paycrest/rate?token=USDC&amount=${amount}&fiat=${country.currency}`)
-      .then(r => r.json())
-      .then(data => { if (!cancelled && data.rate) setRate(data.rate); })
-      .catch(err => console.error('Error fetching rate:', err))
-      .finally(() => { if (!cancelled) setLoadingRate(false); });
+    const provider = getProviderForCountry(country.code);
+
+    if (provider === 'rampa') {
+      // Malawi: Rampa API sell rate (USDC → MWK)
+      fetch('/api/rampa/rates')
+        .then(r => r.json())
+        .then(data => {
+          if (cancelled) return;
+          const ratesObj = data?.rates ?? data?.data?.rates;
+          const sellRate = ratesObj?.sell_rate_usdc ?? ratesObj?.sell_rate_usdt;
+          if (typeof sellRate === 'number' && sellRate > 0) {
+            setRate(String(sellRate));
+          } else {
+            setRate(null);
+          }
+        })
+        .catch(err => {
+          if (!cancelled) setRate(null);
+          console.error('Error fetching Rampa rate:', err);
+        })
+        .finally(() => { if (!cancelled) setLoadingRate(false); });
+    } else {
+      // Paycrest for Nigeria, Kenya, Tanzania, Uganda; Pretium uses its own flow
+      fetch(`/api/paycrest/rate?token=USDC&amount=${amount}&fiat=${country.currency}`)
+        .then(r => r.json())
+        .then(data => { if (!cancelled && data.rate) setRate(data.rate); })
+        .catch(err => console.error('Error fetching rate:', err))
+        .finally(() => { if (!cancelled) setLoadingRate(false); });
+    }
+
     return () => { cancelled = true; };
   }, [country, amount]);
 

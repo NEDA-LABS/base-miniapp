@@ -111,22 +111,31 @@ export default function RampaOnRampFlow({
         fetchRates();
     }, []);
 
-    // Fetch Payment Methods
+    // Fetch Payment Methods (mobile money + banks)
     useEffect(() => {
         const fetchMethods = async () => {
             setLoadingMethods(true);
             try {
                 const res = await fetch(`/api/rampa/payment-methods`);
                 const data = await res.json();
-                if (res.ok && Array.isArray(data.payment_methods)) {
-                    // Map name to provider if needed to match frontend expectation
-                    const methods = data.payment_methods.map((m: any) => ({
+                const raw = data?.data?.payment_methods ?? data?.payment_methods;
+                const list = Array.isArray(raw) ? raw : [];
+                if (res.ok && !data.error && list.length > 0) {
+                    const methods = list.map((m: any) => ({
                         ...m,
-                        provider: m.provider || m.name // Handle backend 'name' vs frontend 'provider'
+                        provider: m.provider || m.name,
+                        type: m.type || 'mobile_money',
                     }));
                     setPaymentMethods(methods);
-                    const initialMobile = methods.find((m: any) => m.type === 'mobile_money');
-                    if (initialMobile) setSelectedMethodId(initialMobile.id);
+                    const firstMobile = methods.find((m: any) => m.type === 'mobile_money');
+                    const firstBank = methods.find((m: any) => m.type === 'bank_transfer');
+                    if (firstMobile) {
+                        setPaymentCategory('mobile_money');
+                        setSelectedMethodId(firstMobile.id);
+                    } else if (firstBank) {
+                        setPaymentCategory('bank_transfer');
+                        setSelectedMethodId(firstBank.id);
+                    }
                 }
             } catch {
                 toast({ title: 'Error', description: 'Failed to load payment methods.', variant: 'destructive' });
@@ -399,40 +408,30 @@ export default function RampaOnRampFlow({
                         <span className="text-xs font-medium text-slate-400 block">
                             {paymentCategory === 'mobile_money' ? 'Mobile Money Provider' : 'Bank'}
                         </span>
-                        <div className="grid gap-2">
-                            {loadingMethods ? (
-                                <div className="flex items-center gap-2 p-3 rounded-xl bg-slate-900/30 border border-slate-700/60">
-                                    <Loader2 className="w-4 h-4 animate-spin text-slate-400" />
-                                    <span className="text-xs text-slate-400">Loading providers...</span>
-                                </div>
-                            ) : filteredMethods.length === 0 ? (
-                                <div className="p-3 text-center text-xs text-slate-400 bg-slate-900/30 rounded-xl border border-slate-700/60">
-                                    No providers found for this method.
-                                </div>
-                            ) : (
-                                filteredMethods.map((m) => (
-                                    <button
-                                        key={m.id}
-                                        onClick={() => setSelectedMethodId(m.id)}
-                                        className={cn(
-                                            'flex items-center gap-3 w-full p-3 rounded-xl border text-left transition-all',
-                                            selectedMethodId === m.id
-                                                ? 'bg-blue-600/20 border-blue-500/40 text-white'
-                                                : 'bg-slate-900/30 border-slate-700/60 text-slate-300 hover:border-slate-600/60'
-                                        )}
-                                    >
-                                        <div className={cn('p-1.5 rounded-lg', selectedMethodId === m.id ? 'bg-blue-500/20' : 'bg-slate-700/60')}>
-                                            <Smartphone className="w-3.5 h-3.5" />
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                            <p className="text-xs font-semibold truncate">{m.provider}</p>
-                                            {m.account_number && <p className="text-[10px] text-slate-400 truncate">{m.account_number}</p>}
-                                        </div>
-                                        {selectedMethodId === m.id && <CheckCircle2 className="w-4 h-4 text-blue-400 flex-shrink-0" />}
-                                    </button>
-                                ))
-                            )}
-                        </div>
+                        {loadingMethods ? (
+                            <div className="flex items-center gap-2 p-3 rounded-xl bg-slate-900/30 border border-slate-700/60">
+                                <Loader2 className="w-4 h-4 animate-spin text-slate-400" />
+                                <span className="text-xs text-slate-400">Loading providers...</span>
+                            </div>
+                        ) : filteredMethods.length === 0 ? (
+                            <div className="p-3 text-center text-xs text-slate-400 bg-slate-900/30 rounded-xl border border-slate-700/60">
+                                No providers found for this method.
+                            </div>
+                        ) : (
+                            <select
+                                value={selectedMethodId}
+                                onChange={(e) => setSelectedMethodId(e.target.value)}
+                                className="w-full px-3 py-2.5 bg-slate-900/30 border border-slate-700/60 rounded-xl text-white text-xs focus:ring-2 focus:ring-blue-500/50 focus:border-transparent appearance-none cursor-pointer"
+                                style={{ backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%2394a3b8' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`, backgroundPosition: 'right 0.5rem center', backgroundRepeat: 'no-repeat', backgroundSize: '1.25em 1.25em', paddingRight: '2rem' }}
+                            >
+                                <option value="">{paymentCategory === 'mobile_money' ? 'Select mobile money provider' : 'Select bank'}</option>
+                                {filteredMethods.map((m) => (
+                                    <option key={m.id} value={m.id} className="bg-slate-800 text-white">
+                                        {m.provider}
+                                    </option>
+                                ))}
+                            </select>
+                        )}
                     </div>
 
                     <div className="bg-slate-700/40 rounded-2xl p-4 border border-slate-600/40 space-y-3">
