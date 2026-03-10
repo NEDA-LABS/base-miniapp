@@ -39,8 +39,7 @@ interface RampaBuyOrder {
 
 type RampaOrderStatus = 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED' | 'EXPIRED' | 'CANCELLED';
 
-const NEDAPAY_API_BASE = 'https://api.nedapay.xyz';
-const NEDAPAY_API_KEY = process.env.NEXT_PUBLIC_NEDAPAY_API_KEY;
+
 
 interface RampaOnRampFlowProps {
     walletAddress?: string;
@@ -91,12 +90,9 @@ export default function RampaOnRampFlow({
     // Fetch Rates
     useEffect(() => {
         const fetchRates = async () => {
-            if (!NEDAPAY_API_KEY) return;
             setLoadingRates(true);
             try {
-                const res = await fetch(`${NEDAPAY_API_BASE}/api/v1/ramp/rampa/rates`, {
-                    headers: { 'x-api-key': NEDAPAY_API_KEY },
-                });
+                const res = await fetch(`/api/rampa/rates`);
                 const data = await res.json();
                 if (res.ok && data.success) {
                     // Try different possible field names from backend/service variations
@@ -118,12 +114,9 @@ export default function RampaOnRampFlow({
     // Fetch Payment Methods
     useEffect(() => {
         const fetchMethods = async () => {
-            if (!NEDAPAY_API_KEY) return;
             setLoadingMethods(true);
             try {
-                const res = await fetch(`${NEDAPAY_API_BASE}/api/v1/ramp/rampa/payment-methods`, {
-                    headers: { 'x-api-key': NEDAPAY_API_KEY },
-                });
+                const res = await fetch(`/api/rampa/payment-methods`);
                 const data = await res.json();
                 if (res.ok && Array.isArray(data.payment_methods)) {
                     // Map name to provider if needed to match frontend expectation
@@ -189,13 +182,9 @@ export default function RampaOnRampFlow({
         }
         setSubmitting(true);
         try {
-            if (!NEDAPAY_API_KEY) {
-                toast({ title: 'Config Error', description: 'API Key missing', variant: 'destructive' });
-                return;
-            }
-            const res = await fetch(`${NEDAPAY_API_BASE}/api/v1/ramp/rampa/onramp`, {
+            const res = await fetch(`/api/rampa/onramp`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'x-api-key': NEDAPAY_API_KEY },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     amount_usdt: Number(amountUsdt),
                     destination_address: resolvedAddress,
@@ -232,10 +221,9 @@ export default function RampaOnRampFlow({
         }
         setVerifying(true);
         try {
-            if (!NEDAPAY_API_KEY) return;
-            const res = await fetch(`${NEDAPAY_API_BASE}/api/v1/ramp/rampa/onramp/verify`, {
+            const res = await fetch(`/api/rampa/onramp/verify`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'x-api-key': NEDAPAY_API_KEY },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ order_number: order.order_number, transaction_id: transactionId.trim() }),
             });
             const data = await res.json();
@@ -257,10 +245,7 @@ export default function RampaOnRampFlow({
         if (!order) return;
         setPolling(true);
         try {
-            if (!NEDAPAY_API_KEY) return;
-            const res = await fetch(`${NEDAPAY_API_BASE}/api/v1/ramp/rampa/orders/${order.order_number}`, {
-                headers: { 'x-api-key': NEDAPAY_API_KEY },
-            });
+            const res = await fetch(`/api/rampa/orders/${order.order_number}`);
             const data = await res.json();
             if (res.ok && data.order?.status) {
                 const s = data.order.status as RampaOrderStatus;

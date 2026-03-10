@@ -139,32 +139,8 @@ interface Currency {
 
 
 export default function FarcasterMiniApp() {
-  console.log('🚀🚀🚀 NedaPay MiniApp Loading - DEPLOYMENT TEST v6 - FIX CORS ISSUE...');
-  console.log('🔍 Stablecoins array length:', stablecoins.length);
-  console.log('🔍 Last 3 tokens:', stablecoins.slice(-3).map(s => ({ baseToken: s.baseToken, name: s.name, chainId: s.chainId })));
 
-  // SAFE MINIKIT CHECK - AVOID CORS ERRORS
-  if (typeof window !== 'undefined') {
-    try {
-      console.log('🔍 SAFE MINIKIT CHECK - AVOIDING CORS ERRORS:', {
-        hasMiniKit: !!(window as any).MiniKit,
-        miniKitKeys: (window as any).MiniKit ? Object.keys((window as any).MiniKit) : [],
-        // Only check current window, not parent (to avoid CORS)
-        currentWindowLocation: window.location.href,
-        isInFrame: window.self !== window.top,
-        // Check URL parameters for user data
-        urlSearchParams: new URLSearchParams(window.location.search).toString(),
-        // Check hash for user data
-        urlHash: window.location.hash,
-        // Check localStorage for user data
-        hasLocalStorage: !!localStorage,
-        // Check sessionStorage for user data  
-        hasSessionStorage: !!sessionStorage
-      });
-    } catch (error) {
-      console.log('🚫 CORS Error avoided:', error instanceof Error ? error.message : 'Unknown error');
-    }
-  }
+
 
   const { t, i18n } = useTranslation();
   const { authenticated } = usePrivy();
@@ -175,12 +151,6 @@ export default function FarcasterMiniApp() {
   // LISTEN FOR FRAME MESSAGES THAT MIGHT CONTAIN USER DATA
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
-      console.log('📨 FRAME MESSAGE RECEIVED:', {
-        origin: event.origin,
-        data: event.data,
-        source: event.source === window.parent ? 'parent' : 'other'
-      });
-
       // Check if message contains user data
       if (event.data && typeof event.data === 'object') {
         if (event.data.user?.fid || event.data.fid) {
@@ -933,11 +903,9 @@ export default function FarcasterMiniApp() {
   // MiniKit initialization - signal when app is ready
   useEffect(() => {
     if (isSmartWalletEnvironment && setFrameReady) {
-      console.log('Setting MiniKit frame ready...');
       // Add a small delay to ensure everything is loaded
       const timer = setTimeout(() => {
         setFrameReady();
-        console.log('MiniKit frame ready signal sent!');
       }, 1000);
 
       return () => clearTimeout(timer);
@@ -5441,7 +5409,7 @@ export default function FarcasterMiniApp() {
     return (
       <div className="space-y-4">
         {/* Balance Card */}
-         <div className="relative w-full h-64 rounded-3xl overflow-hidden shadow-2xl">
+        <div className="relative w-full h-64 rounded-3xl overflow-hidden shadow-2xl">
           <Image
             src="/Balance Card.png"
             alt="Balance Card"

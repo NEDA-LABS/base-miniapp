@@ -16,8 +16,7 @@ interface RampaOffRampFlowProps {
     preferredPayoutType?: 'mobile_money' | 'bank_transfer';
 }
 
-const NEDAPAY_API_BASE = 'https://api.nedapay.xyz';
-const NEDAPAY_API_KEY = process.env.NEXT_PUBLIC_NEDAPAY_API_KEY;
+
 
 export default function RampaOffRampFlow({
     country,
@@ -41,6 +40,7 @@ export default function RampaOffRampFlow({
     const [loadingMethods, setLoadingMethods] = useState(true);
 
     // Form State
+    const [paymentCategory, setPaymentCategory] = useState<'mobile_money' | 'bank_transfer'>(preferredPayoutType);
     const [selectedNetwork, setSelectedNetwork] = useState<string>('');
     const [recipientName, setRecipientName] = useState<string>('');
     const [accountNumber, setAccountNumber] = useState<string>('');
@@ -68,11 +68,9 @@ export default function RampaOffRampFlow({
             setLoadingMethods(true);
 
             try {
-                if (!NEDAPAY_API_KEY) throw new Error('API key missing');
-
                 const [ratesRes, methodsRes] = await Promise.all([
-                    fetch(`${NEDAPAY_API_BASE}/api/v1/ramp/rampa/rates`, { headers: { 'x-api-key': NEDAPAY_API_KEY } }),
-                    fetch(`${NEDAPAY_API_BASE}/api/v1/ramp/rampa/payment-methods`, { headers: { 'x-api-key': NEDAPAY_API_KEY } })
+                    fetch(`/api/rampa/rates`),
+                    fetch(`/api/rampa/payment-methods`)
                 ]);
 
                 const ratesData = await ratesRes.json();
@@ -105,21 +103,25 @@ export default function RampaOffRampFlow({
 
     const activeRate = useMemo(() => {
         if (!rates?.rates) return null;
-        const r = rates.rates;
-        // Try multiple possible field names from backend/service variations
-        return r.sell_rate_usdc || r.sell_rate_usdt || r.sell_rate || r.buy_rate_usdc || r.buy_rate_usdt || r.buy_rate;
+        return rates.rates.sell_rate_usdc;
     }, [rates]);
 
     const targetAmount = useMemo(() => {
-        if (!amount || !activeRate) return '0.00';
-        return (parseFloat(amount) * activeRate).toFixed(2);
+        if (!amount || !activeRate) return 0;
+        return Math.floor(parseFloat(amount) * activeRate);
     }, [amount, activeRate]);
 
     const filteredMethods = useMemo(() => {
-        // By default filter by preferred type if any exist, else show all
-        const preferred = paymentMethods.filter(m => m.type === preferredPayoutType);
-        return preferred.length > 0 ? preferred : paymentMethods;
-    }, [paymentMethods, preferredPayoutType]);
+        return paymentMethods.filter(m => m.type === paymentCategory);
+    }, [paymentMethods, paymentCategory]);
+
+    useEffect(() => {
+        if (filteredMethods.length > 0 && !filteredMethods.find(m => m.id === selectedNetwork)) {
+            setSelectedNetwork(filteredMethods[0].id);
+        } else if (filteredMethods.length === 0) {
+            setSelectedNetwork('');
+        }
+    }, [filteredMethods, selectedNetwork]);
 
 
     const handleTransaction = useCallback(async () => {
@@ -140,17 +142,13 @@ export default function RampaOffRampFlow({
             }
 
             const amountInWei = parseUnits(amount, usdcToken.decimals);
-            if (!NEDAPAY_API_KEY) throw new Error('API key missing');
-
             // 1. Create Rampa Order to get deposit wallet
-            const orderRes = await fetch(`${NEDAPAY_API_BASE}/api/v1/ramp/rampa/offramp`, {
+            const orderRes = await fetch(`/api/rampa/offramp`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'x-api-key': NEDAPAY_API_KEY },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    // Match the pattern in RampaOnRampFlow where amount_usdt is the primary amount key
-                    amount_usdt: parseFloat(amount),
                     amount_usdc: parseFloat(amount),
-                    recipient_phone: accountNumber, // API handles bank accounts under this if needed or mapped
+                    recipient_phone: accountNumber.replace(/\s+/g, ''),
                     recipient_name: recipientName.trim(),
                     payment_method_id: selectedNetwork,
                     network: 'BASE',
@@ -188,9 +186,9 @@ export default function RampaOffRampFlow({
 
             // 3. Verify
             try {
-                await fetch(`${NEDAPAY_API_BASE}/api/v1/ramp/rampa/offramp/verify`, {
+                await fetch(`/api/rampa/offramp/verify`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'x-api-key': NEDAPAY_API_KEY },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         order_number: orderData.order_number,
                         tx_hash: txHash
@@ -275,6 +273,22 @@ export default function RampaOffRampFlow({
                 <div className="bg-[#151925] rounded-2xl p-4 border border-slate-800/50">
                     <p className="text-gray-400 text-xs font-medium mb-3">Recipient Information (via Rampa)</p>
                     <div className="space-y-3">
+                        {/* Payment Type Toggle */}
+                        <div className="flex bg-slate-900/40 p-1 rounded-xl border border-slate-700/40 mb-3">
+                            <button
+                                onClick={() => setPaymentCategory('mobile_money')}
+                                className={`flex-1 py-1.5 text-[11px] font-medium rounded-lg transition-all ${paymentCategory === 'mobile_money' ? 'bg-blue-600/20 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'}`}
+                            >
+                                Mobile Money
+                            </button>
+                            <button
+                                onClick={() => setPaymentCategory('bank_transfer')}
+                                className={`flex-1 py-1.5 text-[11px] font-medium rounded-lg transition-all ${paymentCategory === 'bank_transfer' ? 'bg-blue-600/20 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'}`}
+                            >
+                                Bank Transfer
+                            </button>
+                        </div>
+
                         {/* Provider Selector */}
                         <div>
                             <label className="block text-[10px] text-gray-400 mb-1">Provider</label>
@@ -341,13 +355,13 @@ export default function RampaOffRampFlow({
                             </div>
                             <div>
                                 <label className="block text-[10px] text-gray-400 mb-1">
-                                    {preferredPayoutType === 'bank_transfer' ? 'Account Number' : 'Phone Number'}
+                                    {paymentCategory === 'bank_transfer' ? 'Account Number' : 'Phone Number'}
                                 </label>
                                 <input
                                     type="text"
                                     value={accountNumber}
                                     onChange={(e) => setAccountNumber(e.target.value)}
-                                    placeholder={preferredPayoutType === 'bank_transfer' ? 'Bank Account No.' : 'e.g. 265... '}
+                                    placeholder={paymentCategory === 'bank_transfer' ? 'Bank Account No.' : 'e.g. 265... '}
                                     className="w-full bg-slate-800/50 border border-slate-700/50 text-white rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 placeholder:text-gray-600"
                                 />
                             </div>
@@ -361,7 +375,7 @@ export default function RampaOffRampFlow({
                     <div className="space-y-2">
                         <div className="flex justify-between items-center">
                             <span className="text-gray-400 text-xs">Recipient gets</span>
-                            <span className="text-green-400 text-sm font-bold">≈ {targetAmount} {country.currency}</span>
+                            <span className="text-green-400 text-sm font-bold">≈ {targetAmount.toLocaleString()} {country.currency}</span>
                         </div>
                         <div className="h-px bg-slate-800/80 my-2" />
                         <div className="flex justify-between items-center">

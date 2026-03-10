@@ -38,7 +38,7 @@ function WithdrawFlowInner({
   isConnected,
   stablecoins,
 }: WithdrawFlowProps) {
-  const { step, providerType, reset } = useWithdraw();
+  const { step, providerType, reset, country, amount } = useWithdraw();
 
   const handleSuccess = () => {
     // Reset and go back to home after success
@@ -78,19 +78,14 @@ function WithdrawFlowInner({
       }
 
       if (providerType === 'rampa') {
+        if (!country) return null;
         return (
           <RampaOffRampFlow
-            country={{
-              id: country?.code?.toLowerCase() || '',
-              name: country?.name || '',
-              currency: country?.currency || '',
-              currencySymbol: country?.currency || '',
-              code: country?.code || ''
-            }}
+            country={country}
             stablecoins={stablecoins}
-            token="USDC"
-            initialAmount={amount}
-            preferredPayoutType="mobile_money"
+            switchChain={switchChain}
+            isConnected={isConnected}
+            onSuccess={handleSuccess}
             onBack={onBack}
           />
         );
