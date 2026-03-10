@@ -11,6 +11,7 @@ import { cn } from '../lib/utils';
 interface RampaPaymentMethod {
     id: string;
     provider: string;
+    type: string;
     account_number?: string;
     account_name?: string;
     instructions?: string;
@@ -56,6 +57,9 @@ export default function RampaOnRampFlow({
 
     // Steps: 1=Amount, 2=Details, 3=Instructions, 4=Status
     const [currentStep, setCurrentStep] = useState<1 | 2 | 3 | 4>(1);
+
+    // Payment Type
+    const [paymentCategory, setPaymentCategory] = useState<'mobile_money' | 'bank_transfer'>('mobile_money');
 
     // Token/Network selection
     const [selectedToken, setSelectedToken] = useState<'USDT' | 'USDC'>('USDT');
@@ -128,7 +132,8 @@ export default function RampaOnRampFlow({
                         provider: m.provider || m.name // Handle backend 'name' vs frontend 'provider'
                     }));
                     setPaymentMethods(methods);
-                    if (methods.length > 0) setSelectedMethodId(methods[0].id);
+                    const initialMobile = methods.find((m: any) => m.type === 'mobile_money');
+                    if (initialMobile) setSelectedMethodId(initialMobile.id);
                 }
             } catch {
                 toast({ title: 'Error', description: 'Failed to load payment methods.', variant: 'destructive' });
@@ -149,6 +154,16 @@ export default function RampaOnRampFlow({
         const usdt = Number(amountUsdt);
         return buyRate !== null && Number.isFinite(usdt) && usdt >= minUsdt && usdt <= maxUsdt;
     }, [amountUsdt, buyRate, minUsdt, maxUsdt]);
+
+    const filteredMethods = useMemo(() => {
+        return paymentMethods.filter(m => m.type === paymentCategory);
+    }, [paymentMethods, paymentCategory]);
+
+    useEffect(() => {
+        if (filteredMethods.length > 0 && !filteredMethods.find(m => m.id === selectedMethodId)) {
+            setSelectedMethodId(filteredMethods[0].id);
+        }
+    }, [filteredMethods, selectedMethodId]);
 
     const selectedMethod = paymentMethods.find(m => m.id === selectedMethodId) || null;
     const canProceed = isAmountValid && Boolean(fullName.trim()) && Boolean(phone.trim()) && Boolean(selectedMethodId) && Boolean(resolvedAddress);
@@ -375,15 +390,42 @@ export default function RampaOnRampFlow({
             {currentStep === 2 && (
                 <motion.div key="step2" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.3 }} className="space-y-4">
                     <div className="bg-slate-700/40 rounded-2xl p-4 border border-slate-600/40 space-y-3">
-                        <span className="text-xs font-medium text-slate-400 block">Mobile Money Provider</span>
+                        <div className="flex bg-slate-900/40 p-1 rounded-xl border border-slate-700/40 mb-3">
+                            <button
+                                onClick={() => setPaymentCategory('mobile_money')}
+                                className={cn(
+                                    'flex-1 py-2 text-xs font-semibold rounded-lg transition-all',
+                                    paymentCategory === 'mobile_money' ? 'bg-blue-600/20 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'
+                                )}
+                            >
+                                Mobile Money
+                            </button>
+                            <button
+                                onClick={() => setPaymentCategory('bank_transfer')}
+                                className={cn(
+                                    'flex-1 py-2 text-xs font-semibold rounded-lg transition-all',
+                                    paymentCategory === 'bank_transfer' ? 'bg-blue-600/20 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'
+                                )}
+                            >
+                                Bank Transfer
+                            </button>
+                        </div>
+
+                        <span className="text-xs font-medium text-slate-400 block">
+                            {paymentCategory === 'mobile_money' ? 'Mobile Money Provider' : 'Bank'}
+                        </span>
                         <div className="grid gap-2">
                             {loadingMethods ? (
                                 <div className="flex items-center gap-2 p-3 rounded-xl bg-slate-900/30 border border-slate-700/60">
                                     <Loader2 className="w-4 h-4 animate-spin text-slate-400" />
                                     <span className="text-xs text-slate-400">Loading providers...</span>
                                 </div>
+                            ) : filteredMethods.length === 0 ? (
+                                <div className="p-3 text-center text-xs text-slate-400 bg-slate-900/30 rounded-xl border border-slate-700/60">
+                                    No providers found for this method.
+                                </div>
                             ) : (
-                                paymentMethods.map((m) => (
+                                filteredMethods.map((m) => (
                                     <button
                                         key={m.id}
                                         onClick={() => setSelectedMethodId(m.id)}
@@ -411,12 +453,14 @@ export default function RampaOnRampFlow({
                     <div className="bg-slate-700/40 rounded-2xl p-4 border border-slate-600/40 space-y-3">
                         <span className="text-xs font-medium text-slate-400 block">Your Details</span>
                         <div className="space-y-2">
-                            <span className="text-xs font-medium text-slate-400">Full Name (as on Mobile Money)</span>
+                            <span className="text-xs font-medium text-slate-400">Full Name</span>
                             <Input type="text" placeholder="e.g., John Doe" value={fullName} onChange={(e) => setFullName(e.target.value)} className="w-full px-2.5 py-2 bg-slate-900/30 border border-slate-700/60 rounded-xl text-white text-xs placeholder:text-slate-500 focus:ring-2 focus:ring-blue-500/50 focus:border-transparent" />
                         </div>
                         <div className="space-y-2">
-                            <span className="text-xs font-medium text-slate-400">Phone Number</span>
-                            <Input type="tel" placeholder="e.g., 0881234567" value={phone} onChange={(e) => setPhone(e.target.value)} className="w-full px-2.5 py-2 bg-slate-900/30 border border-slate-700/60 rounded-xl text-white text-xs placeholder:text-slate-500 focus:ring-2 focus:ring-blue-500/50 focus:border-transparent" />
+                            <span className="text-xs font-medium text-slate-400">
+                                {paymentCategory === 'mobile_money' ? 'Phone Number' : 'Phone Number / Account ID'}
+                            </span>
+                            <Input type="tel" placeholder={paymentCategory === 'mobile_money' ? "e.g., 0881234567" : "e.g., 10023..."} value={phone} onChange={(e) => setPhone(e.target.value)} className="w-full px-2.5 py-2 bg-slate-900/30 border border-slate-700/60 rounded-xl text-white text-xs placeholder:text-slate-500 focus:ring-2 focus:ring-blue-500/50 focus:border-transparent" />
                         </div>
                     </div>
 
@@ -511,9 +555,9 @@ export default function RampaOnRampFlow({
                     </div>
 
                     <div className="bg-slate-700/40 rounded-2xl p-4 border border-slate-600/40 space-y-3">
-                        <span className="text-xs font-medium text-slate-400 block">Mobile Money Transaction ID</span>
-                        <Input type="text" placeholder="e.g., MPAMBA123XYZ" value={transactionId} onChange={(e) => setTransactionId(e.target.value.toUpperCase())} className="w-full px-2.5 py-2 bg-slate-900/30 border border-slate-700/60 rounded-xl text-white text-xs placeholder:text-slate-500 focus:ring-2 focus:ring-blue-500/50 focus:border-transparent" />
-                        <p className="text-[10px] text-slate-500">Find this in your mobile money SMS confirmation after sending.</p>
+                        <span className="text-xs font-medium text-slate-400 block">Transaction ID (Reference)</span>
+                        <Input type="text" placeholder="e.g., MPAMBA123XYZ or Bank Ref" value={transactionId} onChange={(e) => setTransactionId(e.target.value.toUpperCase())} className="w-full px-2.5 py-2 bg-slate-900/30 border border-slate-700/60 rounded-xl text-white text-xs placeholder:text-slate-500 focus:ring-2 focus:ring-blue-500/50 focus:border-transparent" />
+                        <p className="text-[10px] text-slate-500">Find this in your SMS confirmation or bank receipt.</p>
                     </div>
 
                     <div className="flex gap-3 pt-2">

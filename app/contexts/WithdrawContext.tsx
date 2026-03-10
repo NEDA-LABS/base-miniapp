@@ -5,7 +5,7 @@ import { createContext, useContext, useState, useCallback, ReactNode } from 'rea
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 export type WithdrawStep = 'amount' | 'country' | 'provider';
-export type ProviderType = 'paycrest' | 'pretium' | null;
+export type ProviderType = 'paycrest' | 'pretium' | 'rampa' | null;
 
 export interface Stablecoin {
   baseToken: string;
@@ -26,8 +26,11 @@ export interface WithdrawCountry {
   comingSoon?: boolean;
 }
 
-// Countries served by Pretium off-ramp (mobile money: GH, CD, MW)
-const PRETIUM_COUNTRIES = ['GH', 'CD', 'MW'];
+// Countries served by Pretium off-ramp (mobile money: GH, CD)
+const PRETIUM_COUNTRIES = ['GH', 'CD'];
+
+// Countries served by Rampa off-ramp
+const RAMPA_COUNTRIES = ['MW'];
 
 // All withdraw-eligible countries
 export const WITHDRAW_COUNTRIES: WithdrawCountry[] = [
@@ -37,17 +40,20 @@ export const WITHDRAW_COUNTRIES: WithdrawCountry[] = [
   { name: 'Uganda', code: 'UG', flag: '🇺🇬', currency: 'UGX', countryCode: '+256' },
   { name: 'Ghana', code: 'GH', flag: '🇬🇭', currency: 'GHS', countryCode: '+233' },
   { name: 'DR Congo', code: 'CD', flag: '🇨🇩', currency: 'CDF', countryCode: '+243' },
-  { name: 'Malawi', code: 'MW', flag: '🇲🇼', currency: 'MWK', countryCode: '+265' },
+  { name: 'Malawi (P2P)', code: 'MW', flag: '🇲🇼', currency: 'MWK', countryCode: '+265' },
 ];
 
 export function getProviderForCountry(countryCode: string): ProviderType {
-  return PRETIUM_COUNTRIES.includes(countryCode) ? 'pretium' : 'paycrest';
+  if (PRETIUM_COUNTRIES.includes(countryCode)) return 'pretium';
+  if (RAMPA_COUNTRIES.includes(countryCode)) return 'rampa';
+  return 'paycrest';
 }
 
 export function getProviderLabel(provider: ProviderType): string {
   switch (provider) {
     case 'paycrest': return 'Payramp';
     case 'pretium': return 'Pretium';
+    case 'rampa': return 'Rampa';
     default: return '';
   }
 }

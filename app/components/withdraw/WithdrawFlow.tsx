@@ -5,6 +5,7 @@ import AmountStep from './AmountStep';
 import CountryStep from '@/components/withdraw/CountryStep';
 import PaycrestWithdrawForm from './PaycrestWithdrawForm';
 import PretiumWithdrawForm from './PretiumWithdrawForm';
+import RampaOffRampFlow from '@/components/RampaOffRampFlow';
 
 interface WithdrawFlowProps {
   walletAddress: string;
@@ -72,6 +73,25 @@ function WithdrawFlowInner({
             switchChain={switchChain}
             isConnected={isConnected}
             onSuccess={handleSuccess}
+          />
+        );
+      }
+
+      if (providerType === 'rampa') {
+        return (
+          <RampaOffRampFlow
+            country={{
+              id: country?.code?.toLowerCase() || '',
+              name: country?.name || '',
+              currency: country?.currency || '',
+              currencySymbol: country?.currency || '',
+              code: country?.code || ''
+            }}
+            stablecoins={stablecoins}
+            token="USDC"
+            initialAmount={amount}
+            preferredPayoutType="mobile_money"
+            onBack={onBack}
           />
         );
       }
