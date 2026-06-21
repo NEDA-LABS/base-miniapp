@@ -5,7 +5,7 @@ import { createContext, useContext, useState, useCallback, ReactNode } from 'rea
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 export type WithdrawStep = 'amount' | 'country' | 'provider';
-export type ProviderType = 'paycrest' | 'pretium' | 'rampa' | null;
+export type ProviderType = 'paycrest' | 'pretium' | 'rampa' | 'ntzs' | null;
 
 export interface Stablecoin {
   baseToken: string;
@@ -54,6 +54,7 @@ export function getProviderLabel(provider: ProviderType): string {
     case 'paycrest': return 'Payramp';
     case 'pretium': return 'Pretium';
     case 'rampa': return 'Rampa';
+    case 'ntzs': return 'M-Pesa (NTZS)';
     default: return '';
   }
 }
@@ -66,10 +67,12 @@ interface WithdrawContextType {
   amount: string;
   country: WithdrawCountry | null;
   providerType: ProviderType;
+  asset: Stablecoin | null;
 
   // Setters
   setAmount: (amount: string) => void;
   selectCountry: (country: WithdrawCountry) => void;
+  setAsset: (asset: Stablecoin | null) => void;
 
   // Navigation
   goToAmount: () => void;
@@ -87,6 +90,7 @@ export function WithdrawProvider({ children }: { children: ReactNode }) {
   const [amount, setAmountState] = useState('');
   const [country, setCountryState] = useState<WithdrawCountry | null>(null);
   const [providerType, setProviderType] = useState<ProviderType>(null);
+  const [asset, setAssetState] = useState<Stablecoin | null>(null);
 
   const setAmount = useCallback((val: string) => {
     setAmountState(val);
@@ -94,7 +98,10 @@ export function WithdrawProvider({ children }: { children: ReactNode }) {
 
   const selectCountry = useCallback((c: WithdrawCountry) => {
     setCountryState(c);
-    setProviderType(getProviderForCountry(c.code));
+  }, []);
+
+  const setAsset = useCallback((a: Stablecoin | null) => {
+    setAssetState(a);
   }, []);
 
   const goToAmount = useCallback(() => setStep('amount'), []);
@@ -106,8 +113,16 @@ export function WithdrawProvider({ children }: { children: ReactNode }) {
 
   const goToProvider = useCallback(() => {
     if (!country) return; // Guard
+    
+    // Evaluate provider type here, prioritizing ntzs if conditions met
+    if (country.code === 'TZ' && asset?.baseToken === 'NTZS') {
+      setProviderType('ntzs');
+    } else {
+      setProviderType(getProviderForCountry(country.code));
+    }
+    
     setStep('provider');
-  }, [country]);
+  }, [country, asset]);
 
   const reset = useCallback(() => {
     setStep('amount');
@@ -123,8 +138,10 @@ export function WithdrawProvider({ children }: { children: ReactNode }) {
         amount,
         country,
         providerType,
+        asset,
         setAmount,
         selectCountry,
+        setAsset,
         goToAmount,
         goToCountry,
         goToProvider,

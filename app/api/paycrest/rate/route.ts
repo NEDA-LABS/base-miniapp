@@ -25,6 +25,14 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    const PAYCREST_SUPPORTED_FIATS = ['KES', 'NGN', 'GHS', 'TZS', 'UGX', 'XOF', 'XAF', 'MAD'];
+    if (!PAYCREST_SUPPORTED_FIATS.includes(fiat.toUpperCase())) {
+      return NextResponse.json(
+        { error: `Fiat currency ${fiat} is not supported by Paycrest` },
+        { status: 404 }
+      );
+    }
+
     console.log(`Fetching rate for ${token} -> ${fiat}, amount: ${amountNum}`);
     const rate = await fetchTokenRate(token, amountNum, fiat, providerId);
     

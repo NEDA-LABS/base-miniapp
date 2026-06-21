@@ -196,14 +196,14 @@ export default function PaycrestWithdrawForm({
   if (success) {
     return (
       <div className="space-y-5">
-        <div className="bg-[#151925] rounded-2xl p-8 border border-slate-800/50 text-center">
+        <div className="bg-[#F4EFE6] rounded-2xl p-8 border border-[#D4CEBE] text-center">
           <div className="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
-            <svg className="w-8 h-8 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg className="w-8 h-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
             </svg>
           </div>
-          <h3 className="text-xl font-bold text-white mb-2">Withdrawal Initiated!</h3>
-          <p className="text-gray-400 text-sm">{success}</p>
+          <h3 className="text-xl font-bold text-[#1C1917] mb-2">Withdrawal Initiated!</h3>
+          <p className="text-[#7C7468] text-sm">{success}</p>
         </div>
       </div>
     );
@@ -218,28 +218,28 @@ export default function PaycrestWithdrawForm({
       <div className="text-center mb-6 pt-2 relative">
         <button
           onClick={goToCountry}
-          className="absolute left-0 top-2 w-8 h-8 rounded-full border border-slate-700 flex items-center justify-center hover:bg-slate-800 transition-colors"
+          className="absolute left-0 top-2 w-8 h-8 rounded-full border border-[#C8C1B4] flex items-center justify-center hover:bg-[#E8E2D9] transition-colors"
         >
-          <ArrowLeftIcon className="w-4 h-4 text-white" />
+          <ArrowLeftIcon className="w-4 h-4 text-[#1C1917]" />
         </button>
-        <h2 className="text-white text-base font-medium">Send Money Globally</h2>
-        <p className="text-gray-400 text-xs mt-0.5">Enter recipient details</p>
+        <h2 className="text-[#1C1917] text-base font-medium">Send Money Globally</h2>
+        <p className="text-[#7C7468] text-xs mt-0.5">Enter recipient details</p>
       </div>
 
       <div className="space-y-4 flex-1 overflow-y-auto pb-20 no-scrollbar">
         {/* Summary Card */}
-        <div className="bg-[#151925] rounded-2xl p-4 border border-slate-800/50 flex items-center justify-between">
+        <div className="bg-[#F4EFE6] rounded-2xl p-4 border border-[#D4CEBE] flex items-center justify-between">
           <div>
-            <p className="text-gray-400 text-xs mb-1">You're sending</p>
-            <p className="text-white text-xl font-bold">{amount} USDC</p>
+            <p className="text-[#7C7468] text-xs mb-1">You&apos;re sending</p>
+            <p className="text-[#1C1917] text-xl font-bold">{amount} USDC</p>
           </div>
           <div className='flex items-center space-x-2'>
-            <p className="text-gray-400 text-xs">
-              To: <span className="font-medium text-gray-300">{country.flag} {country.name}</span>
+            <p className="text-[#7C7468] text-xs">
+              To: <span className="font-medium text-[#4A4540]">{country.flag} {country.name}</span>
             </p>
-            <button 
+            <button
               onClick={goToCountry}
-              className="text-white text-xs font-medium hover:text-blue-400 transition-colors"
+              className="text-[#1C1917] text-xs font-medium hover:text-blue-600 transition-colors"
             >
               Edit
             </button>
@@ -247,51 +247,50 @@ export default function PaycrestWithdrawForm({
         </div>
 
         {/* Recipient Card */}
-        <div className="bg-[#151925] rounded-2xl p-4 border border-slate-800/50">
-          <p className="text-gray-400 text-xs font-medium mb-3">Recipient Information</p>
-          
+        <div className="bg-[#F4EFE6] rounded-2xl p-4 border border-[#D4CEBE]">
+          <p className="text-[#7C7468] text-xs font-medium mb-3">Recipient Information</p>
+
           <div className="space-y-3">
             {/* Provider Selector */}
             <div>
-              <label className="block text-[10px] text-gray-400 mb-1">Provider</label>
+              <label className="block text-[10px] text-[#7C7468] mb-1">Provider</label>
               <div className="relative">
                 <button
                   onClick={() => setShowProviderDropdown(!showProviderDropdown)}
                   disabled={isLoadingInstitutions}
-                  className="w-full bg-slate-800/50 border border-slate-700/50 text-white rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 hover:bg-slate-800 transition-colors flex items-center justify-between disabled:opacity-50"
+                  className="w-full bg-[#F0EBE3] border border-[#C8C1B4]/70 text-[#1C1917] rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 hover:bg-[#E8E2D9] transition-colors flex items-center justify-between disabled:opacity-50"
                 >
                   <div className="flex items-center gap-2">
                     {isLoadingInstitutions ? (
                       <>
-                        <div className="w-3 h-3 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
-                        <span className="text-gray-400 text-xs">Loading...</span>
+                        <div className="w-3 h-3 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                        <span className="text-[#7C7468] text-xs">Loading...</span>
                       </>
                     ) : selectedInstitution ? (
                       <>
                         {selectedInstitutionData?.type === 'mobile_money' ? (
-                          <svg className="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
                           </svg>
                         ) : (
-                          <svg className="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                           </svg>
                         )}
-                        <span className="text-white text-xs">{selectedInstitutionData?.name}</span>
+                        <span className="text-[#1C1917] text-xs">{selectedInstitutionData?.name}</span>
                       </>
                     ) : (
-                      <span className="text-gray-400 text-xs">Select a provider</span>
+                      <span className="text-[#7C7468] text-xs">Select a provider</span>
                     )}
                   </div>
-                  <ChevronDownIcon className={`w-3 h-3 text-gray-400 transition-transform ${showProviderDropdown ? 'rotate-180' : ''}`} />
+                  <ChevronDownIcon className={`w-3 h-3 text-[#7C7468] transition-transform ${showProviderDropdown ? 'rotate-180' : ''}`} />
                 </button>
 
                 {showProviderDropdown && (
-                  <div className="absolute top-full left-0 right-0 mt-2 bg-[#1c2230] rounded-xl border border-slate-700 shadow-xl z-50 max-h-56 overflow-y-auto">
-                    {/* Mobile Money Section */}
+                  <div className="absolute top-full left-0 right-0 mt-2 bg-[#F4EFE6] rounded-xl border border-[#C8C1B4] shadow-xl z-50 max-h-56 overflow-y-auto">
                     {institutions.filter(i => i.type === 'mobile_money').length > 0 && (
                       <div>
-                        <div className="px-3 py-2 text-[10px] font-semibold text-gray-500 bg-slate-900/50 sticky top-0 z-10 uppercase tracking-wide">
+                        <div className="px-3 py-2 text-[10px] font-semibold text-[#7C7468] bg-[#E2DCD0] sticky top-0 z-10 uppercase tracking-wide">
                           Mobile Money
                         </div>
                         {institutions.filter(i => i.type === 'mobile_money').map((inst) => (
@@ -301,8 +300,8 @@ export default function PaycrestWithdrawForm({
                               setSelectedInstitution(inst.code);
                               setShowProviderDropdown(false);
                             }}
-                            className={`w-full px-3 py-2 text-left hover:bg-slate-700/50 flex items-center gap-3 text-xs transition-colors ${
-                              selectedInstitution === inst.code ? 'bg-blue-500/10 text-blue-400' : 'text-gray-300'
+                            className={`w-full px-3 py-2 text-left hover:bg-[#E4DDD3] flex items-center gap-3 text-xs transition-colors ${
+                              selectedInstitution === inst.code ? 'bg-blue-500/10 text-blue-600' : 'text-[#1C1917]'
                             }`}
                           >
                             <span className="flex-1">{inst.name}</span>
@@ -314,10 +313,9 @@ export default function PaycrestWithdrawForm({
                       </div>
                     )}
 
-                    {/* Banks Section */}
                     {institutions.filter(i => i.type === 'bank').length > 0 && (
                       <div>
-                        <div className="px-3 py-2 text-[10px] font-semibold text-gray-500 bg-slate-900/50 sticky top-0 z-10 uppercase tracking-wide">
+                        <div className="px-3 py-2 text-[10px] font-semibold text-[#7C7468] bg-[#E2DCD0] sticky top-0 z-10 uppercase tracking-wide">
                           Banks
                         </div>
                         {institutions.filter(i => i.type === 'bank').map((inst) => (
@@ -327,8 +325,8 @@ export default function PaycrestWithdrawForm({
                               setSelectedInstitution(inst.code);
                               setShowProviderDropdown(false);
                             }}
-                            className={`w-full px-3 py-2 text-left hover:bg-slate-700/50 flex items-center gap-3 text-xs transition-colors ${
-                              selectedInstitution === inst.code ? 'bg-blue-500/10 text-blue-400' : 'text-gray-300'
+                            className={`w-full px-3 py-2 text-left hover:bg-[#E4DDD3] flex items-center gap-3 text-xs transition-colors ${
+                              selectedInstitution === inst.code ? 'bg-blue-500/10 text-blue-600' : 'text-[#1C1917]'
                             }`}
                           >
                             <span className="flex-1">{inst.name}</span>
@@ -347,17 +345,17 @@ export default function PaycrestWithdrawForm({
             {/* Inputs Grid */}
             <div className="grid grid-cols-1 gap-3">
               <div>
-                <label className="block text-[10px] text-gray-400 mb-1">Full Name</label>
+                <label className="block text-[10px] text-[#7C7468] mb-1">Full Name</label>
                 <input
                   type="text"
                   value={recipientName}
                   onChange={(e) => setRecipientName(e.target.value)}
                   placeholder="e.g. John Doe"
-                  className="w-full bg-slate-800/50 border border-slate-700/50 text-white rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 placeholder:text-gray-600"
+                  className="w-full bg-[#F0EBE3] border border-[#C8C1B4]/70 text-[#1C1917] rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 placeholder:text-[#9B9188]"
                 />
               </div>
               <div>
-                <label className="block text-[10px] text-gray-400 mb-1">
+                <label className="block text-[10px] text-[#7C7468] mb-1">
                   {selectedInstitutionData?.type === 'bank' ? 'Account Number' : 'Phone Number'}
                 </label>
                 <input
@@ -365,7 +363,7 @@ export default function PaycrestWithdrawForm({
                   value={phoneNumber}
                   onChange={(e) => setPhoneNumber(e.target.value)}
                   placeholder={selectedInstitutionData?.type === 'bank' ? 'e.g. 1234567890' : country.countryCode + '...'}
-                  className="w-full bg-slate-800/50 border border-slate-700/50 text-white rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 placeholder:text-gray-600"
+                  className="w-full bg-[#F0EBE3] border border-[#C8C1B4]/70 text-[#1C1917] rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 placeholder:text-[#9B9188]"
                 />
               </div>
             </div>
@@ -373,31 +371,31 @@ export default function PaycrestWithdrawForm({
         </div>
 
         {/* Payment Summary */}
-        <div className="bg-[#151925] rounded-2xl p-4 border border-slate-800/50">
-          <p className="text-gray-400 text-xs font-medium mb-3">Summary</p>
+        <div className="bg-[#F4EFE6] rounded-2xl p-4 border border-[#D4CEBE]">
+          <p className="text-[#7C7468] text-xs font-medium mb-3">Summary</p>
           <div className="space-y-2">
             <div className="flex justify-between items-center">
-              <span className="text-gray-400 text-xs">You send</span>
-              <span className="text-white text-sm font-bold">{amount} {selectedToken}</span>
+              <span className="text-[#7C7468] text-xs">You send</span>
+              <span className="text-[#1C1917] text-sm font-bold">{amount} {selectedToken}</span>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-gray-400 text-xs">Recipient gets</span>
-              <span className="text-green-400 text-sm font-bold">≈ {localAmount} {country.currency}</span>
+              <span className="text-[#7C7468] text-xs">Recipient gets</span>
+              <span className="text-green-600 text-sm font-bold">≈ {localAmount} {country.currency}</span>
             </div>
-            
-            <div className="h-px bg-slate-800/80 my-2" />
-            
+
+            <div className="h-px bg-[#C8C1B4]/40 my-2" />
+
             <div className="flex justify-between items-center">
-              <span className="text-gray-400 text-[10px]">Exchange Rate</span>
-              <span className="text-gray-400 text-[10px]">
+              <span className="text-[#7C7468] text-[10px]">Exchange Rate</span>
+              <span className="text-[#7C7468] text-[10px]">
                 1 {selectedToken} ≈ {isLoadingRate ? '...' : parseFloat(currentRate).toLocaleString()} {country.currency}
               </span>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-gray-400 text-[10px]">Wallet Balance</span>
+              <span className="text-[#7C7468] text-[10px]">Wallet Balance</span>
               <div className="flex items-center gap-1">
-                <span className="text-blue-400 text-[10px]">{walletBalance} USDC</span>
-                <button onClick={onRefreshBalance} className="text-gray-500 hover:text-white">
+                <span className="text-blue-600 text-[10px]">{walletBalance} USDC</span>
+                <button onClick={onRefreshBalance} className="text-[#9B9188] hover:text-[#1C1917]">
                   <ArrowPathIcon className="w-3 h-3" />
                 </button>
               </div>
@@ -415,10 +413,10 @@ export default function PaycrestWithdrawForm({
 
       {/* Swipe to Send */}
       <div className="mt-auto pt-2 pb-2">
-        <div className="relative bg-slate-800/50 rounded-xl p-1 overflow-hidden shadow-lg border border-slate-700/50 h-14">
+        <div className="relative bg-[#E8E2D9] rounded-xl p-1 overflow-hidden shadow-lg border border-[#C8C1B4] h-14">
           {/* Track */}
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <span className="text-gray-500 text-xs font-medium tracking-wide animate-pulse">
+            <span className="text-[#7C7468] text-xs font-medium tracking-wide animate-pulse">
               {isConfirming ? 'Confirming...' : isSwipeComplete ? 'Processing...' : 'Swipe to Withdraw'}
             </span>
           </div>

@@ -5,7 +5,6 @@ import './globals.css';
 import './components/name-fallback.css';
 import { Providers } from './providers';
 import AppToaster from './components/Toaster';
-import { ReadyState } from './components/ReadyState';
 import { Analytics } from '@vercel/analytics/next';
 
 const URL = process.env.NEXT_PUBLIC_URL || 'https://nedapayminiapp.vercel.app';
@@ -71,7 +70,7 @@ export default function RootLayout({
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
         {/* Farcaster MiniApp metadata - only for main app, payment pages have their own */}
-        <meta name="fc:miniapp" content='{"version":"1","imageUrl":"https://miniapp.nedapay.xyz/og-image.png","button":{"title":"💰 Launch NedaPay","action":{"type":"launch_miniapp","name":"NEDAPay","url":"https://miniapp.nedapay.xyz","splashImageUrl":"https://miniapp.nedapay.xyz/splash.png","splashBackgroundColor":"#1e40af"}}}' />
+        <meta name="fc:miniapp" content='{"version":"1","imageUrl":"https://miniapp.nedapay.xyz/og-image.png","button":{"title":"Launch NedaPay","action":{"type":"launch_frame","name":"NedaPay","url":"https://miniapp.nedapay.xyz","splashImageUrl":"https://miniapp.nedapay.xyz/splash.png","splashBackgroundColor":"#EDE8DF"}}}' />
         <meta name="base:app_id" content="68a5c58dd3f637a5b9984595" />
         <link
           href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap"
@@ -79,11 +78,10 @@ export default function RootLayout({
         />
         <link rel="icon" type="image/png" href="/favicon.png" />
       </head>
-      <body className="bg-[#0d1117] text-white min-h-screen">
+      <body className="bg-[#EDE8DF] text-[#1C1917] min-h-screen">
         <div className="flex flex-col min-h-screen">
           <Providers>
             <AppToaster />
-            <ReadyState />
             <main className="flex-grow">{children}</main>
           </Providers>
         </div>

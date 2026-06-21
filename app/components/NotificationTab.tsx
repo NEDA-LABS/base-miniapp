@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { FaBell, FaTrash, FaTimes, FaExternalLinkAlt, FaCopy, FaCheckCircle, FaTimesCircle, FaExclamationTriangle } from 'react-icons/fa';
-import { useWallets } from '@privy-io/react-auth';
+import { useAccount } from 'wagmi';
 import { addPaymentTransaction, PaymentTransaction } from '../utils/paymentStorage';
 
 // Fallback UUID generator for environments without crypto.randomUUID
@@ -77,9 +77,7 @@ export default function NotificationTab() {
   const [showTransactionModal, setShowTransactionModal] = useState(false);
   const [showOffRampModal, setShowOffRampModal] = useState(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
-  const { wallets } = useWallets();
-  
-  const userAddress = wallets?.[0]?.address;
+  const { address: userAddress } = useAccount();
 
   // Copy to clipboard utility
   const copyToClipboard = async (text: string, fieldName: string) => {

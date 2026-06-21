@@ -32,11 +32,11 @@ export async function GET(request: NextRequest) {
     button: {
       title: `💰 Pay $${amount} ${token}`,
       action: {
-        type: 'launch_miniapp',
+        type: 'launch_frame',
         url: paymentUrl,
         name: 'NedaPay',
         splashImageUrl: `${baseUrl}/splash.png`,
-        splashBackgroundColor: '#1e293b'
+        splashBackgroundColor: '#EDE8DF'
       }
     }
   };

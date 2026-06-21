@@ -1,12 +1,23 @@
-.safe-area-bottom {
-  padding-bottom: env(safe-area-inset-bottom);
-}
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800;900&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+@keyframes swipe-right {
+  0%, 100% { transform: translateX(0); }
+  50% { transform: translateX(5px); }
+}
+
+@keyframes swipe-left {
+  0%, 100% { transform: translateX(0); }
+  50% { transform: translateX(-5px); }
+}
 
 /* Mobile Farcaster popup suppression */
 @media (max-width: 768px) {
@@ -20,13 +31,10 @@
   }
 }
 
-/* Mobile Privy UI orientation fix */
+/* Mobile modal orientation fix */
 @media (max-width: 768px) {
-  /* Force Privy modal to respect device orientation */
   [role="dialog"],
-  [role="alertdialog"],
-  [data-testid*="privy"],
-  [class*="privy"] {
+  [role="alertdialog"] {
     transform: none !important;
     width: 100vw !important;
     height: auto !important;
@@ -40,11 +48,8 @@
     overflow-y: auto !important;
   }
   
-  /* Ensure modal content respects portrait orientation */
   [role="dialog"] > div,
-  [role="alertdialog"] > div,
-  [data-testid*="privy"] > div,
-  [class*="privy"] > div {
+  [role="alertdialog"] > div {
     width: 100% !important;
     max-width: none !important;
     padding: 24px !important;
@@ -55,11 +60,11 @@
 
 
 :root {
-  /* Radix UI theme colors */
-  --muted: #f4f4f5; /* Light gray background */
-  --muted-foreground: #6b7280; /* Gray text */
-  --background: #ffffff; /* White */
-  --foreground: #000000; /* Black */
+  /* Warm beige palette - light mode only */
+  --muted: #E8E2D9;
+  --muted-foreground: #7C7468;
+  --background: #EDE8DF;
+  --foreground: #1C1917;
   --primary: #3b82f6; /* Blue-500 */
   --primary-light: #93c5fd; /* Blue-300 */
   --primary-dark: #1d4ed8; /* Blue-700 */
@@ -121,26 +126,7 @@
 --sidebar-ring: 217.2 91.2% 59.8%; */
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    /* Dark mode: Black background with white text */
-    --background: #000000; /* Black */
-    --foreground: #ffffff; /* White */
-    --primary: #3b82f6; /* Blue-500 */
-    --primary-light: #1d4ed8; /* Blue-700 */
-    --primary-dark: #93c5fd; /* Blue-300 */
-    --accent: #2563eb; /* Blue-600 */
-    --accent-light: #1e3a8a; /* Blue-900 */
-    --accent-dark: #60a5fa; /* Blue-400 */
-    --input-bg: #1e1e1e; /* Dark gray */
-    --input-border: #3f3f46; /* Zinc-700 */
-    --input-text: #ffffff; /* White */
-    --input-placeholder: #94a3b8; /* Slate-400 */
-    --card-bg: #121212; /* Very dark gray */
-    --card-text: #ffffff; /* White */
-    --scrollbar-track: #1e1e1e; /* Dark gray */
-  }
-}
+/* Force light mode - no dark mode overrides */
 
 body {
   font-family: 'DM Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;

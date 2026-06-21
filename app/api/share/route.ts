@@ -16,11 +16,11 @@ export async function GET(request: NextRequest) {
     button: {
       title: `💰 Pay $${amount} ${currency}`,
       action: {
-        type: 'launch_miniapp',
+        type: 'launch_frame',
         name: 'NedaPay',
-        url: link || baseUrl, // This should be the direct payment-request URL
+        url: link || baseUrl,
         splashImageUrl: `${baseUrl}/splash.png`,
-        splashBackgroundColor: '#1e293b'
+        splashBackgroundColor: '#EDE8DF'
       }
     }
   };

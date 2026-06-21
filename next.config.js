@@ -1,16 +1,27 @@
 /** @type {import('next').NextConfig} */
+const extraDevOrigins = (process.env.ALLOWED_DEV_ORIGINS || '')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
 const nextConfig = {
+  // Allow ngrok/tunnel hosts to load Turbopack dev chunks (required for Farcaster/Base mini app dev)
+  allowedDevOrigins: [
+    '*.ngrok-free.dev',
+    '*.ngrok.io',
+    '*.ngrok.app',
+    ...extraDevOrigins,
+  ],
   // Set to static export mode
   // Completely ignore TypeScript errors during build
   typescript: {
     ignoreBuildErrors: true,
   },
-  // Ignore ESLint errors during build
-  eslint: {
-    ignoreDuringBuilds: true,
+  turbopack: {
+    root: __dirname,
   },
 
-  // Configure webpack with necessary polyfills
+  // Configure webpack with necessary polyfills (production build uses --webpack)
   webpack: (config) => {
     config.resolve.fallback = {
       ...config.resolve.fallback,
@@ -36,9 +47,7 @@ const nextConfig = {
     'ethers',
     '@biconomy/abstractjs',
     '@biconomy/mexa',
-    '@walletconnect/ethereum-provider',
     '@walletconnect/web3-provider',
-    '@walletconnect/modal',
     '@farcaster/miniapp-sdk',
     '@farcaster/miniapp-wagmi-connector'
   ],
@@ -49,8 +58,12 @@ const nextConfig = {
         source: '/(.*)',
         headers: [
           {
+            key: 'ngrok-skip-browser-warning',
+            value: 'true',
+          },
+          {
             key: 'Content-Security-Policy',
-            value: "frame-ancestors 'self' https://farcaster.xyz https://*.farcaster.xyz https://warpcast.com https://client.warpcast.com https://wallet.farcaster.xyz https://*.privy.io https://auth.privy.io https://wrpcd.net https://*.wrpcd.net https://base.org https://*.base.org https://base.xyz https://*.base.xyz https://base.app https://*.base.app https://app.base.org https://*.app.base.org;",
+            value: "frame-ancestors 'self' https://farcaster.xyz https://*.farcaster.xyz https://warpcast.com https://client.warpcast.com https://wallet.farcaster.xyz https://wrpcd.net https://*.wrpcd.net https://base.org https://*.base.org https://base.xyz https://*.base.xyz https://base.app https://*.base.app https://app.base.org https://*.app.base.org;",
           },
           {
             key: 'X-Frame-Options',

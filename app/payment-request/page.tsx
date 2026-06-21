@@ -154,18 +154,11 @@ function PaymentRequestPageContent() {
         button: {
           title: `💰 Pay $${paymentData.amount} ${paymentData.token}`,
           action: {
-            type: 'launch_miniapp',
+            type: 'launch_frame',
             name: 'NedaPay',
-            url: currentUrl, // This should be the full URL with all payment parameters
+            url: currentUrl,
             splashImageUrl: `${baseUrl}/splash.png`,
-            splashBackgroundColor: '#1e293b',
-            // Base app specific metadata
-            baseApp: {
-              supportedNetworks: ['base'],
-              supportedWallets: ['coinbase_wallet', 'metamask'],
-              theme: 'dark',
-              features: ['wallet_connect']
-            }
+            splashBackgroundColor: '#EDE8DF'
           }
         }
       };
@@ -215,11 +208,11 @@ function PaymentRequestPageContent() {
         button: {
           title: `💰 Pay $${paymentData.amount} ${paymentData.token}`,
           action: {
-            type: 'launch_miniapp',
+            type: 'launch_frame',
             url: currentUrl,
             name: 'NedaPay',
             splashImageUrl: `${baseUrl}/splash.png`,
-            splashBackgroundColor: '#1e293b'
+            splashBackgroundColor: '#EDE8DF'
           }
         }
       };

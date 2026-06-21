@@ -11,7 +11,7 @@ export async function GET(req: NextRequest) {
     },
     miniapp: {
       version: '1',
-      name: 'NEDApay',
+      name: 'NedaPay',
       subtitle: 'Global Stablecoin payments',
       description: 'NedaPay is a stablecoin payment solution for Africa. Send money to mobile money, create payment links, generate invoices, and accept crypto payments seamlessly.',
       screenshotUrls: [
@@ -20,17 +20,15 @@ export async function GET(req: NextRequest) {
         `${baseUrl}/screenshot-link.png`
       ],
       iconUrl: `${baseUrl}/icon-512.png`,
-      imageUrl: `${baseUrl}/og-image.png`,
-      buttonTitle: '☄️ Launch NEDApay',
       splashImageUrl: `${baseUrl}/splash.png`,
-      splashBackgroundColor: '#1e40af',
+      splashBackgroundColor: '#EDE8DF',
       homeUrl: baseUrl,
       webhookUrl: `${baseUrl}/api/webhook`,
       primaryCategory: 'finance',
       tags: ['payments', 'stablecoins', 'mobile-money', 'africa', 'crypto'],
       heroImageUrl: `${baseUrl}/og-image.png`,
       tagline: 'Pay anywhere, Settle instantly',
-      ogTitle: 'NEDApay - Stablecoin Payments',
+      ogTitle: 'NedaPay - Stablecoin Payments',
       ogDescription: 'Send stablecoins to mobile money and bank accounts globally instantly.',
       ogImageUrl: `${baseUrl}/og-image.png`,
       castShareUrl: baseUrl

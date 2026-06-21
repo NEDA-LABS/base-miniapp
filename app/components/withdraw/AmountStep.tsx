@@ -1,22 +1,22 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { ArrowLeftIcon, Cog6ToothIcon, BackspaceIcon } from '@heroicons/react/24/outline';
-import { useWithdraw } from '@/contexts/WithdrawContext';
+import { ArrowLeftIcon, BackspaceIcon } from '@heroicons/react/24/outline';
+import { Stablecoin, useWithdraw } from '@/contexts/WithdrawContext';
 
 interface AmountStepProps {
   walletBalance: string;
   onRefreshBalance: () => void;
   onBack: () => void;
+  stablecoins: Stablecoin[];
 }
 
-export default function AmountStep({ walletBalance, onRefreshBalance, onBack }: AmountStepProps) {
-  const { amount, setAmount, goToCountry } = useWithdraw();
+export default function AmountStep({ walletBalance, onRefreshBalance, onBack, stablecoins }: AmountStepProps) {
+  const { amount, setAmount, goToCountry, asset, setAsset } = useWithdraw();
   const [error, setError] = useState('');
   const [displayAmount, setDisplayAmount] = useState(amount || '');
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Sync local display state with context
   useEffect(() => {
     setAmount(displayAmount);
     if (displayAmount && parseFloat(displayAmount) > parseFloat(walletBalance)) {
@@ -31,7 +31,6 @@ export default function AmountStep({ walletBalance, onRefreshBalance, onBack }: 
     if (displayAmount === '0' && num !== '.') {
       setDisplayAmount(num);
     } else {
-      // Limit decimal places to 2
       if (displayAmount.includes('.')) {
         const parts = displayAmount.split('.');
         if (parts[1].length >= 2) return;
@@ -44,20 +43,14 @@ export default function AmountStep({ walletBalance, onRefreshBalance, onBack }: 
     setDisplayAmount(prev => prev.slice(0, -1));
   };
 
-  const handleMax = () => {
-    setDisplayAmount(walletBalance);
-  };
-
   const handlePercentage = (percent: number) => {
     const balance = parseFloat(walletBalance) || 0;
     const calcAmount = (balance * (percent / 100)).toFixed(2);
-    // Remove trailing zeros if it's a whole number
     setDisplayAmount(parseFloat(calcAmount).toString());
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
-    // Basic validation to keep it numeric/decimal
     if (val === '' || /^\d*\.?\d{0,2}$/.test(val)) {
       setDisplayAmount(val);
     }
@@ -97,42 +90,47 @@ export default function AmountStep({ walletBalance, onRefreshBalance, onBack }: 
       <div className="flex items-center gap-4 mb-4 pt-2">
         <button
           onClick={onBack}
-          className="w-10 h-10 rounded-full border border-slate-700/50 flex items-center justify-center hover:bg-slate-800/50 transition-colors backdrop-blur-sm"
+          className="w-10 h-10 rounded-full border border-[#C8C1B4] flex items-center justify-center hover:bg-[#E8E2D9] transition-colors"
         >
-          <ArrowLeftIcon className="w-5 h-5 text-white" />
+          <ArrowLeftIcon className="w-5 h-5 text-[#1C1917]" />
         </button>
-        <span className="text-white text-lg font-medium">Cash Out</span>
+        <span className="text-[#1C1917] text-lg font-medium">Cash Out</span>
       </div>
 
       {/* Main Display */}
       <div className="flex-1 flex flex-col items-center justify-start">
-        {/* <h2 className="text-white text-base font-normal mb-1">Send Money Globally</h2> */}
-        <p className="text-slate-400 text-xs mb-2 font-medium">Enter amount</p>
-        
-        <div 
+        <p className="text-[#7C7468] text-xs mb-2 font-medium">Enter amount</p>
+
+        <div
           className="flex flex-col items-center cursor-text active:scale-95 transition-transform"
           onClick={focusInput}
         >
-          <span className={`text-4xl font-bold tracking-tight mb-2 ${!displayAmount ? 'text-slate-600' : 'text-white'}`}>
+          <span className={`text-4xl font-bold tracking-tight mb-2 ${!displayAmount ? 'text-[#C8C1B4]' : 'text-[#1C1917]'}`}>
             {displayAmount || '0'}
           </span>
-          <span className="text-slate-400 text-sm font-medium uppercase tracking-wider">USDC</span>
+          <select
+            value={asset?.baseToken || 'USDC'}
+            onChange={(e) => {
+              const selected = stablecoins.find(s => s.baseToken === e.target.value);
+              if (selected) setAsset(selected);
+            }}
+            className="bg-[#E8E2D9] text-[#1C1917] text-sm font-medium uppercase tracking-wider rounded-lg px-2 py-1 appearance-none cursor-pointer outline-none border border-[#C8C1B4] hover:bg-[#E4DDD3] transition-colors text-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {stablecoins.map(token => (
+              <option key={token.baseToken} value={token.baseToken}>{token.baseToken}</option>
+            ))}
+          </select>
         </div>
 
         {/* Error Message */}
         <div className="h-6 mt-4 flex items-center justify-center">
           {error && (
-            <span className="text-red-400 text-xs bg-red-500/10 px-3 py-1 rounded-full border border-red-500/20 backdrop-blur-sm">
+            <span className="text-red-500 text-xs bg-red-500/10 px-3 py-1 rounded-full border border-red-500/20">
               {error}
             </span>
           )}
         </div>
-
-        {/* Settings Button */}
-        {/* <button className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors group">
-          <Cog6ToothIcon className="w-4 h-4 group-hover:rotate-90 transition-transform duration-500" />
-          <span className="text-sm font-medium">Settings</span>
-        </button> */}
       </div>
 
       {/* Controls */}
@@ -143,7 +141,7 @@ export default function AmountStep({ walletBalance, onRefreshBalance, onBack }: 
             <button
               key={val}
               onClick={() => handlePercentage(val)}
-              className="py-3 rounded-2xl bg-slate-800/40 border border-slate-700/50 text-white text-sm font-medium hover:bg-slate-700/60 transition-colors backdrop-blur-sm"
+              className="py-3 rounded-2xl bg-[#F0EBE3] border border-[#C8C1B4] text-[#1C1917] text-sm font-medium hover:bg-[#E8E2D9] transition-colors"
             >
               {val}%
             </button>
@@ -156,26 +154,26 @@ export default function AmountStep({ walletBalance, onRefreshBalance, onBack }: 
             <button
               key={num}
               onClick={() => handleNumberClick(num.toString())}
-              className="text-3xl font-medium text-white hover:text-blue-400 transition-colors flex justify-center items-center"
+              className="text-3xl font-medium text-[#1C1917] hover:text-blue-600 transition-colors flex justify-center items-center"
             >
               {num}
             </button>
           ))}
           <button
             onClick={() => handleNumberClick('.')}
-            className="text-3xl font-medium text-white hover:text-blue-400 transition-colors flex justify-center items-center pb-2"
+            className="text-3xl font-medium text-[#1C1917] hover:text-blue-600 transition-colors flex justify-center items-center pb-2"
           >
             .
           </button>
           <button
             onClick={() => handleNumberClick('0')}
-            className="text-3xl font-medium text-white hover:text-blue-400 transition-colors flex justify-center items-center"
+            className="text-3xl font-medium text-[#1C1917] hover:text-blue-600 transition-colors flex justify-center items-center"
           >
             0
           </button>
           <button
             onClick={handleBackspace}
-            className="flex items-center justify-center text-white hover:text-blue-400 transition-colors"
+            className="flex items-center justify-center text-[#1C1917] hover:text-blue-600 transition-colors"
           >
             <BackspaceIcon className="w-7 h-7" />
           </button>
@@ -186,10 +184,10 @@ export default function AmountStep({ walletBalance, onRefreshBalance, onBack }: 
           <button
             onClick={handleNext}
             disabled={!displayAmount || parseFloat(displayAmount) <= 0 || !!error}
-            className={`w-full py-4 text-white text-base font-bold rounded-2xl transition-all ${
+            className={`w-full py-4 text-base font-bold rounded-2xl transition-all ${
               displayAmount && parseFloat(displayAmount) > 0 && !error
-                ? 'bg-blue-600 shadow-lg shadow-blue-600/20 active:scale-[0.98]'
-                : 'bg-slate-800/50 text-slate-500 cursor-not-allowed border border-slate-700/30'
+                ? 'bg-[#1C1917] text-white shadow-lg active:scale-[0.98]'
+                : 'bg-[#E8E2D9] text-[#9B9188] cursor-not-allowed border border-[#C8C1B4]/40'
             }`}
           >
             Continue

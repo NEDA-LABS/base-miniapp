@@ -71,4 +71,4 @@ Thumbs.db
 .env.production.local
 
 # Backend Migration
-/backend-migration
+# /backend-migration

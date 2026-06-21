@@ -1,5 +1,5 @@
 
-export type PretiumAsset = 'USDC' | 'USDT' | 'cUSD';
+export type PretiumAsset = 'USDC' | 'USDT' | 'cUSD' | 'NTZS';
 
 export interface PretiumNetwork {
   code: string;

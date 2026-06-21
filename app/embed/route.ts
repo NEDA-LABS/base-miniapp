@@ -13,9 +13,9 @@ export async function GET(req: NextRequest) {
   <title>${PROJECT_NAME} MiniApp</title>
   
   <!-- Farcaster MiniApp Embed Detection (CORRECT FORMAT per docs) -->
-  <meta name="fc:miniapp" content='{"version":"1","imageUrl":"${URL}/api/og/nedapay-frame","button":{"title":"Open ${PROJECT_NAME}","action":{"type":"launch_miniapp","url":"${URL}","name":"${PROJECT_NAME}","splashImageUrl":"${URL}/splash.png","splashBackgroundColor":"#1e293b"}}}'>
+  <meta name="fc:miniapp" content='{"version":"1","imageUrl":"${URL}/api/og/nedapay-frame","button":{"title":"Open ${PROJECT_NAME}","action":{"type":"launch_frame","url":"${URL}","name":"${PROJECT_NAME}","splashImageUrl":"${URL}/splash.png","splashBackgroundColor":"#EDE8DF"}}}'>
   <!-- Backward compatibility -->
-  <meta name="fc:frame" content='{"version":"1","imageUrl":"${URL}/api/og/nedapay-frame","button":{"title":"Open ${PROJECT_NAME}","action":{"type":"launch_frame","url":"${URL}","name":"${PROJECT_NAME}","splashImageUrl":"${URL}/splash.png","splashBackgroundColor":"#1e293b"}}}'>
+  <meta name="fc:frame" content='{"version":"1","imageUrl":"${URL}/api/og/nedapay-frame","button":{"title":"Open ${PROJECT_NAME}","action":{"type":"launch_frame","url":"${URL}","name":"${PROJECT_NAME}","splashImageUrl":"${URL}/splash.png","splashBackgroundColor":"#EDE8DF"}}}'>
   
   <!-- Traditional Frame Meta Tags -->
   <meta property="fc:frame" content="vNext">

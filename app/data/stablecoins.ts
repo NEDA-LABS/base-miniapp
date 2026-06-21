@@ -171,5 +171,18 @@ export const stablecoins = [
     description: 'Stablecoin pegged 1:1 to the Mexican Peso (MXN)',
     website: 'https://stablecoins.earth',
     chainId: 8453 // Base Mainnet
+  },
+  {
+    region: 'Tanzania',
+    flag: '🇹🇿',
+    currency: 'TZS',
+    baseToken: 'NTZS',
+    decimals: 18,
+    name: 'Tanzania Stablecoin',
+    address: '0xF476BA983DE2F1AD532380630e2CF1D1b8b10688',
+    issuer: 'NTZS',
+    description: 'Stablecoin pegged 1:1 to the Tanzanian Shilling (TZS)',
+    website: 'https://www.ntzs.co.tz',
+    chainId: 8453 // Base Mainnet
   }
 ];

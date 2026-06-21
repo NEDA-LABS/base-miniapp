@@ -28,16 +28,13 @@ export function MiniKitProvider({ children }: { children: React.ReactNode }) {
     const initializeMiniKit = async () => {
       console.log('🔍 Getting Farcaster context...');
       
-      const ctx: any = await sdk.context;
-      console.log('📊 SDK context:', ctx);
-      console.log('📊 Context user:', ctx?.user);
-      console.log('📊 User wallet addresses:', ctx?.user?.verifications);
-      console.log('📊 User custody address:', ctx?.user?.custodyAddress);
-      
+      // sdk.context is synchronous in @farcaster/miniapp-sdk
+      const ctx: any = sdk.context;
+
       setContext(ctx);
-      
-      // Call sdk.actions.ready() to dismiss the splash screen
-      sdk.actions.ready();
+
+      // Dismiss splash screen; disable native swipe gestures since the app uses swipe-to-send/withdraw
+      sdk.actions.ready({ disableNativeGestures: true });
       setIsReady(true);
 
       let fid = ctx?.user?.fid || null;

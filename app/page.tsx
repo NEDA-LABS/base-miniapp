@@ -2,16 +2,18 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useMiniKit, useOpenUrl, useComposeCast, useViewProfile } from '@coinbase/onchainkit/minikit';
-import { Avatar, Name, Address, EthBalance, Identity } from '@coinbase/onchainkit/identity';
+import { Identity, Name } from '@coinbase/onchainkit/identity';
 import { useAccount, useConnect, useDisconnect, useSwitchChain } from 'wagmi';
 import { useConnectorClient } from 'wagmi';
-import { ChevronDownIcon, LinkIcon, CurrencyDollarIcon, ArrowUpIcon, ArrowDownIcon, ArrowPathIcon, ArrowRightIcon, WalletIcon, DocumentTextIcon, ArrowsRightLeftIcon, BellIcon, HomeIcon, ClockIcon, Cog6ToothIcon, ListBulletIcon, UserIcon } from '@heroicons/react/24/outline';
+import { ChevronDownIcon, CurrencyDollarIcon, ArrowPathIcon, ArrowRightIcon, ArrowLeftIcon, WalletIcon, BellIcon } from '@heroicons/react/24/outline';
+import { BanknoteArrowDown, BanknoteArrowUp, Landmark, ChevronLeft, ChevronRight, Clock, Home, List, Settings, ArrowLeft } from 'lucide-react';
+import { useAppTheme } from './hooks/useAppTheme';
+import { cn } from './lib/utils';
 import { base } from 'wagmi/chains';
 import { ethers } from 'ethers';
 import { stablecoins } from './data/stablecoins';
 import { executeUSDCTransaction, executeTokenTransaction, getUSDCBalance, getTokenBalance } from './utils/wallet';
 import { fetchTokenRate, fetchSupportedCurrencies, fetchSupportedInstitutions } from './utils/paycrest';
-import { getAerodromeQuote, swapAerodrome, AERODROME_FACTORY_ADDRESS } from './utils/aerodrome';
 import { calculateDynamicFee, formatFeeInfo, isProtocolEnabled } from './utils/nedaPayProtocol';
 import { getNedaPayProtocolAddress } from './config/contracts';
 import Image from 'next/image';
@@ -21,11 +23,9 @@ import Sidebar from './components/Sidebar';
 import PretiumOffRampFlow from './components/PretiumOffRampFlow';
 import PretiumOnRampFlow from './components/PretiumOnRampFlow';
 import WithdrawFlow from './components/withdraw/WithdrawFlow';
-import CurrencyTicker from './components/CurrencyTicker';
-import { usePrivy } from '@privy-io/react-auth';
 import '../lib/i18n';
 
-type Tab = 'home' | 'wallet' | 'activity' | 'settings' | 'send' | 'pay' | 'deposit' | 'link' | 'swap' | 'invoice' | 'withdraw' | 'profile';
+type Tab = 'home' | 'activity' | 'settings' | 'send' | 'pay' | 'deposit' | 'link' | 'withdraw';
 
 interface Country {
   name: string;
@@ -143,7 +143,7 @@ export default function FarcasterMiniApp() {
 
 
   const { t, i18n } = useTranslation();
-  const { authenticated } = usePrivy();
+  const { isLight } = useAppTheme();
 
   // DIRECT FARCASTER USER STATE
   const [farcasterUser, setFarcasterUser] = useState<any>(null);
@@ -516,7 +516,7 @@ export default function FarcasterMiniApp() {
   const [depositNetwork, setDepositNetwork] = useState('');
   const [depositPhone, setDepositPhone] = useState('');
   const [depositChain, setDepositChain] = useState<'BASE' | 'POLYGON' | 'CELO' | 'SCROLL'>('BASE');
-  const [depositAsset, setDepositAsset] = useState<'USDC' | 'USDT'>('USDC');
+  const [depositAsset, setDepositAsset] = useState<'USDC' | 'USDT' | 'NTZS'>('USDC');
   const [depositLoading, setDepositLoading] = useState(false);
   const [depositStatus, setDepositStatus] = useState<string | null>(null);
   const [depositTransactionCode, setDepositTransactionCode] = useState<string | null>(null);
@@ -531,32 +531,11 @@ export default function FarcasterMiniApp() {
   const [walletBalance, setWalletBalance] = useState('0.00');
   const [isCountryDropdownOpen, setIsCountryDropdownOpen] = useState(false);
   const [selectedInstitution, setSelectedInstitution] = useState('');
+  const [sendStep, setSendStep] = useState<'country' | 'recipient' | 'confirm'>('country');
+  const [isDepositCountryOpen, setIsDepositCountryOpen] = useState(false);
   const [orderedCountries, setOrderedCountries] = useState<Country[]>(countries);
   const [userLocation, setUserLocation] = useState<string | null>(null);
-  const [invoiceView, setInvoiceView] = useState<'main' | 'create' | 'list'>('main');
-  const [invoiceRecipient, setInvoiceRecipient] = useState('');
-  const [invoiceEmail, setInvoiceEmail] = useState('');
-  const [invoiceSender, setInvoiceSender] = useState('');
-  const [invoiceCurrency, setInvoiceCurrency] = useState('USDC');
-  const [invoiceLineItems, setInvoiceLineItems] = useState([{ description: '', amount: '' }]);
-  const [invoicePaymentLink, setInvoicePaymentLink] = useState('');
-  const [invoiceDueDate, setInvoiceDueDate] = useState(() => {
-    const today = new Date();
-    today.setDate(today.getDate() + 7); // Default to 7 days from now
-    return today.toISOString().split('T')[0];
-  });
-  const [invoiceStatus, setInvoiceStatus] = useState<string | null>(null);
 
-  // Swap state variables
-  const [swapFromToken, setSwapFromToken] = useState('USDC');
-  const [swapToToken, setSwapToToken] = useState('');
-  const [swapAmount, setSwapAmount] = useState('');
-  const [swapQuote, setSwapQuote] = useState<string | null>(null);
-  const [swapIsLoading, setSwapIsLoading] = useState(false);
-  const [swapError, setSwapError] = useState<string | null>(null);
-  const [swapSuccess, setSwapSuccess] = useState<string | null>(null);
-  const [showSwapFromDropdown, setShowSwapFromDropdown] = useState(false);
-  const [showSwapToDropdown, setShowSwapToDropdown] = useState(false);
   const [showInvoiceCurrencyDropdown, setShowInvoiceCurrencyDropdown] = useState(false);
   const [showLinkCurrencyDropdown, setShowLinkCurrencyDropdown] = useState(false);
 
@@ -585,8 +564,6 @@ export default function FarcasterMiniApp() {
   const [showNotifications, setShowNotifications] = useState(false);
   const [isSideMenuOpen, setIsSideMenuOpen] = useState(false);
   const [showFAQModal, setShowFAQModal] = useState(false);
-  const [showProfileModal, setShowProfileModal] = useState(false);
-  const [showTransactionsModal, setShowTransactionsModal] = useState(false);
   const [userTransactions, setUserTransactions] = useState<Array<{
     id: string;
     amount: number;
@@ -1405,129 +1382,19 @@ export default function FarcasterMiniApp() {
     }
   }, [isConnected, address]);
 
-  // Optimized swap with fee collection using unlimited approval
   const executeBatchedSwapWithFee = useCallback(async (
-    fromTokenAddress: string,
-    toTokenAddress: string,
-    amountIn: string,
-    amountOutMin: string,
-    userAddress: string,
-    deadline: number,
-    feeInfo: any
+    _fromTokenAddress: string,
+    _toTokenAddress: string,
+    _amountIn: string,
+    _amountOutMin: string,
+    _userAddress: string,
+    _deadline: number,
+    _feeInfo: any
   ): Promise<{ success: boolean; hash: string }> => {
-    try {
-      console.log('🔄 Preparing optimized swap with fee collection...');
-
-      const { writeContract } = await import('wagmi/actions');
-      const { config } = await import('../providers/MiniKitProvider');
-
-      // 1. Check if approval is needed for protocol fee
-      const erc20ABI = [
-        {
-          name: 'approve',
-          type: 'function',
-          inputs: [
-            { name: 'spender', type: 'address' },
-            { name: 'amount', type: 'uint256' }
-          ],
-          outputs: [{ name: '', type: 'bool' }],
-          stateMutability: 'nonpayable'
-        },
-        {
-          name: 'allowance',
-          type: 'function',
-          inputs: [
-            { name: 'owner', type: 'address' },
-            { name: 'spender', type: 'address' }
-          ],
-          outputs: [{ name: '', type: 'uint256' }],
-          stateMutability: 'view'
-        }
-      ];
-
-      // Check current allowance for protocol contract
-      const provider = new ethers.providers.JsonRpcProvider('https://mainnet.base.org');
-      const tokenContract = new ethers.Contract(fromTokenAddress, erc20ABI, provider);
-      const currentAllowance = await tokenContract.allowance(userAddress, feeInfo.protocolAddress);
-      const totalNeeded = ethers.BigNumber.from(amountIn).add(feeInfo.feeInTokenUnits);
-
-      // 2. Set reasonable approval if needed
-      if (currentAllowance.lt(totalNeeded)) {
-        console.log('📝 Setting approval for protocol fee...');
-
-        // Use 10x the needed amount instead of unlimited to avoid security warnings
-        const approvalAmount = totalNeeded.mul(10);
-
-        const approvalHash = await writeContract(config, {
-          address: fromTokenAddress as `0x${string}`,
-          abi: erc20ABI,
-          functionName: 'approve',
-          args: [feeInfo.protocolAddress as `0x${string}`, BigInt(approvalAmount.toString())],
-        });
-
-        console.log('✅ Approval set for protocol fee:', approvalHash);
-      }
-
-      // 3. Process protocol fee
-      console.log('💰 Processing protocol fee...');
-      const protocolABI = [
-        {
-          name: 'processSwap',
-          type: 'function',
-          inputs: [
-            { name: 'tokenIn', type: 'address' },
-            { name: 'tokenOut', type: 'address' },
-            { name: 'amountIn', type: 'uint256' },
-            { name: 'amountOutMin', type: 'uint256' },
-            { name: 'swapData', type: 'bytes' }
-          ],
-          outputs: [],
-          stateMutability: 'nonpayable'
-        }
-      ];
-
-      const feeHash = await writeContract(config, {
-        address: feeInfo.protocolAddress as `0x${string}`,
-        abi: protocolABI,
-        functionName: 'processSwap',
-        args: [
-          fromTokenAddress as `0x${string}`,
-          toTokenAddress as `0x${string}`,
-          BigInt(feeInfo.feeInTokenUnits.toString()),
-          BigInt(0),
-          '0x' as `0x${string}`
-        ],
-      });
-
-      console.log('✅ Protocol fee processed:', feeHash);
-
-      // 4. Execute main swap
-      console.log('🔄 Executing main swap...');
-      const swapResult = await executeFarcasterSwap(
-        fromTokenAddress,
-        toTokenAddress,
-        amountIn,
-        amountOutMin,
-        userAddress,
-        deadline
-      );
-
-      // Clean up fee info
-      delete (window as any).batchedFeeInfo;
-      delete (window as any).protocolFeeInfo;
-
-      return {
-        success: swapResult.success,
-        hash: swapResult.hash
-      };
-
-    } catch (error: any) {
-      console.error('❌ Optimized swap with fee failed:', error);
-      throw error;
-    }
+    throw new Error('Swap removed - handled by Farcaster');
   }, []);
 
-  const executeFarcasterSwap = useCallback(async (
+  const _removedSwapFn = useCallback(async (
     fromTokenAddress: string,
     toTokenAddress: string,
     amountIn: string,
@@ -1535,442 +1402,9 @@ export default function FarcasterMiniApp() {
     userAddress: string,
     deadline: number
   ): Promise<{ success: boolean; hash: string }> => {
-    try {
-      console.log('🔍 Swap execution started:', {
-        from: fromTokenAddress,
-        to: toTokenAddress,
-        isConnected,
-        hasAddress: !!address,
-        hasWalletClient: !!walletClient,
-        direction: fromTokenAddress.toLowerCase() === '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913'.toLowerCase() ? 'USDC → Local' : 'Local → USDC',
-        deadline
-      });
-
-      if (!isConnected || !address) {
-        throw new Error('Wallet not connected in Farcaster');
-      }
-
-      // Use wagmi's writeContract approach for Farcaster MiniApps
-      const { writeContract } = await import('wagmi/actions');
-      const { config } = await import('../providers/MiniKitProvider');
-
-      // Aerodrome Router contract
-      const AERODROME_ROUTER = '0xcF77a3Ba9A5CA399B7c97c74d54e5b1Beb874E43';
-
-      // 1. Check and set approval if needed
-      const erc20ABI = [
-        {
-          name: 'approve',
-          type: 'function',
-          inputs: [
-            { name: 'spender', type: 'address' },
-            { name: 'amount', type: 'uint256' }
-          ],
-          outputs: [{ name: '', type: 'bool' }],
-          stateMutability: 'nonpayable'
-        },
-        {
-          name: 'allowance',
-          type: 'function',
-          inputs: [
-            { name: 'owner', type: 'address' },
-            { name: 'spender', type: 'address' }
-          ],
-          outputs: [{ name: '', type: 'uint256' }],
-          stateMutability: 'view'
-        }
-      ];
-
-      // Check current allowance for router
-      const rpcProvider = new ethers.providers.JsonRpcProvider('https://mainnet.base.org');
-      const tokenContract = new ethers.Contract(fromTokenAddress, erc20ABI, rpcProvider);
-      const currentAllowance = await tokenContract.allowance(userAddress, AERODROME_ROUTER);
-      const amountNeeded = ethers.BigNumber.from(amountIn);
-
-      // Check if this is a local stablecoin (not USDC) for approval
-      const isLocalStablecoinApproval = fromTokenAddress.toLowerCase() !== '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913'.toLowerCase();
-
-      console.log('🔍 Approval validation:', {
-        fromTokenAddress,
-        amountIn,
-        amountNeeded: amountNeeded.toString(),
-        currentAllowance: currentAllowance.toString(),
-        isLocalStablecoin: isLocalStablecoinApproval
-      });
-
-      // Set exact amount approval to avoid "unlimited" warnings
-      if (currentAllowance.lt(amountNeeded)) {
-        console.log('📝 Setting exact amount approval for router...');
-
-        // Use exact amount needed to avoid any "unlimited" interpretation
-        // Add specific gas parameters for all local stablecoins to help with gas estimation
-        const approvalConfig: any = {
-          address: fromTokenAddress as `0x${string}`,
-          abi: erc20ABI,
-          functionName: 'approve',
-          args: [AERODROME_ROUTER as `0x${string}`, BigInt(amountNeeded.toString())],
-        };
-
-        // Add gas parameters for all local stablecoins to help with estimation
-        if (isLocalStablecoinApproval) {
-          // Ultra-specific gas handling for IDRX
-          if (fromTokenAddress.toLowerCase() === '0x18Bc5bcC660cf2B9cE3cd51a404aFe1a0cBD3C22'.toLowerCase()) {
-            approvalConfig.gas = BigInt(120000); // Conservative gas limit for IDRX approval
-            console.log('🪙 Using IDRX approval gas limit only (no fee override)');
-          } else {
-            approvalConfig.gas = BigInt(100000); // Conservative gas limit for other locals
-            console.log('🪙 Using local stablecoin approval gas limit only (no fee override)');
-          }
-        }
-
-        console.log('📤 Sending approval transaction to wallet...');
-        console.log('🔍 Approval transaction details:', {
-          tokenAddress: fromTokenAddress,
-          spender: AERODROME_ROUTER,
-          amount: amountNeeded.toString(),
-          userAddress: userAddress,
-          isConnected,
-          hasAddress: !!address
-        });
-
-        // Ensure we have the correct user context for the approval
-        if (!userAddress || userAddress === '0x0000000000000000000000000000000000000000') {
-          throw new Error('Invalid user address for approval transaction');
-        }
-
-        const { writeContract: writeApprovalContract } = await import('wagmi/actions');
-        const approvalHash = await writeApprovalContract(config, {
-          ...approvalConfig,
-          account: userAddress as `0x${string}` // Explicitly set the account
-        });
-
-        console.log('✅ Approval transaction sent:', approvalHash);
-
-        // CRITICAL: Wait for approval confirmation before proceeding
-        console.log('⏳ Waiting for approval confirmation...');
-        const { waitForTransactionReceipt } = await import('wagmi/actions');
-
-        try {
-          const approvalReceipt = await waitForTransactionReceipt(config, {
-            hash: approvalHash,
-            timeout: 120000 // 2 minutes timeout
-          });
-
-          console.log('✅ Approval confirmed on-chain:', {
-            status: approvalReceipt.status,
-            blockNumber: approvalReceipt.blockNumber,
-            gasUsed: approvalReceipt.gasUsed?.toString()
-          });
-
-          // Double-check allowance after confirmation with retry logic
-          let newAllowance;
-          let retryCount = 0;
-          const maxRetries = 3;
-
-          while (retryCount < maxRetries) {
-            try {
-              await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1))); // Wait 1s, 2s, 3s
-              newAllowance = await tokenContract.allowance(userAddress, AERODROME_ROUTER);
-              console.log(`🔍 Allowance check attempt ${retryCount + 1}:`, {
-                expected: amountNeeded.toString(),
-                actual: newAllowance.toString(),
-                sufficient: newAllowance.gte(amountNeeded)
-              });
-
-              if (newAllowance.gte(amountNeeded)) {
-                console.log('✅ Allowance confirmed sufficient');
-                break;
-              }
-
-              retryCount++;
-              if (retryCount === maxRetries) {
-                console.log('⚠️ Allowance still insufficient after retries, but proceeding with swap (approval transaction was confirmed)');
-                // Don't throw error - the approval transaction was confirmed, so proceed
-                break;
-              }
-            } catch (allowanceCheckError: any) {
-              console.log(`❌ Allowance check attempt ${retryCount + 1} failed:`, allowanceCheckError.message);
-              retryCount++;
-              if (retryCount === maxRetries) {
-                console.log('⚠️ Allowance check failed, but approval transaction was confirmed, proceeding with swap');
-                // Don't throw error - the approval transaction was confirmed
-                break;
-              }
-            }
-          }
-
-        } catch (confirmError: any) {
-          console.error('❌ Approval confirmation failed:', confirmError);
-          throw new Error(`Approval confirmation failed: ${confirmError.message}`);
-        }
-      } else {
-        console.log('✅ Sufficient allowance already exists for router');
-      }
-
-      // 2. Execute swap with route validation
-      // Detect local stablecoins via address set (USDC + known locals)
-      const USDC_ADDR = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913'.toLowerCase();
-      // Build from stablecoins.ts to avoid stale/placeholder addresses
-      // Lazy import to avoid circular issues in Next.js build graph
-      const { stablecoins } = await import('./data/stablecoins');
-      const LOCAL_STABLES = new Set<string>(
-        stablecoins
-          .filter((t: any) => t.address && t.address.toLowerCase() !== USDC_ADDR)
-          .map((t: any) => t.address.toLowerCase())
-      );
-
-      const fromIsLocalStable = LOCAL_STABLES.has(fromTokenAddress.toLowerCase());
-      const toIsLocalStable = LOCAL_STABLES.has(toTokenAddress.toLowerCase());
-      const fromIsUSDC = fromTokenAddress.toLowerCase() === USDC_ADDR;
-      const toIsUSDC = toTokenAddress.toLowerCase() === USDC_ADDR;
-
-      // Try stable pools first for better gas estimation, then fallback to volatile
-      const hasLocalStablecoin = fromIsLocalStable || toIsLocalStable;
-
-      // Start with stable pools for all stablecoin pairs
-      const useStablePair = true; // Always try stable pools first
-
-      const routes = [{
-        from: fromTokenAddress as `0x${string}`,
-        to: toTokenAddress as `0x${string}`,
-        stable: useStablePair,
-        factory: AERODROME_FACTORY_ADDRESS as `0x${string}`
-      }];
-
-      console.log('🛣️ Route configuration:', {
-        routes,
-        fromTokenAddress,
-        toTokenAddress,
-        factoryAddress: AERODROME_FACTORY_ADDRESS,
-        stable: useStablePair
-      });
-
-      // Add local stablecoin gas parameters for better gas estimation (either direction)
-      const isFromLocalStablecoin = fromIsLocalStable;
-      const isToLocalStablecoin = toIsLocalStable;
-      const isLocalStablecoinSwap = isFromLocalStablecoin || isToLocalStablecoin;
-      // Use the exact ABI from Aerodrome router contract
-      const AERODROME_ROUTER_ABI = [
-        {
-          "inputs": [
-            { "internalType": "uint256", "name": "amountIn", "type": "uint256" },
-            { "internalType": "uint256", "name": "amountOutMin", "type": "uint256" },
-            {
-              "components": [
-                { "internalType": "address", "name": "from", "type": "address" },
-                { "internalType": "address", "name": "to", "type": "address" },
-                { "internalType": "bool", "name": "stable", "type": "bool" },
-                { "internalType": "address", "name": "factory", "type": "address" }
-              ],
-              "internalType": "struct IRouter.Route[]",
-              "name": "routes",
-              "type": "tuple[]"
-            },
-            { "internalType": "address", "name": "to", "type": "address" },
-            { "internalType": "uint256", "name": "deadline", "type": "uint256" }
-          ],
-          "name": "swapExactTokensForTokens",
-          "outputs": [
-            { "internalType": "uint256[]", "name": "amounts", "type": "uint256[]" }
-          ],
-          "stateMutability": "nonpayable",
-          "type": "function"
-        }
-      ];
-
-      const swapConfig: any = {
-        address: AERODROME_ROUTER as `0x${string}`,
-        abi: AERODROME_ROUTER_ABI,
-        functionName: 'swapExactTokensForTokens',
-        args: [
-          BigInt(amountIn),
-          BigInt(amountOutMin),
-          routes,
-          userAddress as `0x${string}`,
-          BigInt(deadline)
-        ]
-      };
-
-      // Add higher gas limit for local stablecoin swaps to help with gas estimation
-      if (isLocalStablecoinSwap) {
-        // Apply only gas limits; let wallet estimate fees
-        if (fromTokenAddress.toLowerCase() === '0x18Bc5bcC660cf2B9cE3cd51a404aFe1a0cBD3C22'.toLowerCase()) {
-          swapConfig.gas = BigInt(500000); // Conservative upper bound for IDRX swaps
-          console.log('🪙 Using IDRX swap gas limit only (no fee override):', { gasLimit: '500000' });
-        } else if (fromTokenAddress.toLowerCase() === '0x269caE7Dc59803e5C596c95756faEeBb6030E0aF'.toLowerCase()) {
-          swapConfig.gas = BigInt(450000); // Slightly higher gas limit for MXNe swaps
-          console.log('🪙 Using MXNe swap gas limit only (no fee override):', { gasLimit: '450000' });
-        } else {
-          swapConfig.gas = BigInt(400000); // Conservative upper bound for other locals
-          console.log('🪙 Using local stablecoin swap gas limit only (no fee override):', { gasLimit: '400000' });
-        }
-      }
-
-      // Implement robust swap with stable/volatile pool fallback
-      console.log('🔄 Starting robust swap with pool fallback strategy...');
-
-      // Robust wallet client retrieval with retry logic
-      let currentWalletClient = walletClient;
-
-      if (!currentWalletClient) {
-        console.log('❌ Wallet client not immediately available, attempting to get fresh client...');
-        console.log('🔍 Connection status:', { isConnected, address: address?.slice(0, 6) + '...' });
-
-        if (!isWalletConnected || !walletAddress) {
-          throw new Error('Wallet not connected. Please connect your wallet first.');
-        }
-
-        // Wait a moment and try to get the wallet client from the window object (MiniKit specific)
-        await new Promise(resolve => setTimeout(resolve, 100));
-
-        // Try to get wallet client from window.ethereum as fallback
-        if ((window as any).ethereum) {
-          console.log('✅ Using window.ethereum provider as fallback');
-          currentWalletClient = (window as any).ethereum;
-        } else {
-          throw new Error('Wallet client unavailable. Please refresh the page and try again.');
-        }
-      }
-
-      console.log('✅ Wallet client available, proceeding with swap...');
-
-      const swapProvider = new ethers.providers.Web3Provider(currentWalletClient!.transport || currentWalletClient!);
-      const signer = swapProvider.getSigner();
-
-      // Pre-swap validation and debugging
-      console.log('🔍 Pre-swap validation:', {
-        amountIn,
-        amountOutMin,
-        fromToken: fromTokenAddress,
-        toToken: toTokenAddress,
-        stable: useStablePair,
-        factory: AERODROME_FACTORY_ADDRESS,
-        userAddress,
-        deadline,
-        currentAllowance: currentAllowance.toString(),
-        amountNeeded: amountNeeded.toString()
-      });
-
-      // Double-check allowance before swap
-      const finalAllowance = await tokenContract.allowance(userAddress, AERODROME_ROUTER);
-      console.log('🔍 Final allowance check:', {
-        finalAllowance: finalAllowance.toString(),
-        amountNeeded: amountNeeded.toString(),
-        sufficient: finalAllowance.gte(amountNeeded)
-      });
-
-      if (!finalAllowance.gte(amountNeeded)) {
-        throw new Error(`Insufficient allowance: ${finalAllowance.toString()} < ${amountNeeded.toString()}`);
-      }
-
-      // Get fresh quote to validate pool and amounts
-      try {
-        console.log('🔍 Getting fresh quote to validate pool...');
-        const freshQuote = await getAerodromeQuote({
-          provider: rpcProvider,
-          amountIn: amountIn,
-          fromToken: fromTokenAddress,
-          toToken: toTokenAddress,
-          stable: useStablePair,
-          factory: AERODROME_FACTORY_ADDRESS
-        });
-
-        console.log('✅ Fresh quote received:', {
-          inputAmount: amountIn,
-          outputAmount: freshQuote[1]?.toString(),
-          minimumOutput: amountOutMin,
-          slippageOk: ethers.BigNumber.from(freshQuote[1]?.toString() || '0').gte(amountOutMin)
-        });
-
-        // Check if the fresh quote meets our minimum output
-        if (!ethers.BigNumber.from(freshQuote[1]?.toString() || '0').gte(amountOutMin)) {
-          throw new Error(`Fresh quote too low: ${freshQuote[1]?.toString()} < ${amountOutMin} (price moved, increase slippage)`);
-        }
-      } catch (quoteError: any) {
-        console.error('❌ Fresh quote failed:', quoteError);
-        throw new Error(`Pool validation failed: ${quoteError?.message || 'Pool might not exist or have insufficient liquidity'}`);
-      }
-
-      // Simple direct swap execution - copy exact logic from main app
-      console.log('🔄 Executing direct swap with volatile pools (like main app)...');
-
-      let tx;
-      try {
-        tx = await swapAerodrome({
-          signer,
-          amountIn,
-          amountOutMin,
-          fromToken: fromTokenAddress,
-          toToken: toTokenAddress,
-          stable: false, // Always use volatile pools for local stablecoins
-          factory: AERODROME_FACTORY_ADDRESS,
-          userAddress,
-          deadline
-        });
-
-        console.log('✅ Direct swap successful:', tx.hash);
-        return { success: true, hash: tx.hash };
-
-      } catch (error: any) {
-        console.error('❌ Direct swap failed:', error);
-
-        // If it's a slippage issue, try with higher slippage once
-        if (error?.message?.includes('slippage') || error?.message?.includes('INSUFFICIENT_OUTPUT_AMOUNT')) {
-          console.log('🔄 Retrying with higher slippage (15%)...');
-
-          try {
-            const higherSlippageAmount = Number(amountOutMin) * 0.85; // 15% slippage
-            const higherSlippageAmountOut = ethers.utils.parseUnits(
-              higherSlippageAmount.toFixed(6),
-              6
-            ).toString();
-
-            tx = await swapAerodrome({
-              signer,
-              amountIn,
-              amountOutMin: higherSlippageAmountOut,
-              fromToken: fromTokenAddress,
-              toToken: toTokenAddress,
-              stable: false,
-              factory: AERODROME_FACTORY_ADDRESS,
-              userAddress,
-              deadline
-            });
-
-            console.log('✅ Higher slippage swap successful:', tx.hash);
-            return { success: true, hash: tx.hash };
-
-          } catch (slippageError: any) {
-            console.error('❌ Higher slippage swap also failed:', slippageError);
-            throw new Error('Swap failed: Insufficient liquidity or slippage too high. Try reducing the amount or increasing slippage tolerance.');
-          }
-        }
-
-        // Handle other common errors
-        if (error?.message?.includes('user rejected') || error?.message?.includes('denied')) {
-          throw new Error('Transaction was cancelled by user');
-        }
-
-        if (error?.message?.includes('execution reverted')) {
-          throw new Error('Swap failed: Insufficient liquidity or slippage too high. Try reducing the amount or increasing slippage tolerance.');
-        }
-
-        if (error?.message?.includes('INSUFFICIENT_LIQUIDITY')) {
-          throw new Error('Swap failed: Not enough liquidity in the pool for this token pair.');
-        }
-
-        if (error?.message?.includes('Unable to estimate')) {
-          throw new Error('Unable to estimate gas for this swap. The token pair might not have sufficient liquidity.');
-        }
-
-        throw new Error(`Swap failed: ${error?.message || 'Unknown error'}`);
-      }
-
-    } catch (error: any) {
-      console.error('❌ Farcaster swap failed:', error);
-      throw error; // Re-throw the error as-is
-    }
-  }, [isConnected, address]);
+    throw new Error('Swap removed');
+      }, [isConnected, address]);
+  void _removedSwapFn;
 
   // Farcaster-compatible token approval using wagmi/actions
   const executeFarcasterApproval = useCallback(async (
@@ -2348,388 +1782,6 @@ export default function FarcasterMiniApp() {
       });
     }
   }, [linkAmount, linkDescription, selectedStablecoin]);
-
-  // Swap functionality
-  const fetchSwapQuote = useCallback(async () => {
-    if (!swapAmount || !swapFromToken || !swapToToken) {
-      console.log('❌ Missing required params:', { swapAmount, swapFromToken, swapToToken });
-      return;
-    }
-
-    if (!isConnected) {
-      console.log('❌ Wallet not connected, skipping quote fetch');
-      return;
-    }
-
-    setSwapIsLoading(true);
-    setSwapError(null);
-    setSwapQuote(null);
-
-    try {
-      console.log('🔄 Fetching quote for:', swapAmount, swapFromToken, '->', swapToToken);
-
-      // Get token addresses from stablecoins data
-      const fromTokenData = stablecoins.find(token => token.baseToken === swapFromToken);
-      const toTokenData = stablecoins.find(token => token.baseToken === swapToToken);
-
-      if (!fromTokenData || !toTokenData) {
-        throw new Error('Token not supported');
-      }
-
-      console.log('📊 Token data:', {
-        from: { symbol: fromTokenData.baseToken, address: fromTokenData.address, decimals: fromTokenData.decimals },
-        to: { symbol: toTokenData.baseToken, address: toTokenData.address, decimals: toTokenData.decimals }
-      });
-
-      try {
-        // Try Aerodrome first
-        const provider = new ethers.providers.JsonRpcProvider('https://mainnet.base.org');
-
-        // Convert amount to token units (use token decimals or default to 6)
-        const fromDecimals = fromTokenData.decimals || 6;
-        const toDecimals = toTokenData.decimals || 6;
-        const amountInUnits = ethers.utils.parseUnits(swapAmount, fromDecimals);
-
-        console.log('💱 Calling Aerodrome with:', {
-          amountIn: amountInUnits.toString(),
-          fromToken: fromTokenData.address,
-          toToken: toTokenData.address
-        });
-
-        // Get quote from Aerodrome (using volatile pools)
-        const quote = await getAerodromeQuote({
-          provider,
-          amountIn: amountInUnits.toString(),
-          fromToken: fromTokenData.address,
-          toToken: toTokenData.address,
-          stable: false, // Use volatile pools
-          factory: AERODROME_FACTORY_ADDRESS
-        });
-
-        console.log('✅ Aerodrome quote received:', quote);
-
-        // Convert quote back to readable format
-        // Handle decimal precision properly to avoid "fractional component exceeds decimals" error
-        const rawQuoteAmount = ethers.utils.formatUnits(quote[1], toDecimals);
-        const quoteAmount = parseFloat(rawQuoteAmount).toFixed(toDecimals);
-        console.log('💰 Formatted quote amount:', quoteAmount);
-        setSwapQuote(quoteAmount);
-      } catch (aerodromeError) {
-        console.error('❌ Aerodrome quote failed:', aerodromeError);
-        throw aerodromeError; // Re-throw to show the actual error
-      }
-    } catch (error: any) {
-      console.error('❌ Quote fetch failed:', error);
-      setSwapError(error.message || 'Failed to fetch quote');
-    } finally {
-      setSwapIsLoading(false);
-    }
-  }, [swapAmount, swapFromToken, swapToToken, isConnected]);
-
-  const executeSwap = useCallback(async () => {
-    if (!swapAmount || !swapFromToken || !swapToToken || !swapQuote || !isWalletConnected || !walletAddress) {
-      throw new Error('Missing swap parameters');
-    }
-
-    setSwapIsLoading(true);
-    setSwapError(null);
-    setSwapSuccess(null);
-
-    try {
-      console.log('🔄 Starting swap execution:', { swapFromToken, swapToToken, swapAmount, swapQuote });
-
-      // Get token data
-      const fromTokenData = stablecoins.find(token => token.baseToken === swapFromToken);
-      const toTokenData = stablecoins.find(token => token.baseToken === swapToToken);
-
-      if (!fromTokenData || !toTokenData) {
-        throw new Error('Token not supported');
-      }
-
-      console.log('📊 Token addresses:', {
-        from: { token: fromTokenData.baseToken, address: fromTokenData.address },
-        to: { token: toTokenData.baseToken, address: toTokenData.address }
-      });
-
-      // Simple wallet provider detection: use smart wallet if no window.ethereum but wallet is connected
-      console.log('🔍 Wallet detection:', {
-        hasWindowEthereum: !!(window as any).ethereum,
-        isConnected,
-        address,
-        userAgent: navigator.userAgent.substring(0, 100)
-      });
-
-      // Convert amounts using proper decimals
-      const fromDecimals = fromTokenData.decimals || 6;
-      const toDecimals = toTokenData.decimals || 6;
-
-      console.log('🔍 Token decimal info:', {
-        fromToken: fromTokenData.baseToken,
-        fromDecimals,
-        toToken: toTokenData.baseToken,
-        toDecimals,
-        swapAmount
-      });
-
-      // Special handling for all local stablecoins to avoid gas estimation issues
-      let amountInUnits;
-      const isFromLocalStablecoin = fromTokenData.baseToken !== 'USDC';
-      const isToLocalStablecoin = toTokenData.baseToken !== 'USDC';
-      const isLocalStablecoinInvolved = isFromLocalStablecoin || isToLocalStablecoin;
-
-      if (isLocalStablecoinInvolved) {
-        // Ultra-robust handling for ALL local stablecoins to ensure consistent behavior
-        if (fromTokenData.baseToken === 'IDRX') {
-          // For IDRX, use ultra-conservative decimal handling (2 decimals)
-          const idrxAmount = Math.floor(parseFloat(swapAmount) * 100) / 100; // Ensure exactly 2 decimals
-          const cleanAmount = idrxAmount.toFixed(2);
-          amountInUnits = ethers.utils.parseUnits(cleanAmount, 2);
-          console.log('🪙 IDRX ultra-specific handling:', {
-            originalAmount: swapAmount,
-            idrxAmount,
-            cleanAmount,
-            amountInUnits: amountInUnits.toString(),
-            decimals: 2
-          });
-        } else if (fromTokenData.baseToken === 'MXNe') {
-          // For MXNe, use ultra-conservative decimal handling (6 decimals)
-          const mxneAmount = Math.floor(parseFloat(swapAmount) * 1000000) / 1000000; // Ensure exactly 6 decimals
-          const cleanAmount = mxneAmount.toFixed(6);
-          amountInUnits = ethers.utils.parseUnits(cleanAmount, 6);
-          console.log('🪙 MXNe ultra-specific handling:', {
-            originalAmount: swapAmount,
-            mxneAmount,
-            cleanAmount,
-            amountInUnits: amountInUnits.toString(),
-            decimals: 6
-          });
-        } else {
-          // For all other local stablecoins, use ultra-conservative decimal handling
-          const multiplier = Math.pow(10, fromDecimals);
-          const preciseAmount = Math.floor(parseFloat(swapAmount) * multiplier) / multiplier;
-          const cleanAmount = preciseAmount.toFixed(fromDecimals);
-          amountInUnits = ethers.utils.parseUnits(cleanAmount, fromDecimals);
-          console.log('🪙 Local stablecoin ultra-robust handling:', {
-            fromToken: fromTokenData.baseToken,
-            toToken: toTokenData.baseToken,
-            originalAmount: swapAmount,
-            preciseAmount,
-            cleanAmount,
-            amountInUnits: amountInUnits.toString(),
-            decimals: fromDecimals,
-            multiplier,
-            isFromLocal: isFromLocalStablecoin,
-            isToLocal: isToLocalStablecoin
-          });
-        }
-      } else {
-        amountInUnits = ethers.utils.parseUnits(swapAmount, fromDecimals);
-      }
-
-      console.log('💰 Amount calculation:', {
-        originalAmount: swapAmount,
-        fromDecimals,
-        amountInUnits: amountInUnits.toString(),
-        isIDRX: fromTokenData.baseToken === 'IDRX'
-      });
-      // Calculate minimum amount out with proper decimal handling (increased slippage for production)
-      // Use higher slippage for local stablecoins due to lower liquidity
-      const isLocalStablecoinSwap = isFromLocalStablecoin || isToLocalStablecoin;
-      const slippagePercentage = isLocalStablecoinSwap ? 0.95 : 0.98; // 5% for local stablecoins, 2% for USDC
-      const slippageAmount = Number(swapQuote) * slippagePercentage;
-      const minAmountOutFormatted = slippageAmount.toFixed(toDecimals);
-      const minAmountOut = ethers.utils.parseUnits(minAmountOutFormatted, toDecimals);
-
-      console.log('📊 Slippage calculation:', {
-        swapQuote,
-        slippagePercentage: `${(1 - slippagePercentage) * 100}%`,
-        slippageAmount,
-        minAmountOutFormatted,
-        minAmountOut: minAmountOut.toString(),
-        isLocalStablecoinSwap
-      });
-
-      // Calculate deadline (10 minutes from now)
-      const deadline = Math.floor(Date.now() / 1000) + 600;
-
-      console.log('🔄 Swap parameters:', {
-        fromToken: fromTokenData.address,
-        toToken: toTokenData.address,
-        amountIn: amountInUnits.toString(),
-        amountOutMin: minAmountOut.toString(),
-        userAddress: address,
-        deadline: new Date(deadline * 1000).toISOString()
-      });
-
-      // Force Farcaster approach for all swaps to ensure compatibility
-      if (!isConnected || !address) {
-        console.error('❌ No wallet available');
-        throw new Error('Please connect your wallet first');
-      }
-
-      console.log('✅ Using Farcaster smart wallet for swap');
-
-      // Calculate and collect protocol fee if enabled
-      let actualSwapAmount = amountInUnits;
-      if (isProtocolEnabled()) {
-        // Calculate fee based on USD equivalent
-        let usdValue;
-        if (swapToToken === 'USDC' || swapToToken === 'USDT' || swapToToken === 'DAI') {
-          // If swapping to USD stablecoin, use the output amount as USD value
-          usdValue = Number(swapQuote) || 0;
-        } else if (swapFromToken === 'USDC' || swapFromToken === 'USDT' || swapFromToken === 'DAI') {
-          // If swapping from USD stablecoin, use the input amount as USD value
-          usdValue = Number(swapAmount) || 0;
-        } else {
-          // For other token pairs, use a conservative estimate based on output
-          usdValue = Number(swapQuote) || Number(swapAmount) || 0;
-        }
-        const feeInfo = calculateDynamicFee(usdValue);
-        console.log('💰 Protocol fee info:', feeInfo, 'USD value used:', usdValue);
-
-        if (feeInfo.feeAmount > 0) {
-          // Calculate fee in token units
-          const feeInTokenUnits = ethers.utils.parseUnits(
-            (feeInfo.feeAmount).toFixed(fromDecimals),
-            fromDecimals
-          );
-
-          console.log('💳 Protocol fee will be collected during swap:', {
-            feeRate: feeInfo.feeRate + '%',
-            feeAmountUSD: '$' + feeInfo.feeAmount.toFixed(4),
-            feeInTokenUnits: ethers.utils.formatUnits(feeInTokenUnits, fromDecimals) + ' ' + swapFromToken,
-            tier: feeInfo.tier
-          });
-
-          // Store fee info for the swap execution
-          (window as any).protocolFeeInfo = {
-            feeInTokenUnits,
-            feeAmountUSD: feeInfo.feeAmount, // USD amount for USDC conversion
-            protocolAddress: getNedaPayProtocolAddress()
-          };
-        }
-      }
-
-      // Execute swap with protocol fee handling
-      let swapResult;
-
-      if (isProtocolEnabled() && (window as any).protocolFeeInfo) {
-        console.log('🔄 Executing swap with protocol fee...');
-        const feeInfo = (window as any).protocolFeeInfo;
-
-        // Use the batched swap function that handles protocol fees
-        swapResult = await executeBatchedSwapWithFee(
-          fromTokenData.address,
-          toTokenData.address,
-          amountInUnits.toString(),
-          minAmountOut.toString(),
-          address,
-          deadline,
-          feeInfo
-        );
-      } else {
-        console.log('🔄 Executing regular swap...');
-        // Regular swap without protocol fee
-        swapResult = await executeFarcasterSwap(
-          fromTokenData.address,
-          toTokenData.address,
-          amountInUnits.toString(),
-          minAmountOut.toString(),
-          address,
-          deadline
-        );
-      }
-
-      console.log('💰 Swap executed:', {
-        swapAmount: amountInUnits.toString(),
-        protocolFeeEnabled: isProtocolEnabled(),
-        swapResult: swapResult.success ? 'Success' : 'Failed'
-      });
-
-      console.log('✅ Swap completed successfully!', swapResult);
-
-      // Clean up any remaining fee info since batched transaction handles it
-      if (isProtocolEnabled() && (window as any).batchedFeeInfo) {
-        console.log('✅ Fee collection completed via batched transaction');
-        delete (window as any).batchedFeeInfo;
-        delete (window as any).protocolFeeInfo;
-      }
-
-      setSwapSuccess(`Swap successful! Transaction: ${swapResult.hash}`);
-      setSwapAmount('');
-      setSwapQuote(null);
-
-      // Refresh balance
-      setTimeout(() => {
-        window.location.reload();
-      }, 2000);
-
-    } catch (error: any) {
-      console.error('Swap failed:', error);
-      setSwapError(error.message || 'Swap failed');
-    } finally {
-      setSwapIsLoading(false);
-    }
-  }, [swapAmount, swapFromToken, swapToToken, swapQuote, isConnected, address, walletClient]);
-
-  // Fetch token balance for swap
-  const [swapFromBalance, setSwapFromBalance] = useState<string>('0.00');
-  const [swapToBalance, setSwapToBalance] = useState<string>('0.00');
-
-  const fetchTokenBalance = useCallback(async (tokenSymbol: string, walletAddress: string) => {
-    try {
-      const tokenData = stablecoins.find(token => token.baseToken === tokenSymbol);
-      if (!tokenData || !walletAddress) return '0.00';
-
-      // For USDC, use the existing balance
-      if (tokenSymbol === 'USDC') {
-        return walletBalance || '0.00';
-      }
-
-      // For other tokens, fetch balance using ethers
-      const provider = new ethers.providers.JsonRpcProvider('https://mainnet.base.org');
-      const tokenContract = new ethers.Contract(
-        tokenData.address,
-        ['function balanceOf(address owner) external view returns (uint256)'],
-        provider
-      );
-
-      const tokenBalance = await tokenContract.balanceOf(walletAddress);
-      const decimals = tokenData.decimals || 6;
-      return ethers.utils.formatUnits(tokenBalance, decimals);
-    } catch (error) {
-      console.error('Error fetching token balance:', error);
-      return '0.00';
-    }
-  }, [walletBalance]);
-
-  // Update balances when tokens change
-  useEffect(() => {
-    if (isConnected && address) {
-      fetchTokenBalance(swapFromToken, address).then(setSwapFromBalance);
-      if (swapToToken) {
-        fetchTokenBalance(swapToToken, address).then(setSwapToBalance);
-      } else {
-        setSwapToBalance('0.00');
-      }
-    } else {
-      setSwapFromBalance('0.00');
-      setSwapToBalance('0.00');
-    }
-  }, [swapFromToken, swapToToken, isConnected, address, fetchTokenBalance]);
-
-  // Auto-fetch quote when swap parameters change
-  useEffect(() => {
-    if (swapAmount && swapFromToken && swapToToken && Number(swapAmount) > 0) {
-      const timeoutId = setTimeout(() => {
-        fetchSwapQuote();
-      }, 500); // Debounce for 500ms
-
-      return () => clearTimeout(timeoutId);
-    } else {
-      setSwapQuote(null);
-    }
-  }, [swapAmount, swapFromToken, swapToToken, fetchSwapQuote]);
 
   // Fetch Pretium networks and countries for deposit tab
   useEffect(() => {
@@ -3327,521 +2379,313 @@ export default function FarcasterMiniApp() {
   }, [amount, tillNumber, businessNumber, paymentType, walletAddress, isConnected, payCurrency, selectedPayToken, selectedCountry.currency, selectedCountry.code, executePaycrestTransaction, fetchWalletBalance, switchChain, t, addNotification, recipientName, selectedInstitution]);
 
   const renderSendTab = () => {
-    // Check if selected country uses Pretium Off-Ramp (GH, CD, MW)
-    // We handle the conditional rendering inside the main return to keep the Country Selector visible.
+    const isPretiumCountry = ['GH', 'CD', 'MW'].includes(selectedCountry.code);
 
+    // ── Step 1: Amount + Destination (combined, like main app) ─────────────
+    if (sendStep === 'country') {
+      return (
+        <div className="flex flex-col space-y-3">
+          <h2 className="text-[#1C1917] text-base font-semibold">{t('send.title')}</h2>
 
-    // BUT! The country selector is INSIDE renderSendTab. 
-    // If I replace the whole content, I can't change country back easily if I want to switch to Nigeria.
-    // So, I should only replace the "Form" part, NOT the header and country selector.
-
-    return (
-      <div className="space-y-3">
-
-        {/* Compact Header with Network Badge */}
-        <div className="flex items-center justify-between mb-1">
-          <h2 className="text-white text-base font-semibold">{t('send.title')}</h2>
-          <div className="flex items-center gap-1.5 bg-slate-800/60 rounded-lg px-2 py-1">
-            {(() => {
-              const selectedTokenData = stablecoins.find(token =>
-                token.baseToken === (sendCurrency === 'local' ? selectedSendToken : selectedSendToken)
-              );
-              const isCeloToken = selectedTokenData?.baseToken === 'USDT' || selectedTokenData?.baseToken === 'cUSD';
-              return (
-                <>
-                  <img
-                    src={isCeloToken ? "/celo.png" : "/assets/logos/base-logo.jpg"}
-                    alt={isCeloToken ? "Celo" : "Base"}
-                    className="w-3.5 h-3.5 rounded-full"
-                  />
-                  <span className="text-white text-xs font-medium">{isCeloToken ? "Celo" : "Base"}</span>
-                </>
-              );
-            })()}
-          </div>
-        </div>
-
-        {/* Country Selector - Compact */}
-        <div className="relative">
-          <button
-            onClick={() => setIsCountryDropdownOpen(!isCountryDropdownOpen)}
-            className="w-full bg-slate-800/50 border border-slate-700/50 text-white rounded-lg px-3 py-2.5 text-left flex items-center justify-between hover:bg-slate-700/50 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <div className="flex items-center gap-2">
-              <span className="text-lg">{selectedCountry.flag}</span>
-              <span className="text-white font-medium text-sm">{selectedCountry.name}</span>
-            </div>
-            <ChevronDownIcon className={`w-4 h-4 text-gray-400 transition-transform ${isCountryDropdownOpen ? 'rotate-180' : ''
-              }`} />
-          </button>
-
-          {/* Dropdown Menu */}
-          {isCountryDropdownOpen && (
-            <div className="absolute top-full left-0 right-0 mt-1 bg-slate-800 border border-slate-700 rounded-lg shadow-xl z-50 overflow-hidden max-h-64">
-              {sendCountries.map((country) => (
+          {/* Amount card */}
+          <div className="bg-[#F4EFE6] border border-[#D4CEBE] rounded-2xl p-4">
+            <div className="text-[11px] font-medium text-[#7C7468] mb-3">You&apos;re sending</div>
+            <div className="flex items-center gap-3">
+              <input
+                type="number"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                placeholder="0"
+                className="bg-transparent text-[#1C1917] text-3xl font-semibold tracking-tight flex-1 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none placeholder:text-[#C8C1B4]"
+              />
+              <div className="relative">
                 <button
-                  key={country.code}
-                  onClick={() => {
-                    if (!country.comingSoon) {
-                      setSelectedCountry(country);
-                      setIsCountryDropdownOpen(false);
-                    }
-                  }}
-                  disabled={country.comingSoon}
-                  className={`w-full px-3 py-2 text-left flex items-center gap-2 transition-colors ${country.comingSoon
-                    ? 'opacity-50 cursor-not-allowed'
-                    : 'hover:bg-slate-700'
-                    } ${selectedCountry.code === country.code ? 'bg-blue-600/20' : ''
-                    }`}
+                  onClick={() => setShowSendTokenDropdown(!showSendTokenDropdown)}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 bg-[#EDE8DF] hover:bg-[#E8E2D9] rounded-xl transition-colors border border-[#C8C1B4]/50"
                 >
-                  <span className="text-lg">{country.flag}</span>
-                  <div className="flex flex-col">
-                    <span className="text-white font-medium text-sm">{country.name}</span>
-                    {country.comingSoon && (
-                      <span className="text-gray-400 text-xs">Coming soon</span>
-                    )}
-                  </div>
-                  {selectedCountry.code === country.code && (
-                    <div className="ml-auto w-2 h-2 bg-blue-500 rounded-full"></div>
-                  )}
+                  {renderTokenIcon(stablecoins.find(token => token.baseToken === selectedSendToken) || stablecoins[0], "w-4 h-4")}
+                  <span className="text-[#1C1917] text-sm font-semibold">{selectedSendToken}</span>
+                  <ChevronDownIcon className="w-3.5 h-3.5 text-[#7C7468]" />
                 </button>
-              ))}
+                {showSendTokenDropdown && (
+                  <div className="absolute top-full right-0 mt-2 bg-[#F4EFE6] rounded-xl border border-[#C8C1B4] shadow-xl z-50 min-w-[120px]">
+                    {stablecoins.map((token, index) => (
+                      <button
+                        key={`${token.baseToken}-${token.chainId}-${index}`}
+                        onClick={async () => {
+                          setSelectedSendToken(token.baseToken);
+                          setSelectedToken(token);
+                          setShowSendTokenDropdown(false);
+                          if (isConnected && switchChain) {
+                            try {
+                              const isCelo = token.baseToken === 'USDT' || token.baseToken === 'cUSD';
+                              await switchChain({ chainId: isCelo ? 42220 : 8453 });
+                              setTimeout(() => fetchWalletBalance(token.baseToken), 1000);
+                            } catch (error) { console.error('Chain switch failed:', error); }
+                          }
+                        }}
+                        className="w-full px-3 py-2.5 text-left hover:bg-[#E4DDD3] flex items-center gap-2 text-xs transition-colors first:rounded-t-xl last:rounded-b-xl"
+                      >
+                        {renderTokenIcon(token, "w-3 h-3")}
+                        <span className="text-[#1C1917]">{token.baseToken}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
-          )}
-        </div>
-
-
-        {/* Dynamic Content based on Country provider */}
-        {['GH', 'CD', 'MW'].includes(selectedCountry.code) ? (
-          <div className="mt-4">
-            <PretiumOffRampFlow
-              country={selectedCountry}
-              walletAddress={walletAddress || ''}
-              onBack={() => { }} // No back action needed if embedded, or maybe reset?
-              stablecoins={stablecoins}
-            />
+            <div className="flex items-center justify-between mt-3">
+              <span className="text-[#7C7468] text-xs">{t('wallet.balance')}</span>
+              <button onClick={() => setAmount(walletBalance)} className="text-blue-600 text-xs font-medium hover:text-blue-500 inline-flex items-center gap-1">
+                {renderTokenIcon(stablecoins.find(t => t.baseToken === selectedSendToken) || stablecoins[0], "w-3 h-3")}
+                {selectedSendToken} {walletBalance}
+              </button>
+            </div>
           </div>
-        ) : (
-          <>
-            {/* Mobile Money Provider - Custom Dropdown */}
+
+          {/* Destination card */}
+          <div className="bg-[#F4EFE6] border border-[#D4CEBE] rounded-2xl p-4">
+            <div className="text-[11px] font-medium text-[#7C7468] mb-3">Destination</div>
+            <div className="relative">
+              <button
+                onClick={() => setIsCountryDropdownOpen(!isCountryDropdownOpen)}
+                className="w-full h-12 flex items-center gap-2.5 bg-[#EDE8DF] border border-[#C8C1B4]/70 rounded-xl px-3 hover:bg-[#E8E2D9] transition-colors"
+              >
+                <span className="text-xl">{selectedCountry.flag}</span>
+                <div className="flex-1 text-left">
+                  <div className="text-sm font-medium text-[#1C1917] leading-none">{selectedCountry.name}</div>
+                  <div className="text-[10px] text-[#7C7468] mt-0.5">{selectedCountry.currency}</div>
+                </div>
+                <ChevronDownIcon className={`w-4 h-4 text-[#7C7468] transition-transform ${isCountryDropdownOpen ? 'rotate-180' : ''}`} />
+              </button>
+              {isCountryDropdownOpen && (
+                <div className="absolute top-full left-0 right-0 mt-1 bg-[#F4EFE6] border border-[#C8C1B4] rounded-xl shadow-xl z-50 overflow-hidden max-h-52 overflow-y-auto">
+                  {sendCountries.map((country) => (
+                    <button
+                      key={country.code}
+                      onClick={() => { if (!country.comingSoon) { setSelectedCountry(country); setIsCountryDropdownOpen(false); } }}
+                      disabled={country.comingSoon}
+                      className={`w-full px-3 py-2.5 text-left flex items-center gap-2.5 transition-colors ${country.comingSoon ? 'opacity-40 cursor-not-allowed' : 'hover:bg-[#E4DDD3]'} ${selectedCountry.code === country.code ? 'bg-blue-500/10' : ''}`}
+                    >
+                      <span className="text-lg">{country.flag}</span>
+                      <div className="flex-1">
+                        <span className="text-[#1C1917] text-sm font-medium block">{country.name}</span>
+                        <span className="text-[#7C7468] text-[10px]">{country.currency}{country.comingSoon ? ' · Coming soon' : ''}</span>
+                      </div>
+                      {selectedCountry.code === country.code && <div className="w-1.5 h-1.5 bg-blue-500 rounded-full shrink-0" />}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Continue */}
+          <button
+            onClick={() => setSendStep('recipient')}
+            disabled={!amount || parseFloat(amount) <= 0}
+            className={`w-full h-14 font-semibold text-base rounded-2xl transition-all ${
+              amount && parseFloat(amount) > 0
+                ? 'bg-[#1C1917] text-white active:scale-[0.98]'
+                : 'bg-[#E8E2D9] text-[#9B9188] cursor-not-allowed'
+            }`}
+          >
+            Continue
+          </button>
+        </div>
+      );
+    }
+
+    // ── Step 2: Recipient details ───────────────────────────────────────────
+    if (sendStep === 'recipient') {
+      if (isPretiumCountry) {
+        return (
+          <div className="flex flex-col">
+            <div className="flex items-center gap-3 mb-4">
+              <button onClick={() => setSendStep('country')} className="w-10 h-10 rounded-full border border-[#C8C1B4] flex items-center justify-center hover:bg-[#E8E2D9] transition-colors shrink-0">
+                <ArrowLeftIcon className="w-5 h-5 text-[#1C1917]" />
+              </button>
+              <div>
+                <h2 className="text-[#1C1917] text-base font-medium">Send Money</h2>
+                <p className="text-[#7C7468] text-xs">{selectedCountry.flag} {selectedCountry.name}</p>
+              </div>
+            </div>
+            <PretiumOffRampFlow country={selectedCountry} walletAddress={walletAddress || ''} onBack={() => setSendStep('country')} stablecoins={stablecoins} />
+          </div>
+        );
+      }
+
+      return (
+        <div className="flex flex-col space-y-3">
+          {/* Header */}
+          <div className="flex items-center gap-3">
+            <button onClick={() => setSendStep('country')} className="w-10 h-10 rounded-full border border-[#C8C1B4] flex items-center justify-center hover:bg-[#E8E2D9] transition-colors shrink-0">
+              <ArrowLeftIcon className="w-5 h-5 text-[#1C1917]" />
+            </button>
             <div>
-              <label className="block text-xs text-gray-300 font-medium mb-1">{t('send.selectProvider')}</label>
+              <h2 className="text-[#1C1917] text-base font-medium">Recipient Details</h2>
+              <p className="text-[#7C7468] text-xs">{selectedCountry.flag} {selectedCountry.name} · {amount} {selectedSendToken}</p>
+            </div>
+          </div>
+
+          {/* Destination card with inline pickers */}
+          <div className="bg-[#F4EFE6] border border-[#D4CEBE] rounded-2xl p-4 space-y-4">
+            <div className="text-[11px] font-medium text-[#7C7468]">Recipient details</div>
+
+            {/* Provider */}
+            <div>
+              <label className="block text-xs font-semibold text-[#1C1917] mb-2">{t('send.selectProvider')}</label>
               <div className="relative">
                 <button
                   onClick={() => setShowProviderDropdown(!showProviderDropdown)}
                   disabled={isLoadingInstitutions}
-                  className="w-full bg-slate-800/50 border border-slate-700/50 text-white rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 hover:bg-slate-700/50 transition-colors flex items-center justify-between disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full h-12 bg-[#EDE8DF] border border-[#C8C1B4]/70 text-[#1C1917] rounded-xl px-3 text-sm hover:bg-[#E8E2D9] transition-colors flex items-center justify-between disabled:opacity-50"
                 >
-                  <div className="flex items-center gap-2">
-                    {isLoadingInstitutions ? (
-                      <>
-                        <svg className="animate-spin h-4 w-4 text-blue-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        <span className="text-gray-400">Loading providers...</span>
-                      </>
-                    ) : selectedInstitution ? (
-                      <>
-                        {institutions.find(i => i.code === selectedInstitution)?.type === 'mobile_money' ? (
-                          <svg className="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                          </svg>
-                        ) : (
-                          <svg className="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                          </svg>
-                        )}
-                        <span className="text-white">{institutions.find(i => i.code === selectedInstitution)?.name}</span>
-                      </>
-                    ) : (
-                      <span className="text-gray-400">{t('send.chooseProvider')}</span>
-                    )}
-                  </div>
-                  <ChevronDownIcon className={`w-4 h-4 text-gray-400 transition-transform ${showProviderDropdown ? 'rotate-180' : ''}`} />
+                  <span className={selectedInstitution ? 'text-[#1C1917]' : 'text-[#9B9188]'}>
+                    {isLoadingInstitutions ? 'Loading…' : selectedInstitution ? institutions.find(i => i.code === selectedInstitution)?.name : t('send.chooseProvider')}
+                  </span>
+                  <ChevronDownIcon className={`w-4 h-4 text-[#7C7468] transition-transform ${showProviderDropdown ? 'rotate-180' : ''}`} />
                 </button>
-
                 {showProviderDropdown && (
-                  <div className="absolute top-full left-0 right-0 mt-2 bg-slate-800 rounded-lg border border-slate-600 shadow-xl z-50 max-h-64 overflow-y-auto">
-                    {/* Mobile Money Section */}
+                  <div className="absolute top-full left-0 right-0 mt-1 bg-[#F4EFE6] rounded-xl border border-[#C8C1B4] shadow-xl z-50 max-h-52 overflow-y-auto">
                     {institutions.filter(i => i.type === 'mobile_money').length > 0 && (
-                      <div>
-                        <div className="px-3 py-2 text-xs font-semibold text-gray-400 bg-slate-900/50 sticky top-0 z-10">
-                          📱 Mobile Money
-                        </div>
-                        {institutions.filter(i => i.type === 'mobile_money').map((institution) => (
-                          <button
-                            key={institution.code}
-                            onClick={() => {
-                              setSelectedInstitution(institution.code);
-                              setShowProviderDropdown(false);
-                            }}
-                            className={`w-full px-3 py-2.5 text-left hover:bg-slate-700 flex items-center gap-3 text-sm transition-colors ${selectedInstitution === institution.code ? 'bg-blue-600/20 border-l-2 border-blue-500' : ''
-                              }`}
-                          >
-                            <svg className="w-4 h-4 text-green-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                            </svg>
-                            <span className="text-white flex-1">{institution.name}</span>
-                            {selectedInstitution === institution.code && (
-                              <svg className="w-4 h-4 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                              </svg>
-                            )}
+                      <>
+                        <div className="px-3 py-2 text-[10px] font-semibold text-[#7C7468] bg-[#E2DCD0] sticky top-0">📱 Mobile Money</div>
+                        {institutions.filter(i => i.type === 'mobile_money').map(inst => (
+                          <button key={inst.code} onClick={() => { setSelectedInstitution(inst.code); setShowProviderDropdown(false); }}
+                            className={`w-full px-3 py-2.5 text-left text-sm hover:bg-[#E4DDD3] flex items-center gap-2 transition-colors ${selectedInstitution === inst.code ? 'bg-blue-500/10 text-blue-700 font-medium' : 'text-[#1C1917]'}`}>
+                            {inst.name}
                           </button>
                         ))}
-                      </div>
+                      </>
                     )}
-
-                    {/* Banks Section */}
                     {institutions.filter(i => i.type === 'bank').length > 0 && (
-                      <div>
-                        <div className="px-3 py-2 text-xs font-semibold text-gray-400 bg-slate-900/50 sticky top-0 z-10">
-                          🏦 Banks
-                        </div>
-                        {institutions.filter(i => i.type === 'bank').map((institution) => (
-                          <button
-                            key={institution.code}
-                            onClick={() => {
-                              setSelectedInstitution(institution.code);
-                              setShowProviderDropdown(false);
-                            }}
-                            className={`w-full px-3 py-2.5 text-left hover:bg-slate-700 flex items-center gap-3 text-sm transition-colors ${selectedInstitution === institution.code ? 'bg-blue-600/20 border-l-2 border-blue-500' : ''
-                              }`}
-                          >
-                            <svg className="w-4 h-4 text-blue-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                            </svg>
-                            <span className="text-white flex-1">{institution.name}</span>
-                            {selectedInstitution === institution.code && (
-                              <svg className="w-4 h-4 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                              </svg>
-                            )}
+                      <>
+                        <div className="px-3 py-2 text-[10px] font-semibold text-[#7C7468] bg-[#E2DCD0] sticky top-0">🏦 Banks</div>
+                        {institutions.filter(i => i.type === 'bank').map(inst => (
+                          <button key={inst.code} onClick={() => { setSelectedInstitution(inst.code); setShowProviderDropdown(false); }}
+                            className={`w-full px-3 py-2.5 text-left text-sm hover:bg-[#E4DDD3] flex items-center gap-2 transition-colors ${selectedInstitution === inst.code ? 'bg-blue-500/10 text-blue-700 font-medium' : 'text-[#1C1917]'}`}>
+                            {inst.name}
                           </button>
                         ))}
-                      </div>
+                      </>
                     )}
                   </div>
                 )}
               </div>
             </div>
 
-            {/* Recipient Details - Compact 2-column layout */}
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="block text-[10px] text-gray-400 mb-0.5 uppercase tracking-wide">Name</label>
-                <input
-                  type="text"
-                  value={recipientName}
-                  onChange={(e) => setRecipientName(e.target.value)}
-                  placeholder="John Doe"
-                  className="w-full bg-slate-700/80 text-white rounded-lg px-2.5 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-                />
-              </div>
-              <div>
-                <label className="block text-[10px] text-gray-400 mb-0.5 uppercase tracking-wide">
-                  {institutions.find(i => i.code === selectedInstitution)?.type === 'bank' ? 'Bank Account' : 'Phone Number'}
-                </label>
-                <input
-                  type="text"
-                  value={phoneNumber}
-                  onChange={(e) => setPhoneNumber(e.target.value)}
-                  placeholder={institutions.find(i => i.code === selectedInstitution)?.type === 'bank' ? 'Enter account number' : '+255...'}
-                  className="w-full bg-slate-700/80 text-white rounded-lg px-2.5 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-                />
-              </div>
-            </div>
-
-            {/* Amount Input with Currency Switching */}
+            {/* Name */}
             <div>
-              <label className="block text-xs text-gray-400 mb-1">{t('send.enterAmount')}</label>
-              <div className="bg-slate-700 rounded-lg px-4 py-3">
-                <div className="flex items-center gap-3">
-                  <input
-                    type="number"
-                    value={amount}
-                    onChange={(e) => setAmount(e.target.value)}
-                    placeholder={sendCurrency === 'local' ? '1000' : '1.5'}
-                    step={sendCurrency === 'local' ? '1' : '0.01'}
-                    className="bg-transparent text-white text-base font-light flex-1 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                  />
-                  <div className="relative">
-                    <button
-                      onClick={() => {
-                        setSendCurrency('usdc');
-                        setShowSendTokenDropdown(!showSendTokenDropdown);
-                      }}
-                      className="flex items-center gap-1.5 px-2 py-1.5 bg-slate-800 hover:bg-slate-600 rounded-lg transition-colors border border-slate-500/30"
-                    >
-                      {renderTokenIcon(stablecoins.find(token => token.baseToken === selectedSendToken) || stablecoins[0], "w-3.5 h-3.5")}
-                      <span className="text-white text-xs font-medium">{selectedSendToken}</span>
-                      <ChevronDownIcon className="w-3.5 h-3.5 text-gray-400" />
-                    </button>
-
-                    {showSendTokenDropdown && (
-                      <div className="absolute top-full right-0 mt-2 bg-slate-800 rounded-lg border border-slate-600 shadow-xl z-50 max-h-48 overflow-y-auto min-w-[120px]">
-                        {stablecoins.map((token, index) => (
-                          <button
-                            key={`${token.baseToken}-${token.chainId}-${index}`}
-                            onClick={async () => {
-                              setSelectedSendToken(token.baseToken);
-                              setSelectedToken(token); // Update main selected token for theme
-                              setShowSendTokenDropdown(false);
-
-                              // Switch chain immediately when token is selected using hook
-                              if (isConnected && switchChain) {
-                                try {
-                                  const isCeloToken = (token.baseToken === 'USDT' || token.baseToken === 'cUSD');
-                                  const targetChainId = isCeloToken ? 42220 : 8453; // Celo : Base
-                                  const networkName = isCeloToken ? 'Celo' : 'Base';
-
-                                  console.log(`🔄 Pre-switching to ${networkName} (${targetChainId}) for ${token.baseToken}`);
-                                  await switchChain({ chainId: targetChainId });
-                                  console.log(`✅ Pre-switched to ${networkName} for ${token.baseToken}`);
-
-                                  // Fetch balance for the newly selected token
-                                  setTimeout(() => {
-                                    fetchWalletBalance(token.baseToken);
-                                  }, 1000); // Wait for chain switch to complete
-                                } catch (error) {
-                                  console.error('❌ Pre-chain switch failed:', error);
-                                  // Show user-friendly error for Celo tokens
-                                  const isCeloToken = (token.baseToken === 'USDT' || token.baseToken === 'cUSD');
-                                  if (isCeloToken) {
-                                    console.warn(`Failed to switch to Celo for ${token.baseToken}. Transaction may fail if not on correct network.`);
-                                  }
-                                }
-                              }
-                            }}
-                            className="w-full px-3 py-2 text-left hover:bg-slate-700 flex items-center gap-2 text-xs transition-colors"
-                          >
-                            {renderTokenIcon(token, "w-3 h-3")}
-                            <span className="text-white">{token.baseToken}</span>
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-
+              <label className="block text-xs font-semibold text-[#1C1917] mb-2">Full Name</label>
+              <input type="text" value={recipientName} onChange={(e) => setRecipientName(e.target.value)} placeholder="John Doe"
+                className="w-full h-12 bg-[#EDE8DF] border border-[#C8C1B4]/70 text-[#1C1917] rounded-xl px-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#1C1917]/20 placeholder:text-[#9B9188]" />
             </div>
 
-            {/* Payment Details */}
-            <div className="space-y-1">
-              <div className="flex justify-between items-start">
-                <div>
-                  <span className="text-gray-400 text-xs">{t('send.youllPay')}</span>
-                  {/* Currency Conversion Display underneath You'll pay */}
-                  {amount && (
-                    <div className="mt-1 text-xs text-gray-400 font-medium">
-                      {sendCurrency === 'local' ? (
-                        <span>≈ {(parseFloat(amount) / parseFloat(currentRate)).toFixed(4)} {selectedSendToken}</span>
-                      ) : (
-                        <span>≈ {(parseFloat(amount) * parseFloat(currentRate)).toFixed(2)} {selectedCountry.currency}</span>
-                      )}
-                    </div>
-                  )}
-                </div>
-                <div className="text-right">
-                  {/* Network Label */}
-                  <div className="flex items-center justify-end gap-1 mb-1">
-                    {(() => {
-                      const selectedTokenData = stablecoins.find(token =>
-                        token.baseToken === (sendCurrency === 'local' ? selectedSendToken : selectedSendToken)
-                      );
-                      const isCeloToken = selectedTokenData?.baseToken === 'USDT' || selectedTokenData?.baseToken === 'cUSD';
-                      return (
-                        <>
-                          <img
-                            src={isCeloToken ? "/celo.png" : "/assets/logos/base-logo.jpg"}
-                            alt={isCeloToken ? "Celo" : "Base"}
-                            className="w-3 h-3 rounded-full"
-                          />
-                          <span className="text-white text-xs">{isCeloToken ? "Celo" : "Base"}</span>
-                        </>
-                      );
-                    })()}
-                  </div>
-
-                  {/* Balance underneath Base */}
-                  <div className="text-xs text-gray-400 flex items-center justify-end gap-2">
-                    <span>{t('wallet.balance')}:</span>
-                    <button
-                      onClick={() => setAmount(walletBalance)}
-                      className="text-blue-400 font-medium hover:text-blue-300 transition-colors cursor-pointer inline-flex items-center gap-1"
-                    >
-                      {renderTokenIcon(stablecoins.find(token => token.baseToken === selectedSendToken) || stablecoins[0], "w-3 h-3")}
-                      {selectedSendToken} {walletBalance}
-                    </button>
-                    <button
-                      onClick={refreshBalance}
-                      className="text-gray-400 hover:text-blue-400 transition-colors p-1 rounded hover:bg-slate-700/50"
-                      title="Refresh balance"
-                    >
-                      <ArrowPathIcon className="w-3 h-3" />
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              <div className="text-center text-xs text-gray-300 mb-2 font-semibold mt-2">
-                1 {selectedSendToken} = {isLoadingRate ? '...' : currentRate} {selectedCountry.currency} • {t('send.paymentCompletes')}
-              </div>
-
-              <div className="space-y-0.5 text-xs mb-3">
-                <div className="flex justify-between">
-                  <span className="text-gray-400">{t('send.totalTzs').replace('TZS', selectedCountry.currency)}</span>
-                  <span className="text-white">{paymentDetails.totalLocal} {selectedCountry.currency}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-400">{t('send.fees')}</span>
-                  <span className="text-white">{paymentDetails.fee} {selectedCountry.currency}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-400">{t('send.amountInUsdc').replace('USDC', selectedSendToken)}</span>
-                  <span className="text-white">{paymentDetails.usdcAmount} {selectedSendToken}</span>
-                </div>
-              </div>
+            {/* Phone / Account */}
+            <div>
+              <label className="block text-xs font-semibold text-[#1C1917] mb-2">
+                {institutions.find(i => i.code === selectedInstitution)?.type === 'bank' ? 'Account Number' : 'Phone Number'}
+              </label>
+              <input type="text" value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)}
+                placeholder={institutions.find(i => i.code === selectedInstitution)?.type === 'bank' ? 'Enter account number' : selectedCountry.countryCode + '...'}
+                className="w-full h-12 bg-[#EDE8DF] border border-[#C8C1B4]/70 text-[#1C1917] rounded-xl px-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#1C1917]/20 placeholder:text-[#9B9188]" />
             </div>
+          </div>
 
-            {/* Swipe to Send */}
-            <div className="mt-4">
-              <div className="relative bg-gradient-to-r from-green-500 via-emerald-500 to-green-600 rounded-2xl p-1.5 overflow-hidden shadow-2xl shadow-green-500/30 border border-green-400/30">
-                {/* Progress Background */}
-                <div
-                  className="absolute left-0 top-0 h-full bg-gradient-to-r from-green-400 to-emerald-400 rounded-full transition-all duration-150 ease-in-out"
-                  style={{ width: `${swipeProgress}%` }}
-                />
+          <button
+            onClick={() => setSendStep('confirm')}
+            disabled={!selectedInstitution || !recipientName.trim() || !phoneNumber.trim()}
+            className={`w-full h-14 font-semibold text-base rounded-2xl transition-all ${
+              selectedInstitution && recipientName.trim() && phoneNumber.trim()
+                ? 'bg-[#1C1917] text-white active:scale-[0.98]'
+                : 'bg-[#E8E2D9] text-[#9B9188] cursor-not-allowed'
+            }`}
+          >
+            Continue
+          </button>
+        </div>
+      );
+    }
 
-                {/* Swipe Button */}
-                <div className="relative flex items-center justify-between px-4 py-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-lg">
-                      <ArrowRightIcon className="w-4 h-4 text-green-600" />
-                    </div>
-                    <span className="text-white font-bold text-sm flex items-center gap-2">
-                      {isConfirming ? (
-                        <>
-                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                          {t('send.confirming')}
-                        </>
-                      ) : isSwipeComplete ? (
-                        t('send.sending')
-                      ) : t('send.swipeToSend')}
-                    </span>
-                  </div>
+    // ── Step 3: Confirm & Send ──────────────────────────────────────────────
+    return (
+      <div className="flex flex-col space-y-3">
+        {/* Header */}
+        <div className="flex items-center gap-3">
+          <button onClick={() => setSendStep('recipient')} className="w-10 h-10 rounded-full border border-[#C8C1B4] flex items-center justify-center hover:bg-[#E8E2D9] transition-colors shrink-0">
+            <ArrowLeftIcon className="w-5 h-5 text-[#1C1917]" />
+          </button>
+          <div className="flex-1">
+            <h2 className="text-[#1C1917] text-base font-medium">Confirm & Send</h2>
+            <p className="text-[#7C7468] text-xs">{selectedCountry.flag} {selectedCountry.name}</p>
+          </div>
+          <div className="flex items-center gap-1 bg-[#EAE4DC] rounded-lg px-2 py-1">
+            {(() => { const isCelo = stablecoins.find(t => t.baseToken === selectedSendToken)?.baseToken === 'USDT' || stablecoins.find(t => t.baseToken === selectedSendToken)?.baseToken === 'cUSD'; return (<><img src={isCelo ? "/celo.png" : "/assets/logos/base-logo.jpg"} className="w-3.5 h-3.5 rounded-full" /><span className="text-[#1C1917] text-xs font-medium">{isCelo ? "Celo" : "Base"}</span></>); })()}
+          </div>
+        </div>
 
-                  <div className="text-white text-sm font-bold flex items-center gap-2">
-                    {sendCurrency === 'local' ? (
-                      <>
-                        <span className="text-lg">{selectedCountry.flag}</span>
-                        <span>{amount || '0'} {selectedCountry.currency}</span>
-                      </>
-                    ) : (
-                      <>
-                        {selectedSendToken === 'USDC' ? (
-                          <img src="/assets/logos/usdc-logo.png" alt="USDC" className="w-5 h-5" />
-                        ) : selectedSendToken === 'USDT' ? (
-                          <img src="/usdt.png" alt="USDT" className="w-5 h-5" />
-                        ) : selectedSendToken === 'cUSD' ? (
-                          <img src="/cUSD.png" alt="cUSD" className="w-5 h-5" />
-                        ) : (
-                          (() => {
-                            const tokenData = stablecoins.find(s => s.baseToken === selectedSendToken);
-                            if (tokenData && tokenData.flag && !tokenData.flag.includes('_LOGO')) {
-                              return <span className="text-lg">{tokenData.flag}</span>;
-                            }
-                            return <span className="w-5 h-5 bg-gray-400 rounded-full flex items-center justify-center text-xs">?</span>;
-                          })()
-                        )}
-                        <span>{amount || '0'} {selectedSendToken}</span>
-                      </>
-                    )}
-                  </div>
-                </div>
-
-                {/* Touch/Click Handler */}
-                <div
-                  className="absolute inset-0 cursor-pointer"
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    const rect = e.currentTarget.getBoundingClientRect();
-                    const startX = e.clientX - rect.left;
-
-                    const handleMouseMove = (moveEvent: MouseEvent) => {
-                      const currentX = moveEvent.clientX - rect.left;
-                      const progress = Math.min(Math.max(((currentX - startX) / rect.width) * 100, 0), 100);
-                      setSwipeProgress(progress);
-
-                      if (progress >= 80) {
-                        setIsSwipeComplete(true);
-                        setTimeout(() => {
-                          handleSendTransaction();
-                          setIsSwipeComplete(false);
-                          setSwipeProgress(0);
-                        }, 500);
-                        document.removeEventListener('mousemove', handleMouseMove);
-                        document.removeEventListener('mouseup', handleMouseUp);
-                      }
-                    };
-
-                    const handleMouseUp = () => {
-                      if (swipeProgress < 80) {
-                        setSwipeProgress(0);
-                      }
-                      document.removeEventListener('mousemove', handleMouseMove);
-                      document.removeEventListener('mouseup', handleMouseUp);
-                    };
-
-                    document.addEventListener('mousemove', handleMouseMove);
-                    document.addEventListener('mouseup', handleMouseUp);
-                  }}
-                  onTouchStart={(e) => {
-                    e.preventDefault();
-                    const rect = e.currentTarget.getBoundingClientRect();
-                    const startX = e.touches[0].clientX - rect.left;
-
-                    const handleTouchMove = (moveEvent: TouchEvent) => {
-                      moveEvent.preventDefault();
-                      const currentX = moveEvent.touches[0].clientX - rect.left;
-                      const progress = Math.min(Math.max(((currentX - startX) / rect.width) * 100, 0), 100);
-                      setSwipeProgress(progress);
-
-                      if (progress >= 80) {
-                        setIsSwipeComplete(true);
-                        setTimeout(() => {
-                          handleSendTransaction();
-                          setIsSwipeComplete(false);
-                          setSwipeProgress(0);
-                        }, 500);
-                        document.removeEventListener('touchmove', handleTouchMove);
-                        document.removeEventListener('touchend', handleTouchEnd);
-                      }
-                    };
-
-                    const handleTouchEnd = () => {
-                      if (swipeProgress < 80) {
-                        setSwipeProgress(0);
-                      }
-                      document.removeEventListener('touchmove', handleTouchMove);
-                      document.removeEventListener('touchend', handleTouchEnd);
-                    };
-
-                    document.addEventListener('touchmove', handleTouchMove, { passive: false });
-                    document.addEventListener('touchend', handleTouchEnd);
-                  }}
-                />
-              </div>
-
-              {/* Helper Text */}
-              <div className="text-center mt-2 text-xs text-gray-400">
-                {t('send.refundWarning')}
-              </div>
+        {/* Summary card */}
+        <div className="bg-[#F4EFE6] border border-[#D4CEBE] rounded-2xl p-4">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-[11px] font-medium text-[#7C7468]">You&apos;re sending</span>
+            <button onClick={() => setSendStep('country')} className="text-xs text-blue-600 font-medium hover:text-blue-500">Edit</button>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-[#E8E2D9] rounded-full flex items-center justify-center shrink-0">
+              <span className="text-sm font-bold text-[#1C1917]">{recipientName.charAt(0).toUpperCase()}</span>
             </div>
-          </>
-        )}
+            <div className="flex-1 min-w-0">
+              <p className="text-[#1C1917] font-semibold text-sm truncate">{recipientName}</p>
+              <p className="text-[#7C7468] text-xs truncate">{phoneNumber} · {institutions.find(i => i.code === selectedInstitution)?.name}</p>
+            </div>
+            <div className="text-right shrink-0">
+              <p className="text-[#1C1917] font-bold text-base">{amount || '0'}</p>
+              <p className="text-[#7C7468] text-xs">{selectedSendToken}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Rate + fees */}
+        <div className="bg-[#F4EFE6] border border-[#D4CEBE] rounded-2xl p-4 space-y-2">
+          <div className="text-center text-xs font-semibold text-[#4A4540]">
+            1 {selectedSendToken} = {isLoadingRate ? '…' : currentRate} {selectedCountry.currency}
+          </div>
+          {amount && (
+            <div className="text-center text-xs text-[#7C7468]">
+              ≈ {(parseFloat(amount || '0') * parseFloat(currentRate)).toFixed(2)} {selectedCountry.currency}
+            </div>
+          )}
+          <div className="h-px bg-[#C8C1B4]/30 my-1" />
+          <div className="space-y-1.5 text-xs">
+            <div className="flex justify-between"><span className="text-[#7C7468]">Total {selectedCountry.currency}</span><span className="text-[#1C1917] font-medium">{paymentDetails.totalLocal} {selectedCountry.currency}</span></div>
+            <div className="flex justify-between"><span className="text-[#7C7468]">{t('send.fees')}</span><span className="text-[#1C1917] font-medium">{paymentDetails.fee} {selectedCountry.currency}</span></div>
+            <div className="flex justify-between"><span className="text-[#7C7468]">Amount in {selectedSendToken}</span><span className="text-[#1C1917] font-medium">{paymentDetails.usdcAmount} {selectedSendToken}</span></div>
+          </div>
+        </div>
+
+        {/* Swipe to Send */}
+        <div>
+          <div className="relative bg-[#1C1917] rounded-2xl p-1.5 overflow-hidden shadow-xl shadow-black/20 border border-black/10">
+            <div className="absolute left-0 top-0 h-full bg-white/20 rounded-full transition-all duration-150" style={{ width: `${swipeProgress}%` }} />
+            <div className="relative flex items-center justify-between px-4 py-3">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-lg">
+                  <ArrowRightIcon className="w-4 h-4 text-[#1C1917]" />
+                </div>
+                <span className="text-white font-bold text-sm flex items-center gap-2">
+                  {isConfirming ? (<><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />{t('send.confirming')}</>) : isSwipeComplete ? t('send.sending') : t('send.swipeToSend')}
+                </span>
+              </div>
+              <span className="text-white text-sm font-bold">{amount || '0'} {selectedSendToken}</span>
+            </div>
+            <div className="absolute inset-0 cursor-pointer"
+              onMouseDown={(e) => { e.preventDefault(); const rect = e.currentTarget.getBoundingClientRect(); const startX = e.clientX - rect.left; const move = (me: MouseEvent) => { const p = Math.min(Math.max(((me.clientX - rect.left - startX) / rect.width) * 100, 0), 100); setSwipeProgress(p); if (p >= 80) { setIsSwipeComplete(true); setTimeout(() => { handleSendTransaction(); setIsSwipeComplete(false); setSwipeProgress(0); }, 500); document.removeEventListener('mousemove', move); document.removeEventListener('mouseup', up); } }; const up = () => { if (swipeProgress < 80) setSwipeProgress(0); document.removeEventListener('mousemove', move); document.removeEventListener('mouseup', up); }; document.addEventListener('mousemove', move); document.addEventListener('mouseup', up); }}
+              onTouchStart={(e) => { e.preventDefault(); const rect = e.currentTarget.getBoundingClientRect(); const startX = e.touches[0].clientX - rect.left; const move = (me: TouchEvent) => { me.preventDefault(); const p = Math.min(Math.max(((me.touches[0].clientX - rect.left - startX) / rect.width) * 100, 0), 100); setSwipeProgress(p); if (p >= 80) { setIsSwipeComplete(true); setTimeout(() => { handleSendTransaction(); setIsSwipeComplete(false); setSwipeProgress(0); }, 500); document.removeEventListener('touchmove', move); document.removeEventListener('touchend', end); } }; const end = () => { if (swipeProgress < 80) setSwipeProgress(0); document.removeEventListener('touchmove', move); document.removeEventListener('touchend', end); }; document.addEventListener('touchmove', move, { passive: false }); document.addEventListener('touchend', end); }}
+            />
+          </div>
+          <p className="text-center mt-2 text-xs text-[#7C7468]">{t('send.refundWarning')}</p>
+        </div>
       </div>
     );
   };
@@ -3851,8 +2695,8 @@ export default function FarcasterMiniApp() {
     if (!showSuccessModal || !successData) return null;
 
     return (
-      <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-        <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-6 max-w-sm w-full border border-slate-700/50 shadow-2xl animate-in zoom-in-95 duration-300">
+      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="bg-gradient-to-br from-[#F4EFE6] to-[#E2D9C8] rounded-2xl p-6 max-w-sm w-full border border-[#D4CEBE] shadow-2xl animate-in zoom-in-95 duration-300">
           {/* Success Icon with Animation */}
           <div className="flex justify-center mb-4">
             <div className="w-16 h-16 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full flex items-center justify-center animate-bounce">
@@ -3863,34 +2707,34 @@ export default function FarcasterMiniApp() {
           </div>
 
           {/* Success Title */}
-          <h2 className="text-xl font-bold text-white text-center mb-2">
+          <h2 className="text-xl font-bold text-[#1C1917] text-center mb-2">
             {successData.type === 'send' ? `💸 ${t('success.moneySent')}` : `💳 ${t('success.paymentComplete')}`}
           </h2>
-          <p className="text-gray-300 text-center text-sm mb-6">
+          <p className="text-[#7C7468] text-center text-sm mb-6">
             {t('success.transactionSuccessful')}
           </p>
 
           {/* Transaction Details */}
           <div className="space-y-3 mb-6">
-            <div className="bg-slate-700/50 rounded-lg p-3">
+            <div className="bg-[#EAE4DC] rounded-lg p-3">
               <div className="flex justify-between items-center mb-2">
-                <span className="text-gray-400 text-xs">{t('success.amount')}</span>
+                <span className="text-[#7C7468] text-xs">{t('success.amount')}</span>
                 <div className="flex items-center gap-2">
                   {successData.token === 'USDT' ? (
                     <img src="/usdt.png" alt="USDT" className="w-4 h-4" />
                   ) : (
                     <img src="/assets/logos/usdc-logo.png" alt="USDC" className="w-4 h-4" />
                   )}
-                  <span className="text-white font-semibold">{successData.amount}</span>
+                  <span className="text-[#1C1917] font-semibold">{successData.amount}</span>
                 </div>
               </div>
               <div className="flex justify-between items-center mb-2">
-                <span className="text-gray-400 text-xs">{successData.type === 'send' ? t('success.recipient') : t('success.tillNumber')}</span>
+                <span className="text-[#7C7468] text-xs">{successData.type === 'send' ? t('success.recipient') : t('success.tillNumber')}</span>
                 <div className="flex flex-col items-end">
-                  <div className="text-white font-mono text-sm">
+                  <div className="text-[#1C1917] font-mono text-sm">
                     {successData.recipient.startsWith('0x') ? (
                       <Identity address={successData.recipient as `0x${string}`} chain={base}>
-                        <Name className="text-white font-mono text-sm">
+                        <Name className="text-[#1C1917] font-mono text-sm">
                           {successData.recipient}
                         </Name>
                       </Identity>
@@ -3898,15 +2742,14 @@ export default function FarcasterMiniApp() {
                       successData.recipient
                     )}
                   </div>
-                  <span className="text-gray-500 text-xs">{recipientName || t('success.mobileMoney')}</span>
+                  <span className="text-[#9B9188] text-xs">{recipientName || t('success.mobileMoney')}</span>
                 </div>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-gray-400 text-xs">{t('success.orderId')}</span>
+                <span className="text-[#7C7468] text-xs">{t('success.orderId')}</span>
                 <button
                   onClick={() => {
                     navigator.clipboard.writeText(successData.orderId);
-                    // Show brief feedback
                     const btn = event?.target as HTMLElement;
                     const originalText = btn.textContent;
                     btn.textContent = t('success.copied');
@@ -3914,7 +2757,7 @@ export default function FarcasterMiniApp() {
                       btn.textContent = originalText;
                     }, 1000);
                   }}
-                  className="text-blue-400 font-mono text-xs hover:text-blue-300 transition-colors cursor-pointer flex items-center gap-1"
+                  className="text-blue-600 font-mono text-xs hover:text-blue-500 transition-colors cursor-pointer flex items-center gap-1"
                 >
                   {successData.orderId.slice(0, 8)}...
                   <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -3925,17 +2768,16 @@ export default function FarcasterMiniApp() {
             </div>
 
             {/* Blockchain Hash */}
-            <div className="bg-gradient-to-r from-blue-900/30 to-purple-900/30 rounded-lg p-3 border border-blue-500/20">
+            <div className="bg-[#EDE8DF] rounded-lg p-3 border border-blue-500/20">
               <div className="flex items-center justify-between mb-1">
                 <div className="flex items-center gap-2">
                   <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-                  <span className="text-blue-400 text-xs font-medium">{t('success.blockchainTransaction')}</span>
+                  <span className="text-blue-600 text-xs font-medium">{t('success.blockchainTransaction')}</span>
                 </div>
                 {successData.hash && (
                   <button
                     onClick={() => {
                       navigator.clipboard.writeText(successData.hash!);
-                      // Show brief feedback
                       const btn = event?.target as HTMLElement;
                       const originalText = btn.textContent;
                       btn.textContent = t('success.copied');
@@ -3943,7 +2785,7 @@ export default function FarcasterMiniApp() {
                         btn.textContent = originalText;
                       }, 1000);
                     }}
-                    className="text-blue-400 hover:text-blue-300 transition-colors cursor-pointer"
+                    className="text-blue-600 hover:text-blue-500 transition-colors cursor-pointer"
                     title="Copy transaction hash"
                   >
                     <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -3952,7 +2794,7 @@ export default function FarcasterMiniApp() {
                   </button>
                 )}
               </div>
-              <p className="text-gray-300 font-mono text-xs break-all">
+              <p className="text-[#4A4540] font-mono text-xs break-all">
                 {successData.hash ? `${successData.hash.slice(0, 20)}...${successData.hash.slice(-10)}` : 'Transaction completed'}
               </p>
             </div>
@@ -3964,13 +2806,12 @@ export default function FarcasterMiniApp() {
               onClick={() => {
                 setShowSuccessModal(false);
                 setSuccessData(null);
-                // Reset form
                 setAmount('');
                 setPhoneNumber('');
                 setTillNumber('');
                 setBusinessNumber('');
               }}
-              className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white font-semibold py-3 px-4 rounded-xl transition-all duration-200 transform hover:scale-105 border-2 border-green-400/50 hover:border-green-300/70"
+              className="flex-1 bg-[#1C1917] hover:bg-[#2C2927] text-white font-semibold py-3 px-4 rounded-xl transition-all duration-200"
             >
               ✨ {t('success.done')}
             </button>
@@ -3979,9 +2820,8 @@ export default function FarcasterMiniApp() {
                 if (successData.hash) {
                   navigator.clipboard.writeText(successData.hash);
                 }
-                // Could add a toast here
               }}
-              className="bg-slate-700 hover:bg-slate-600 text-white font-medium py-3 px-4 rounded-xl transition-colors"
+              className="bg-[#E8E2D9] hover:bg-[#E4DDD3] text-[#1C1917] font-medium py-3 px-4 rounded-xl transition-colors border border-[#C8C1B4]"
             >
               📋
             </button>
@@ -4004,8 +2844,8 @@ export default function FarcasterMiniApp() {
     if (!showErrorModal || !errorData) return null;
 
     return (
-      <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-        <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-6 max-w-md w-full border border-red-700/50 shadow-2xl animate-in zoom-in-95 duration-300">
+      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="bg-gradient-to-br from-[#F4EFE6] to-[#E2D9C8] rounded-2xl p-6 max-w-md w-full border border-red-300/50 shadow-2xl animate-in zoom-in-95 duration-300">
           {/* Error Icon with Animation */}
           <div className="flex justify-center mb-4">
             <div className="w-16 h-16 bg-gradient-to-r from-red-500 to-orange-500 rounded-full flex items-center justify-center">
@@ -4016,30 +2856,30 @@ export default function FarcasterMiniApp() {
           </div>
 
           {/* Error Title */}
-          <h2 className="text-2xl font-bold text-center text-white mb-2">{errorData.title}</h2>
+          <h2 className="text-2xl font-bold text-center text-[#1C1917] mb-2">{errorData.title}</h2>
 
           {/* Error Details */}
           <div className="space-y-4 mb-6">
             {/* Error Message */}
-            <div className="bg-red-900/20 rounded-lg p-4 border border-red-500/30">
+            <div className="bg-red-500/10 rounded-lg p-4 border border-red-500/30">
               <div className="flex items-start gap-3">
-                <svg className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                <svg className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                 </svg>
-                <p className="text-gray-200 text-sm flex-1">{errorData.message}</p>
+                <p className="text-[#1C1917] text-sm flex-1">{errorData.message}</p>
               </div>
             </div>
 
             {/* Suggestion */}
             {errorData.suggestion && (
-              <div className="bg-blue-900/20 rounded-lg p-4 border border-blue-500/30">
+              <div className="bg-blue-500/10 rounded-lg p-4 border border-blue-500/30">
                 <div className="flex items-start gap-3">
-                  <svg className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                  <svg className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
                   </svg>
                   <div className="flex-1">
-                    <p className="text-blue-400 text-xs font-semibold mb-1">💡 Suggestion</p>
-                    <p className="text-gray-300 text-sm">{errorData.suggestion}</p>
+                    <p className="text-blue-600 text-xs font-semibold mb-1">💡 Suggestion</p>
+                    <p className="text-[#4A4540] text-sm">{errorData.suggestion}</p>
                   </div>
                 </div>
               </div>
@@ -4052,7 +2892,7 @@ export default function FarcasterMiniApp() {
               setShowErrorModal(false);
               setErrorData(null);
             }}
-            className="w-full bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-500 hover:to-orange-500 text-white font-semibold py-3 px-4 rounded-xl transition-all duration-200 transform hover:scale-105 border-2 border-red-400/50 hover:border-red-300/70"
+            className="w-full bg-[#1C1917] hover:bg-[#2C2927] text-white font-semibold py-3 px-4 rounded-xl transition-all duration-200"
           >
             Try Again
           </button>
@@ -4511,17 +3351,17 @@ export default function FarcasterMiniApp() {
 
       {/* Swipe to Pay */}
       <div className="mt-6">
-        <div className="relative bg-gradient-to-r from-blue-500 via-purple-500 to-blue-600 rounded-2xl p-1.5 overflow-hidden shadow-2xl shadow-blue-500/30 border border-blue-400/30">
+        <div className="relative bg-[#1C1917] rounded-2xl p-1.5 overflow-hidden shadow-2xl shadow-black/20 border border-black/10">
           {/* Progress Background */}
           <div
-            className="absolute left-0 top-0 h-full bg-gradient-to-r from-blue-400 to-purple-400 rounded-full transition-all duration-150 ease-in-out"
+            className="absolute left-0 top-0 h-full bg-white/20 rounded-full transition-all duration-150 ease-in-out"
             style={{ width: `${swipeProgress}%` }}
           />
 
           <div className="relative flex items-center justify-between px-4 py-3">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-lg">
-                <CurrencyDollarIcon className="w-4 h-4 text-blue-600" />
+                <CurrencyDollarIcon className="w-4 h-4 text-[#1C1917]" />
               </div>
               <span className="text-white font-bold text-sm flex items-center gap-2">
                 {isConfirming ? (
@@ -4645,11 +3485,128 @@ export default function FarcasterMiniApp() {
   );
 
   const renderDepositTab = () => {
+    const depositCountries = [
+      { code: 'GH', fiat: 'GHS' as const, name: 'Ghana', currency: 'GHS', flag: '🇬🇭' },
+      { code: 'KE', fiat: 'KES' as const, name: 'Kenya', currency: 'KES', flag: '🇰🇪' },
+      { code: 'TZ', fiat: 'TZS' as const, name: 'Tanzania', currency: 'TZS', flag: '🇹🇿' },
+      { code: 'MW', fiat: 'MWK' as const, name: 'Malawi', currency: 'MWK', flag: '🇲🇼' },
+      { code: 'CD', fiat: 'CDF' as const, name: 'DR Congo', currency: 'CDF', flag: '🇨🇩' },
+      { code: 'UG', fiat: 'UGX' as const, name: 'Uganda', currency: 'UGX', flag: '🇺🇬' },
+    ];
+
+    const selectedDepositCountry = depositCountries.find(c => c.code === depositCountry) || depositCountries[1];
+
+    // ── Step 1: Amount + Destination ─────────────────────────────────────
+    if (depositStep === 1) {
+      return (
+        <div className="flex flex-col space-y-3">
+          <h2 className="text-[#1C1917] text-base font-semibold">Add Money</h2>
+
+          {/* Amount card */}
+          <div className="bg-[#F4EFE6] border border-[#D4CEBE] rounded-2xl p-4">
+            <div className="text-[11px] font-medium text-[#7C7468] mb-3">Amount to receive</div>
+            <div className="flex items-center gap-3">
+              <input
+                type="number"
+                value={depositAmount === '100' ? '' : depositAmount}
+                onChange={(e) => setDepositAmount(e.target.value)}
+                placeholder="0"
+                className="bg-transparent text-[#1C1917] text-3xl font-semibold tracking-tight flex-1 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none placeholder:text-[#C8C1B4]"
+              />
+              <div className="relative">
+                <button
+                  onClick={() => {
+                    const assets: Array<'USDC' | 'USDT' | 'NTZS'> = ['USDC', 'USDT'];
+                    const idx = assets.indexOf(depositAsset as any);
+                    setDepositAsset(assets[(idx + 1) % assets.length]);
+                  }}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 bg-[#EDE8DF] hover:bg-[#E8E2D9] rounded-xl transition-colors border border-[#C8C1B4]/50"
+                >
+                  <span className="text-[#1C1917] text-sm font-semibold">{depositAsset}</span>
+                  <ChevronDownIcon className="w-3.5 h-3.5 text-[#7C7468]" />
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Source country */}
+          <div className="bg-[#F4EFE6] border border-[#D4CEBE] rounded-2xl p-4">
+            <div className="text-[11px] font-medium text-[#7C7468] mb-3">From</div>
+            <div className="relative">
+              <button
+                onClick={() => setIsDepositCountryOpen(!isDepositCountryOpen)}
+                className="w-full h-12 flex items-center gap-2.5 bg-[#EDE8DF] border border-[#C8C1B4]/70 rounded-xl px-3 hover:bg-[#E8E2D9] transition-colors"
+              >
+                <span className="text-xl">{selectedDepositCountry.flag}</span>
+                <div className="flex-1 text-left">
+                  <div className="text-sm font-medium text-[#1C1917] leading-none">{selectedDepositCountry.name}</div>
+                  <div className="text-[10px] text-[#7C7468] mt-0.5">{selectedDepositCountry.currency}</div>
+                </div>
+                <ChevronDownIcon className={`w-4 h-4 text-[#7C7468] transition-transform ${isDepositCountryOpen ? 'rotate-180' : ''}`} />
+              </button>
+              {isDepositCountryOpen && (
+                <div className="absolute top-full left-0 right-0 mt-1 bg-[#F4EFE6] border border-[#C8C1B4] rounded-xl shadow-xl z-50 overflow-hidden">
+                  {depositCountries.map((c) => (
+                    <button
+                      key={c.code}
+                      onClick={() => { setDepositCountry(c.code); setIsDepositCountryOpen(false); }}
+                      className={`w-full px-3 py-2.5 text-left flex items-center gap-2.5 transition-colors hover:bg-[#E4DDD3] ${selectedDepositCountry.code === c.code ? 'bg-blue-500/10' : ''}`}
+                    >
+                      <span className="text-lg">{c.flag}</span>
+                      <div className="flex-1">
+                        <span className="text-[#1C1917] text-sm font-medium block">{c.name}</span>
+                        <span className="text-[#7C7468] text-[10px]">{c.currency}</span>
+                      </div>
+                      {selectedDepositCountry.code === c.code && <div className="w-1.5 h-1.5 bg-blue-500 rounded-full shrink-0" />}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Continue */}
+          <button
+            onClick={() => {
+              if (!depositCountry) setDepositCountry('KE');
+              setDepositStep(2);
+            }}
+            disabled={!depositAmount || depositAmount === '0' || depositAmount === '100'}
+            className={`w-full h-14 font-semibold text-base rounded-2xl transition-all ${
+              depositAmount && depositAmount !== '0' && depositAmount !== '100'
+                ? 'bg-[#1C1917] text-white active:scale-[0.98]'
+                : 'bg-[#E8E2D9] text-[#9B9188] cursor-not-allowed'
+            }`}
+          >
+            Continue
+          </button>
+        </div>
+      );
+    }
+
+    // ── Step 2+: Provider flow ────────────────────────────────────────────
     return (
-      <PretiumOnRampFlow
-        asset={depositAsset as 'USDC' | 'USDT'}
-        walletAddress={walletAddress}
-      />
+      <div className="flex flex-col">
+        <div className="flex items-center gap-3 mb-4">
+          <button
+            onClick={() => setDepositStep(1)}
+            className="w-10 h-10 rounded-full border border-[#C8C1B4] flex items-center justify-center hover:bg-[#E8E2D9] transition-colors shrink-0"
+          >
+            <ArrowLeftIcon className="w-5 h-5 text-[#1C1917]" />
+          </button>
+          <div>
+            <h2 className="text-[#1C1917] text-base font-medium">Add Money</h2>
+            <p className="text-[#7C7468] text-xs">{selectedDepositCountry.flag} {selectedDepositCountry.name} · {depositAmount} {depositAsset}</p>
+          </div>
+        </div>
+        <PretiumOnRampFlow
+          asset={depositAsset}
+          walletAddress={walletAddress}
+          initialFiat={selectedDepositCountry.fiat}
+          initialAmount={depositAmount}
+          onBack={() => setDepositStep(1)}
+        />
+      </div>
     );
   };
 
@@ -4804,8 +3761,8 @@ export default function FarcasterMiniApp() {
         }}
         disabled={!isWalletConnected || !linkAmount}
         className={`w-full font-medium py-3 rounded-lg transition-all duration-200 flex items-center justify-center gap-2 text-sm border-2 ${isWalletConnected && linkAmount
-          ? 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white transform hover:scale-105 shadow-lg border-blue-400/30 hover:border-blue-300/50'
-          : 'bg-gray-600 text-gray-300 cursor-not-allowed border-gray-600/30'
+          ? 'bg-[#1C1917] hover:bg-[#2C2927] text-white shadow-lg border-black/10'
+          : 'bg-[#E8E2D9] text-[#9B9188] cursor-not-allowed border-[#C8C1B4]/40'
           }`}
       >
         {isWalletConnected ? (
@@ -4845,7 +3802,7 @@ export default function FarcasterMiniApp() {
                 setLinkCopied(true);
                 setTimeout(() => setLinkCopied(false), 2000);
               }}
-              className="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-2 rounded-lg transition-colors text-xs border-2 border-green-500 hover:border-green-400 flex items-center justify-center gap-1"
+              className="w-full bg-[#1C1917] hover:bg-[#2C2927] text-white font-medium py-2 rounded-lg transition-colors text-xs flex items-center justify-center gap-1"
             >
               {linkCopied ? (
                 <>
@@ -4869,668 +3826,276 @@ export default function FarcasterMiniApp() {
     </div>
   );
 
-  const renderCreateInvoice = () => {
-    const handleLineItemChange = (idx: number, field: string, value: string) => {
-      setInvoiceLineItems(prev => prev.map((item, i) => i === idx ? { ...item, [field]: value } : item));
-    };
-
-    const addLineItem = () => {
-      setInvoiceLineItems([...invoiceLineItems, { description: '', amount: '' }]);
-    };
-
-    const handleSubmit = async (e: React.FormEvent) => {
-      e.preventDefault();
-      setInvoiceStatus('loading');
-
-      try {
-        const requestData = {
-          merchantId: walletAddress,
-          recipient: invoiceRecipient,
-          sender: invoiceSender,
-          email: invoiceEmail,
-          paymentCollection: 'one-time',
-          dueDate: invoiceDueDate,
-          currency: invoiceCurrency,
-          lineItems: invoiceLineItems,
-          paymentLink: invoicePaymentLink,
-        };
-
-        const res = await fetch('/api/send-invoice', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(requestData),
-        });
-
-        if (!res.ok) {
-          const errorData = await res.json();
-          setInvoiceStatus(errorData.error || `Failed to create invoice (${res.status})`);
-          return;
-        }
-
-        setInvoiceStatus('success');
-        setTimeout(() => {
-          setInvoiceView('main');
-          setInvoiceStatus(null);
-          setInvoiceRecipient('');
-          setInvoiceEmail('');
-          setInvoiceSender('');
-          setInvoicePaymentLink('');
-          setInvoiceDueDate(() => {
-            const today = new Date();
-            today.setDate(today.getDate() + 7);
-            return today.toISOString().split('T')[0];
-          });
-          setInvoiceLineItems([{ description: '', amount: '' }]);
-        }, 2000);
-      } catch (err: any) {
-        setInvoiceStatus(err.message || 'Network error occurred');
-      }
-    };
-
-    const totalAmount = invoiceLineItems.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
-
-    return (
-      <div className="space-y-4">
-        <div className="flex items-center gap-3">
-          <button onClick={() => setInvoiceView('main')} className="p-2 rounded-lg bg-slate-700 text-white hover:bg-slate-600 transition-colors">←</button>
-          <h2 className="text-lg font-bold text-white">{t('invoice.createInvoice')}</h2>
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-2 mt-4">
-          <div className="bg-slate-800/30 rounded-lg p-3">
-            <h3 className="text-white font-medium mb-2 text-sm">{t('invoice.clientInfo')}</h3>
-            <div className="space-y-2.5">
-              <input type="text" placeholder={t('invoice.clientPlaceholder')} value={invoiceRecipient} onChange={(e) => setInvoiceRecipient(e.target.value)} className="w-full bg-slate-700 text-white rounded-lg px-3 py-2 text-sm" required />
-              <input type="email" placeholder={t('invoice.emailPlaceholder')} value={invoiceEmail} onChange={(e) => setInvoiceEmail(e.target.value)} className="w-full bg-slate-700 text-white rounded-lg px-3 py-2 text-sm" required />
-            </div>
-          </div>
-
-          <div className="bg-slate-800/30 rounded-lg p-2">
-            <h3 className="text-white font-medium mb-1.5 text-xs">{t('invoice.yourInfo')}</h3>
-            <input type="text" placeholder={t('invoice.yourPlaceholder')} value={invoiceSender} onChange={(e) => setInvoiceSender(e.target.value)} className="w-full bg-slate-700 text-white rounded-lg px-3 py-2 text-sm" required />
-          </div>
-
-          <div className="bg-slate-800/30 rounded-lg p-3">
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="text-white font-medium text-sm">{t('invoice.invoiceItems')}</h3>
-              <button type="button" onClick={addLineItem} className="text-blue-400 hover:text-blue-300 text-sm">+ {t('invoice.addItem')}</button>
-            </div>
-            <div className="space-y-2">
-              {invoiceLineItems.map((item, idx) => (
-                <div key={idx} className="flex items-center gap-2">
-                  <input type="text" placeholder={t('invoice.itemPlaceholder')} value={item.description} onChange={(e) => handleLineItemChange(idx, 'description', e.target.value)} className="w-full bg-slate-700 text-white rounded-lg px-3 py-2 text-sm" />
-                  <input type="number" placeholder="0.00" value={item.amount} onChange={(e) => handleLineItemChange(idx, 'amount', e.target.value)} className="w-32 bg-slate-700 text-white rounded-lg px-3 py-2 text-sm" />
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="pt-4">
-            <div className="flex justify-between items-center mb-4">
-              <span className="text-lg font-bold text-white">{t('invoice.total')}</span>
-              <span className="text-lg font-bold text-white">{totalAmount.toFixed(2)} {invoiceCurrency}</span>
-            </div>
-            <button type="submit" disabled={invoiceStatus === 'loading'} className="w-full bg-blue-600 text-white font-bold py-3 rounded-xl hover:bg-blue-700 disabled:bg-slate-600">
-              {invoiceStatus === 'loading' ? t('invoice.sending') : t('invoice.sendInvoice')}
-            </button>
-          </div>
-        </form>
-
-        {invoiceStatus && invoiceStatus !== 'loading' && (
-          <div className={`mt-4 p-3 rounded-lg text-sm ${invoiceStatus === 'success' ? 'bg-green-500/20 text-green-300' : 'bg-red-500/20 text-red-300'}`}>
-            {invoiceStatus === 'success' ? t('invoice.success') : invoiceStatus}
-          </div>
-        )}
-      </div>
-    );
-  };
-
-  const renderInvoiceList = () => {
-    return (
-      <div className="space-y-4">
-        {/* Header with Back Button */}
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => setInvoiceView('main')}
-            className="p-2 rounded-lg bg-slate-700 text-white hover:bg-slate-600 transition-colors"
-          >
-            ←
-          </button>
-          <div>
-            <h2 className="text-lg font-bold text-white">Your Invoices</h2>
-            <p className="text-gray-400 text-xs">Manage your sent invoices</p>
-          </div>
-        </div>
-
-        {/* Coming Soon */}
-        <div className="bg-slate-800/30 rounded-lg p-6 text-center">
-          <DocumentTextIcon className="w-12 h-12 text-gray-500 mx-auto mb-3" />
-          <h3 className="text-white font-medium mb-2">Invoice List Coming Soon</h3>
-          <p className="text-gray-400 text-sm mb-4">
-            We're working on the invoice management interface. For now, you can create invoices and they'll be sent directly to your clients.
-          </p>
-          <button
-            onClick={() => setInvoiceView('create')}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm transition-colors"
-          >
-            Create New Invoice
-          </button>
-        </div>
-      </div>
-    );
-  };
-
-  const renderInvoiceTab = () => {
-    if (invoiceView === 'create') {
-      return renderCreateInvoice();
-    } else if (invoiceView === 'list') {
-      return renderInvoiceList();
-    }
-
-    return (
-      <div className="space-y-4">
-        {/* Invoice Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-xl font-bold text-white">{t('navigation.invoice')}</h2>
-            <p className="text-gray-400 text-sm">{t('invoice.subtitle')}</p>
-          </div>
-          <DocumentTextIcon className="w-8 h-8 text-blue-400" />
-        </div>
-
-        {/* Wallet Connection Status */}
-        <div className={`border rounded-lg p-3 ${isConnected
-          ? 'bg-green-600/20 border-green-600/30'
-          : 'bg-yellow-600/20 border-yellow-600/30'
-          }`}>
-          <div className={`flex items-center gap-2 ${isConnected ? 'text-green-400' : 'text-yellow-400'
-            }`}>
-            <span className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-400' : 'bg-yellow-400'
-              }`}></span>
-            <span className="text-sm font-medium flex items-center gap-2">
-              {isWalletConnected ? (
-                <>
-                  <svg className="w-4 h-4 text-green-400" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                  </svg>
-                  {t('wallet.connected')} - {t('invoice.subtitle')}
-                </>
-              ) : (
-                <>
-                  <svg className="w-4 h-4 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                  </svg>
-                  {t('wallet.connect')} {t('navigation.invoice')}
-                </>
-              )}
-            </span>
-          </div>
-          {isWalletConnected && walletAddress && (
-            <div className="text-xs text-gray-400 mt-1 font-mono">
-              {walletAddress.slice(0, 8)}...{walletAddress.slice(-6)}
-            </div>
-          )}
-        </div>
-
-        {/* Quick Actions */}
-        <div className="grid grid-cols-2 gap-3">
-          <button
-            onClick={() => {
-              if (isWalletConnected) {
-                setInvoiceView('create');
-              } else {
-                alert('Please connect your wallet first');
-              }
-            }}
-            className={`p-3 rounded-xl border-2 transition-all duration-300 ${isWalletConnected
-              ? 'bg-blue-600/20 border-blue-600/30 hover:bg-blue-600/30 text-blue-400'
-              : 'bg-gray-600/20 border-gray-600/30 text-gray-500 cursor-not-allowed'
-              }`}
-          >
-            <div className="flex flex-col items-center gap-1.5">
-              <DocumentTextIcon className="w-5 h-5" />
-              <span className="text-xs font-medium">{t('invoice.createInvoice')}</span>
-            </div>
-          </button>
-
-          <button
-            onClick={() => {
-              if (isWalletConnected) {
-                setInvoiceView('list');
-              } else {
-                alert('Please connect your wallet first');
-              }
-            }}
-            className={`p-3 rounded-xl border-2 transition-all duration-300 ${isWalletConnected
-              ? 'bg-purple-600/20 border-purple-600/30 hover:bg-purple-600/30 text-purple-400'
-              : 'bg-gray-600/20 border-gray-600/30 text-gray-500 cursor-not-allowed'
-              }`}
-          >
-            <div className="flex flex-col items-center gap-1.5">
-              <ArrowPathIcon className="w-5 h-5" />
-              <span className="text-xs font-medium">{t('invoice.viewInvoices')}</span>
-            </div>
-          </button>
-        </div>
-
-        {/* Features List */}
-        <div className="bg-slate-800/30 rounded-xl p-3">
-          <h3 className="text-white font-semibold mb-2 text-sm">{t('invoice.features')}</h3>
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-2 text-xs text-gray-300">
-              <span className="w-1.5 h-1.5 bg-green-400 rounded-full"></span>
-              <span>{t('invoice.feature1')}</span>
-            </div>
-            <div className="flex items-center gap-2 text-xs text-gray-300">
-              <span className="w-1.5 h-1.5 bg-green-400 rounded-full"></span>
-              <span>{t('invoice.feature2')}</span>
-            </div>
-            <div className="flex items-center gap-2 text-xs text-gray-300">
-              <span className="w-1.5 h-1.5 bg-green-400 rounded-full"></span>
-              <span>{t('invoice.feature3')}</span>
-            </div>
-            <div className="flex items-center gap-2 text-xs text-gray-300">
-              <span className="w-1.5 h-1.5 bg-green-400 rounded-full"></span>
-              <span>{t('invoice.feature4')}</span>
-            </div>
-            <div className="flex items-center gap-2 text-xs text-gray-300">
-              <span className="w-1.5 h-1.5 bg-green-400 rounded-full"></span>
-              <span>{t('invoice.feature5')}</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Help Text */}
-        <div className="text-center text-xs text-gray-400 bg-slate-800/20 rounded-lg p-2">
-          💡 {t('invoice.helpText')}
-        </div>
-      </div>
-    );
-  };
-
-  const renderSwapTab = () => {
-    const fromTokenData = stablecoins.find(token => token.baseToken === swapFromToken);
-    const toTokenData = stablecoins.find(token => token.baseToken === swapToToken);
-
-    return (
-      <div className="space-y-3">
-        {/* Swap Header */}
-        <div className="text-center mb-3">
-          <h2 className="text-white font-bold text-lg mb-1">Token Swap</h2>
-          <p className="text-gray-400 text-xs">Swap between supported stablecoins instantly</p>
-        </div>
-
-        {/* From Token */}
-        <div className="bg-slate-800/50 rounded-2xl p-3 border border-slate-700/30">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-gray-400 text-sm font-medium">From</span>
-            <span className="text-gray-400 text-sm">{t('wallet.balance')}: {swapFromBalance}</span>
-          </div>
-          <div className="flex items-center justify-between mb-2">
-            <div className="relative">
-              <button
-                onClick={() => setShowSwapFromDropdown(!showSwapFromDropdown)}
-                className="flex items-center gap-2 bg-transparent text-white font-bold text-base focus:outline-none border border-slate-600/50 rounded-lg px-2 py-1 hover:border-slate-500 transition-colors w-full justify-between"
-              >
-                <div className="flex items-center gap-2">
-                  {swapFromToken === 'USDC' ? (
-                    <img src="/assets/logos/usdc-logo.png" alt="USDC" className="w-5 h-5" />
-                  ) : (
-                    <span className="text-xl">{fromTokenData?.flag || '🌍'}</span>
-                  )}
-                  <span>{swapFromToken}</span>
-                </div>
-                <ChevronDownIcon className="w-4 h-4 text-gray-400" />
-              </button>
-
-              {showSwapFromDropdown && (
-                <div className="absolute top-full left-0 mt-1 bg-slate-800 rounded-lg border border-slate-600 shadow-xl z-50 max-h-64 overflow-y-auto w-80 min-w-max">
-                  {stablecoins.map((token) => (
-                    <button
-                      key={token.baseToken}
-                      onClick={() => {
-                        setSwapFromToken(token.baseToken);
-                        setShowSwapFromDropdown(false);
-                      }}
-                      className="w-full px-4 py-3 text-left hover:bg-slate-700 flex items-center gap-3 text-sm transition-colors whitespace-nowrap"
-                    >
-                      {renderTokenIcon(token, "w-5 h-5")}
-                      <span className="text-white">{token.baseToken} - {token.name}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-            <button
-              onClick={() => {
-                const maxAmount = parseFloat(swapFromBalance);
-                if (maxAmount > 0) {
-                  setSwapAmount(maxAmount.toString());
-                }
-              }}
-              className="bg-blue-600 hover:bg-blue-500 text-white text-xs px-2 py-1 rounded-full font-medium transition-colors"
-            >
-              MAX
-            </button>
-          </div>
-          <input
-            type="number"
-            placeholder="1"
-            value={swapAmount}
-            onChange={(e) => setSwapAmount(e.target.value)}
-            className="w-full bg-transparent text-white text-2xl font-bold focus:outline-none placeholder-gray-500"
-          />
-        </div>
-
-        {/* Swap Direction */}
-        <div className="flex justify-center -my-1">
-          <button
-            onClick={() => {
-              if (swapToToken) {
-                const temp = swapFromToken;
-                setSwapFromToken(swapToToken);
-                setSwapToToken(temp);
-                setSwapAmount('');
-                setSwapQuote(null);
-              }
-            }}
-            className="bg-slate-800 rounded-full p-2 border-4 border-slate-900 hover:bg-slate-700 transition-colors"
-          >
-            <ArrowsRightLeftIcon className="w-4 h-4 text-white transform rotate-90" />
-          </button>
-        </div>
-
-        {/* To Token */}
-        <div className="bg-slate-800/50 rounded-2xl p-3 border border-slate-700/30">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-gray-400 text-sm font-medium">To</span>
-            <span className="text-gray-400 text-sm">{t('wallet.balance')}: {swapToBalance}</span>
-          </div>
-          <div className="flex items-center justify-between mb-2">
-            <div className="relative">
-              <button
-                onClick={() => setShowSwapToDropdown(!showSwapToDropdown)}
-                className="flex items-center gap-2 bg-transparent text-white font-bold text-base focus:outline-none border border-slate-600/50 rounded-lg px-2 py-1 hover:border-slate-500 transition-colors w-full justify-between"
-              >
-                <div className="flex items-center gap-2">
-                  {swapToToken === 'USDC' ? (
-                    <img src="/assets/logos/usdc-logo.png" alt="USDC" className="w-5 h-5" />
-                  ) : (
-                    <span className="text-xl">{toTokenData?.flag || '🌍'}</span>
-                  )}
-                  <span>{swapToToken || 'Select token'}</span>
-                </div>
-                <ChevronDownIcon className="w-4 h-4 text-gray-400" />
-              </button>
-
-              {showSwapToDropdown && (
-                <div className="absolute top-full left-0 mt-1 bg-slate-800 rounded-lg border border-slate-600 shadow-xl z-50 max-h-64 overflow-y-auto w-80 min-w-max">
-                  {stablecoins
-                    .filter(token => token.baseToken !== swapFromToken)
-                    .map((token) => (
-                      <button
-                        key={token.baseToken}
-                        onClick={() => {
-                          setSwapToToken(token.baseToken);
-                          setShowSwapToDropdown(false);
-                        }}
-                        className="w-full px-4 py-3 text-left hover:bg-slate-700 flex items-center gap-3 text-sm transition-colors whitespace-nowrap"
-                      >
-                        {renderTokenIcon(token, "w-5 h-5")}
-                        <span className="text-white">{token.baseToken} - {token.name}</span>
-                      </button>
-                    ))}
-                </div>
-              )}
-            </div>
-          </div>
-          <div className="text-2xl font-bold text-white">
-            {swapIsLoading ? (
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                <span>Getting quote...</span>
-              </div>
-            ) : swapQuote ? (
-              Number(swapQuote).toFixed(toTokenData?.decimals || 6)
-            ) : swapToToken ? (
-              (0).toFixed(toTokenData?.decimals || 6)
-            ) : (
-              '0.0'
-            )}
-          </div>
-          {swapQuote && swapAmount && Number(swapAmount) > 0 && (
-            <div className="text-gray-400 text-xs mt-1">
-              1 {swapFromToken} = {(Number(swapQuote) / Number(swapAmount)).toFixed(toTokenData?.decimals || 6)} {swapToToken}
-            </div>
-          )}
-
-          {/* Protocol Fee Display */}
-          {isProtocolEnabled() && swapAmount && Number(swapAmount) > 0 && (
-            <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-2 mt-2">
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-blue-400 font-medium">Protocol Fee:</span>
-                <div className="text-right">
-                  {(() => {
-                    // Calculate fee based on USD equivalent
-                    let usdValue;
-                    if (swapToToken === 'USDC' || swapToToken === 'USDT' || swapToToken === 'DAI') {
-                      // If swapping to USD stablecoin, use the output amount as USD value
-                      usdValue = Number(swapQuote) || 0;
-                    } else if (swapFromToken === 'USDC' || swapFromToken === 'USDT' || swapFromToken === 'DAI') {
-                      // If swapping from USD stablecoin, use the input amount as USD value
-                      usdValue = Number(swapAmount) || 0;
-                    } else {
-                      // For other token pairs, use a conservative estimate based on output
-                      usdValue = Number(swapQuote) || Number(swapAmount) || 0;
-                    }
-                    const feeInfo = calculateDynamicFee(usdValue);
-                    return (
-                      <>
-                        <div className="text-blue-400 font-mono">
-                          {feeInfo.feeRate}%
-                        </div>
-                        <div className="text-gray-400 text-xs">
-                          {feeInfo.tier}
-                        </div>
-                      </>
-                    );
-                  })()}
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Error Display */}
-        {swapError && (
-          <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-2">
-            <p className="text-red-400 text-xs">{swapError}</p>
-          </div>
-        )}
-
-        {/* Success Display */}
-        {swapSuccess && (
-          <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-                <p className="text-green-400 text-sm font-medium">Swap Successful!</p>
-              </div>
-              {swapSuccess.includes('Transaction:') && (
-                <a
-                  href={`https://basescan.org/tx/${swapSuccess.split('Transaction: ')[1]}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-blue-400 hover:text-blue-300 text-xs underline"
-                >
-                  View
-                </a>
-              )}
-            </div>
-            {swapSuccess.includes('Transaction:') && (
-              <p className="text-green-300 text-xs mt-1 font-mono">
-                {swapSuccess.split('Transaction: ')[1].slice(0, 8)}...{swapSuccess.split('Transaction: ')[1].slice(-6)}
-              </p>
-            )}
-          </div>
-        )}
-
-        {/* Swap Button */}
-        <button
-          onClick={executeSwap}
-          disabled={!isWalletConnected || !swapAmount || !swapToToken || swapIsLoading}
-          className={`w-full py-3 rounded-2xl font-bold text-base transition-all border-2 ${isWalletConnected && swapAmount && swapToToken && !swapIsLoading
-            ? 'bg-blue-600 hover:bg-blue-500 text-white border-blue-500 hover:border-blue-400 transform hover:scale-[1.02]'
-            : 'bg-slate-700 text-slate-400 border-slate-600 cursor-not-allowed'
-            }`}
-        >
-          {!isWalletConnected ? (
-            t('wallet.connect')
-          ) : swapIsLoading ? (
-            <div className="flex items-center justify-center gap-2">
-              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              {t('common.loading')}
-            </div>
-          ) : !swapAmount ? (
-            t('swap.swapNow')
-          ) : !swapToToken ? (
-            t('swap.selectToToken')
-          ) : (
-            t('swap.swapNow')
-          )}
-        </button>
-
-
-      </div>
-    );
-  };
 
   const renderHomeTab = () => {
     return (
-      <div className="space-y-4">
-        {/* Balance Card */}
-        <div className="relative w-full h-64 rounded-3xl overflow-hidden shadow-2xl">
-          <Image
-            src="/Balance Card.png"
-            alt="Balance Card"
-            layout="fill"
-            objectFit="cover"
-            className="z-0"
-            priority
-          />
-          <div className="relative z-10 p-5 flex flex-col h-full justify-between text-white">
-            <div className="mt-2">
-              {/* <p className="text-blue-200/60 text-xs font-medium mb-2">Total balance</p> */}
-              <h1 className="text-5xl font-bold mb-1.5 mt-10  tracking-tight">
-                {formatNumber(walletBalance)} <span className="text-2xl font-normal text-blue-200/80">{selectedToken.baseToken}</span>
-              </h1>
-              <p className="text-blue-200/60 text-xs font-medium">Across stablecoins</p>
-              <p className="text-blue-200/40 text-[10px]">Some assets not included</p>
-            </div>
+      <>
+        {/* Balance Card - WalletHome Style */}
+        <div className="px-1 pb-6 -mx-1 -mt-1">
+          <div
+            className={cn(
+              "relative overflow-hidden rounded-3xl",
+              isLight
+                ? "bg-[#DCD5C6] ring-1 ring-inset ring-black/[0.05] [box-shadow:0_3px_18px_rgba(0,0,0,0.08),0_1px_0_rgba(255,255,255,0.35)_inset]"
+                : "bg-slate-950 ring-1 ring-inset ring-white/[0.08] [box-shadow:0_10px_40px_rgba(0,0,0,0.55),0_1px_0_rgba(255,255,255,0.08)_inset]"
+            )}
+          >
+            <div className="relative w-full min-h-0 aspect-[16/10]">
+              <Image
+                src={isLight ? "/balance_card_lightmode.png" : "/Balance Card.png"}
+                alt=""
+                fill
+                priority
+                className={cn(
+                  "object-cover object-left-top transform-gpu",
+                  isLight
+                    ? "scale-[1.18] sm:scale-[1.12] -translate-y-3 sm:-translate-y-2"
+                    : "scale-[1.18] sm:scale-[1.12] -translate-y-3 sm:-translate-y-2"
+                )}
+                sizes="(max-width: 768px) 100vw, 420px"
+              />
 
-            <div className="flex gap-2 mt-4">
-              <button
-                onClick={() => setActiveTab('deposit')}
-                className="flex-1 flex items-center justify-center gap-2 bg-[#1A1F2E]/80 backdrop-blur-md hover:bg-[#1A1F2E] border border-white/10 rounded-full px-2py-2.5 transition-all duration-300 min-w-0"
-              >
-                <ArrowDownIcon className="w-4 h-4 text-white flex-shrink-0" />
-                <span className="text-[10px] font-semibold truncate">Deposit</span>
-              </button>
-
-              <button
-                onClick={() => setActiveTab('withdraw')}
-                className="flex-1 flex items-center justify-center gap-2 bg-[#1A1F2E]/80 backdrop-blur-md hover:bg-[#1A1F2E] border border-white/10 rounded-full px-2 py-2.5 transition-all duration-300 min-w-0"
-              >
-                <ArrowUpIcon className="w-4 h-4 text-white flex-shrink-0" />
-                <span className="text-[10px] font-semibold truncate">Withdraw</span>
-              </button>
-
-              <button
-                onClick={() => setActiveTab('link')}
-                className="flex-1 flex items-center justify-center gap-2 bg-[#1A1F2E]/80 backdrop-blur-md hover:bg-[#1A1F2E] border border-white/10 rounded-full px-2 py-2.5 transition-all duration-300 min-w-0"
-              >
-                <LinkIcon className="w-4 h-4 text-white flex-shrink-0" />
-                <span className="text-[10px] font-semibold truncate">Request</span>
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Send Money Globally Banner */}
-        <div
-          className="bg-[#151925] rounded-[1.5rem] p-5 flex items-center justify-between cursor-pointer hover:bg-[#1c2230] transition-colors border border-slate-800/50 shadow-lg group"
-        >
-          <div className="flex-1">
-            <h3 className="text-white text-lg mb-1.5">Send Money Globally</h3>
-          </div>
-          <div className="flex items-center gap-4">
-            <div className="flex -space-x-3">
-              <div className="w-9 h-9 rounded-full bg-white border-2 border-[#151925] overflow-hidden flex items-center justify-center z-10">
-                <Image src="/base.svg" alt="Base" width={36} height={36} className="object-cover" />
-              </div>
-              <div className="w-9 h-9 rounded-full bg-white border-2 border-[#151925] overflow-hidden flex items-center justify-center z-20">
-                <Image src="/celo.svg" alt="Celo" width={36} height={36} className="object-cover" />
-              </div>
-              <div className="w-9 h-9 rounded-full bg-slate-700 border-2 border-[#151925] flex items-center justify-center text-gray-400 text-[10px] z-30">
-                +
-              </div>
-            </div>
-            {/* <div className="w-10 h-10 rounded-full border border-slate-700 flex items-center justify-center group-hover:border-slate-500 transition-colors">
-              <ArrowRightIcon className="w-5 h-5 text-white" />
-            </div> */}
-          </div>
-        </div>
-
-        {/* Recent Activity */}
-        <div className="space-y-3">
-          <h3 className="text-white font-bold text-lg px-1">Recent activity</h3>
-
-          <div className="space-y-2">
-            {userTransactions.length > 0 ? (
-              userTransactions.slice(0, 5).map((tx) => (
-                <div key={tx.id} className="bg-[#151925] rounded-2xl p-3 flex items-center justify-between border border-slate-800/50 hover:bg-[#1c2230] transition-colors cursor-pointer group">
-                  <div className="flex items-center gap-3">
-                    {/* <div className="w-10 h-10 rounded-full bg-slate-800/50 flex items-center justify-center border border-slate-700/50 group-hover:border-slate-600 transition-colors"> */}
-                    {/* Icon based on type */}
-                    {/* {tx.type === 'send' || tx.type === 'pay' ? (
-                          <ArrowUpIcon className="w-5 h-5 text-white" />
-                        ) : (
-                          <ArrowDownIcon className="w-5 h-5 text-white" />
-                        )} */}
-                    {/* </div> */}
-                    <div>
-                      <h4 className="text-white font-bold text-sm mb-0.5">
-                        {tx.type === 'send' ? 'Sent Money' :
-                          tx.type === 'pay' ? 'Payment' :
-                            tx.type === 'deposit' ? 'Deposit' : 'Transaction'}
-                      </h4>
-                      <p className="text-gray-500 text-[10px] font-medium">{new Date(tx.createdAt).toLocaleDateString()}</p>
+              <div className="absolute inset-0 z-10">
+                <div className="relative h-full w-full px-5 pt-7 pb-8 sm:px-7 sm:pt-8 sm:pb-10 md:px-10 md:pt-10 md:pb-10">
+                  <div className="absolute left-5 right-5 top-[34%] sm:left-7 sm:right-7 sm:top-[32%] md:left-10 md:right-10 md:top-[34%] max-w-[min(100%,22rem)]">
+                    <div className="flex w-full touch-pan-x scroll-smooth snap-x snap-mandatory overflow-x-auto overscroll-x-contain [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                      {/* Overview - Total Balance */}
+                      <div className="w-full min-w-full shrink-0 snap-start pr-1">
+                        <div
+                          className={`text-xs font-mono font-medium tracking-wide drop-shadow-[0_1px_1px_rgba(0,0,0,0.25)] ${isLight ? "text-slate-600" : "text-white/70 drop-shadow-[0_1px_1px_rgba(0,0,0,0.65)]"}`}
+                        >
+                          Total balance
+                        </div>
+                        <div className="mt-2 flex items-end justify-between gap-2">
+                          <div className="min-w-0 flex-1">
+                            <div
+                              className={`text-[clamp(1.75rem,6.8vw,2.5rem)] font-mono font-bold tabular-nums tracking-tight leading-[1.05] ${isLight ? "text-slate-800" : "text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.55)]"}`}
+                            >
+                              {formatNumber(walletBalance)} <span className={isLight ? "text-slate-600" : "text-white/60"}>{selectedToken.baseToken}</span>
+                            </div>
+                          </div>
+                          <div
+                            className={`flex shrink-0 flex-col items-end gap-0.5 text-right ${isLight ? "text-slate-600" : "text-white/70"}`}
+                            aria-live="polite"
+                          >
+                            <div className="flex items-center justify-end animate-[swipe-right_1.25s_ease-in-out_infinite]">
+                              <ChevronRight className="h-3.5 w-3.5 -mr-1.5 opacity-90" aria-hidden />
+                              <ChevronRight className="h-3.5 w-3.5 opacity-90" aria-hidden />
+                            </div>
+                            <span className="max-w-[5.75rem] text-[10px] font-mono font-medium leading-tight">Swipe to view details</span>
+                          </div>
+                        </div>
+                        <p className={`mt-1 text-[10px] font-medium ${isLight ? "text-slate-500" : "text-white/50"}`}>Across stablecoins</p>
+                      </div>
+                      {/* Details - Token Breakdown */}
+                      <div className="w-full min-w-full shrink-0 snap-start pl-1">
+                        <div
+                          className={`invisible text-xs font-mono font-medium tracking-wide ${isLight ? "text-slate-600" : "text-white/70"}`}
+                          aria-hidden
+                        >
+                          Total balance
+                        </div>
+                        <div className="flex items-stretch justify-between gap-2">
+                          <div className="min-w-0 flex-1">
+                            <div className="flex flex-col">
+                              <div className="flex min-w-0 items-baseline justify-between gap-4 border-b border-black/5 dark:border-white/10">
+                                <span className={`shrink-0 text-[11px] font-mono font-semibold uppercase tracking-wider ${isLight ? "text-slate-500" : "text-white/60"}`}>{selectedToken.baseToken}</span>
+                                <span
+                                  className={`min-w-0 truncate text-right text-[clamp(1.35rem,4.2vw,2rem)] font-mono font-semibold tabular-nums tracking-tight ${isLight ? "text-slate-800" : "text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.55)]"}`}
+                                >
+                                  {formatNumber(walletBalance)}
+                                </span>
+                              </div>
+                              <div className="flex min-w-0 items-baseline justify-between gap-4">
+                                <span className={`shrink-0 text-[11px] font-mono font-semibold uppercase tracking-wider ${isLight ? "text-slate-500" : "text-white/60"}`}>USDC</span>
+                                <span
+                                  className={`min-w-0 truncate text-right text-[clamp(1.125rem,3.5vw,1.5rem)] font-mono font-semibold tabular-nums tracking-tight ${isLight ? "text-slate-800" : "text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.55)]"}`}
+                                >
+                                  {formatNumber(walletBalance)}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                          <div
+                            className={`flex shrink-0 flex-col items-end justify-center gap-0.5 self-stretch text-right ${isLight ? "text-slate-600" : "text-white/70"}`}
+                            aria-live="polite"
+                          >
+                            <div className="flex items-center justify-end animate-[swipe-left_1.25s_ease-in-out_infinite]">
+                              <ChevronLeft className="h-3.5 w-3.5 -mr-1.5 opacity-90" aria-hidden />
+                              <ChevronLeft className="h-3.5 w-3.5 opacity-90" aria-hidden />
+                            </div>
+                            <span className="max-w-[5.75rem] text-[10px] font-mono font-medium leading-tight">Swipe for overview</span>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <p className="text-white font-bold text-sm mb-0.5">
-                      {tx.type === 'send' || tx.type === 'pay' ? '-' : '+'}{tx.amount} USD
-                    </p>
-                    <p className={`text-[9px] font-bold tracking-wider ${tx.status?.toLowerCase() === 'completed' || tx.status?.toLowerCase() === 'success' || tx.status?.toLowerCase() === 'settled' ? 'text-green-500' :
-                      tx.status?.toLowerCase() === 'pending' ? 'text-yellow-500' : 'text-blue-500'
-                      }`}>
-                      {tx.status?.toUpperCase() || 'COMPLETED'}
-                    </p>
+
+                  {/* Action Buttons */}
+                  <div className="absolute left-5 right-5 bottom-8 sm:left-7 sm:right-7 sm:bottom-10 md:left-10 md:right-10 md:bottom-10">
+                    <div className="grid w-full max-w-md grid-cols-3 gap-2 sm:gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab('deposit')}
+                        className={`inline-flex items-center justify-center gap-1.5 rounded-2xl px-3 py-2.5 text-xs font-mono font-medium backdrop-blur-xl transition-all duration-200 border md:gap-2 md:px-4 md:py-3 md:text-sm ${isLight
+                          ? "border-white/50 bg-white/40 text-slate-800 hover:bg-white/50 hover:border-white/60 shadow-[0_8px_16px_rgba(0,0,0,0.06)]"
+                          : "border-gray-600/40 bg-white/5 text-white hover:bg-white/10 hover:border-gray-500/50 active:bg-[#2563EB] active:text-white active:border-transparent"
+                          }`}
+                      >
+                        <BanknoteArrowDown className="h-4 w-4 md:h-[18px] md:w-[18px]" />
+                        <span className="whitespace-nowrap">Deposit</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => { setActiveTab('send'); setSendStep('country'); }}
+                        className={`inline-flex items-center justify-center gap-1.5 rounded-2xl px-3 py-2.5 text-xs font-mono font-medium backdrop-blur-xl transition-all duration-200 border md:gap-2 md:px-4 md:py-3 md:text-sm ${isLight
+                          ? "border-white/50 bg-white/40 text-slate-800 hover:bg-white/50 hover:border-white/60 shadow-[0_8px_16px_rgba(0,0,0,0.06)]"
+                          : "border-gray-600/40 bg-white/5 text-white hover:bg-white/10 hover:border-gray-500/50 active:bg-[#2563EB] active:text-white active:border-transparent"
+                          }`}
+                      >
+                        <BanknoteArrowUp className="h-4 w-4 md:h-[18px] md:w-[18px]" />
+                        <span className="whitespace-nowrap">Send</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab('withdraw')}
+                        className={`inline-flex items-center justify-center gap-1.5 rounded-2xl px-3 py-2.5 text-xs font-mono font-medium backdrop-blur-xl transition-all duration-200 border md:gap-2 md:px-4 md:py-3 md:text-sm ${isLight
+                          ? "border-white/50 bg-white/40 text-slate-800 hover:bg-white/50 hover:border-white/60 shadow-[0_8px_16px_rgba(0,0,0,0.06)]"
+                          : "border-gray-600/40 bg-white/5 text-white hover:bg-white/10 hover:border-gray-500/50 active:bg-[#2563EB] active:text-white active:border-transparent"
+                          }`}
+                      >
+                        <Landmark className="h-4 w-4 md:h-[18px] md:w-[18px]" />
+                        <span className="whitespace-nowrap">Withdraw</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
-              ))
-            ) : (
-              <div className="bg-[#151925] rounded-2xl p-6 text-center border border-slate-800/50">
-                <div className="w-14 h-14 bg-slate-800/50 rounded-full flex items-center justify-center mx-auto mb-3 border border-slate-700/50">
-                  <DocumentTextIcon className="w-7 h-7 text-gray-500" />
+              </div>
+            </div>
+          </div>
+
+          {/* Send Money Globally Banner - WalletHome Style */}
+          <div className="mt-2">
+            <div className={cn(
+              "relative overflow-hidden rounded-3xl backdrop-blur-xl",
+              isLight
+                ? "bg-gradient-to-br from-[#F4EFE6] to-[#E2D9C8] ring-1 ring-inset ring-black/[0.03] [box-shadow:0_4px_20px_rgba(0,0,0,0.06),0_1px_0_rgba(255,255,255,0.6)_inset]"
+                : "bg-background/30 border border-gray-600/30 shadow-[0_14px_34px_rgba(0,0,0,0.40)]"
+            )}>
+              <div aria-hidden className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_30%_0%,rgba(255,255,255,0.55),transparent_60%)] opacity-[0.10] dark:bg-[radial-gradient(circle_at_30%_0%,rgba(255,255,255,0.18),transparent_60%)]" />
+
+              <div className="relative px-5 py-6">
+                <div className="absolute right-5 top-5 flex items-center -space-x-2">
+                  <div className={cn(
+                    "relative h-8 w-8 overflow-hidden rounded-full shadow-sm ring-2 z-20",
+                    isLight ? "bg-[#E6DECD] ring-[#F4EFE6]" : "bg-background/70 ring-white dark:bg-background/30 dark:ring-white/10"
+                  )}>
+                    <Image src="/usdt.png" alt="" width={20} height={20} className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2" />
+                  </div>
+                  <div className={cn(
+                    "relative h-8 w-8 overflow-hidden rounded-full shadow-sm ring-2 z-10",
+                    isLight ? "bg-[#E6DECD] ring-[#F4EFE6]" : "bg-background/70 ring-white dark:bg-background/30 dark:ring-white/10"
+                  )}>
+                    <Image src="/celo.png" alt="" width={20} height={20} className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full object-cover" />
+                  </div>
+                  <div className={cn(
+                    "relative flex h-8 w-8 items-center justify-center overflow-hidden rounded-full text-[10px] font-mono font-semibold shadow-sm ring-2 z-0",
+                    isLight ? "bg-[#E6DECD] ring-[#F4EFE6] text-slate-500" : "bg-background/70 text-muted-foreground ring-white dark:bg-background/30 dark:text-white/70 dark:ring-white/10"
+                  )}>
+                    +
+                  </div>
                 </div>
-                <h4 className="text-white font-bold text-sm mb-1">No transactions yet</h4>
-                <p className="text-gray-400 text-xs">Your recent activity will show up here</p>
+
+                <div className="pr-24">
+                  <div className="text-base font-mono font-semibold text-[#1C1917]">Send Money Globally</div>
+                  <div className="mt-2 text-xs font-mono text-[#7C7468] leading-relaxed">
+                    Use NEDApay to pay anywhere and settle everywhere, powered by stablecoins.
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Recent Activity - WalletHome Style */}
+        <div className="mt-6 min-w-0 max-w-full overflow-x-hidden">
+          <div className="mb-4 flex items-center justify-between pl-5">
+            <div className="text-sm font-mono font-semibold text-[#1C1917]">Recent activity</div>
+          </div>
+
+          <div
+            className={cn(
+              "relative overflow-hidden rounded-3xl border backdrop-blur-xl min-w-0 max-w-full",
+              isLight
+                ? "bg-gradient-to-br from-[#F4EFE6] to-[#E2D9C8] ring-1 ring-inset ring-black/[0.03] border-transparent [box-shadow:0_4px_20px_rgba(0,0,0,0.06),0_1px_0_rgba(255,255,255,0.6)_inset]"
+                : "bg-background/30 border-gray-600/30 shadow-[0_14px_34px_rgba(0,0,0,0.40)]"
+            )}
+          >
+            <div aria-hidden className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_30%_0%,rgba(255,255,255,0.55),transparent_60%)] opacity-[0.08] dark:bg-[radial-gradient(circle_at_30%_0%,rgba(255,255,255,0.18),transparent_60%)]" />
+            {!isWalletConnected ? (
+              <div className="px-6 py-10 text-sm font-mono text-[#7C7468] text-center">
+                Sign in to view your recent activity.
+              </div>
+            ) : userTransactions.length === 0 ? (
+              <div className="px-6 py-10 text-sm font-mono text-[#7C7468] text-center flex flex-col items-center">
+                <Clock className="w-8 h-8 mb-2 text-[#7C7468]/50" />
+                No recent activities
+              </div>
+            ) : (
+              <div className="p-3 space-y-2 overflow-hidden min-w-0 w-full max-w-full">
+                {userTransactions.slice(0, 4).map((tx) => (
+                  <div
+                    key={tx.id}
+                    onClick={() => setActiveTab('activity')}
+                    className={cn(
+                      "block rounded-xl px-4 py-3 backdrop-blur-xl cursor-pointer transition-colors w-full max-w-full min-w-0 overflow-hidden",
+                      "bg-foreground/[0.02] hover:bg-foreground/[0.04] active:bg-foreground/10",
+                      "border border-gray-400/20",
+                    )}
+                  >
+                    <div className="flex items-start justify-between gap-2 sm:gap-3 min-w-0 max-w-full">
+                      <div className="min-w-0 flex-1 overflow-hidden">
+                        <div className="flex items-center gap-2 min-w-0 w-full">
+                          <span className={cn(
+                            "text-[10px] px-1.5 py-0.5 rounded font-medium shrink-0",
+                            isLight ? "bg-[#D8D1C6] text-[#1C1917]" : "bg-slate-700/50 text-slate-300"
+                          )}>
+                            {tx.type === 'send' ? 'Sent' : tx.type === 'pay' ? 'Payment' : tx.type === 'deposit' ? 'Deposit' : 'Tx'}
+                          </span>
+                        </div>
+                        <p className="text-sm font-mono font-medium text-[#1C1917] mt-1 min-w-0 break-words [overflow-wrap:anywhere] line-clamp-2 leading-snug">
+                          {tx.type === 'send' ? `Sent to ${tx.recipient || 'recipient'}` : 
+                           tx.type === 'pay' ? 'Payment processed' : 
+                           tx.type === 'deposit' ? 'Deposit received' : 'Transaction'}
+                        </p>
+                      </div>
+                      <div className="shrink-0 pt-0.5 text-right">
+                        <div className={`text-sm font-mono font-semibold ${tx.type === 'send' || tx.type === 'pay' ? 'text-red-500' : 'text-green-500'}`}>
+                          {tx.type === 'send' || tx.type === 'pay' ? '-' : '+'}{tx.amount} USD
+                        </div>
+                        <div className="text-[11px] font-mono text-[#7C7468] whitespace-nowrap tabular-nums">
+                          {new Date(tx.createdAt).toLocaleDateString()}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {userTransactions.length >= 4 && (
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('activity')}
+                    className="w-full rounded-xl bg-foreground/5 border border-gray-400/20 hover:bg-foreground/10 transition-colors px-4 py-3 text-sm font-mono font-medium text-foreground"
+                  >
+                    More
+                  </button>
+                )}
               </div>
             )}
           </div>
         </div>
-      </div>
+      </>
     );
   };
 
@@ -5538,135 +4103,106 @@ export default function FarcasterMiniApp() {
     switch (activeTab) {
       case 'home':
         return renderHomeTab();
-      case 'invoice':
-        return renderInvoiceTab();
-      case 'profile':
+      case 'activity':
         return (
           <div className="space-y-4">
-            <div className="flex items-center justify-between px-2">
-              <h2 className="text-white text-2xl font-bold">My Profile</h2>
-              <button
-                onClick={loadUserTransactions}
-                className={`p-2 hover:bg-slate-800/50 rounded-full transition-colors ${transactionsLoading ? 'animate-spin' : ''}`}
-                disabled={transactionsLoading}
-              >
-                <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
-              </button>
-            </div>
-
-            {/* Profile Header */}
-            <div className="bg-[#151925] rounded-2xl p-5 border border-slate-800/50">
-              <div className="flex items-center gap-4 mb-4">
-                {farcasterProfile?.pfpUrl ? (
-                  <img src={farcasterProfile.pfpUrl} alt="Profile" className="w-16 h-16 rounded-full border-2 border-purple-400" />
-                ) : (
-                  <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center">
-                    <UserIcon className="w-8 h-8 text-white" />
-                  </div>
-                )}
-                <div>
-                  <h3 className="text-white font-bold text-lg">{farcasterProfile?.username ? `@${farcasterProfile.username}` : 'User'}</h3>
-                  <p className="text-gray-400 text-xs font-mono">{walletAddress?.slice(0, 8)}...{walletAddress?.slice(-6)}</p>
+            <div className="mb-3 font-mono text-sm font-semibold text-[#1C1917]">Activity</div>
+            <div
+              className={cn(
+                "relative overflow-hidden rounded-3xl border backdrop-blur-xl min-w-0 max-w-full",
+                isLight
+                  ? "bg-gradient-to-br from-[#F4EFE6] to-[#E2D9C8] ring-1 ring-inset ring-black/[0.03] border-transparent [box-shadow:0_4px_20px_rgba(0,0,0,0.06),0_1px_0_rgba(255,255,255,0.6)_inset]"
+                  : "bg-background/30 border-gray-600/30 shadow-[0_14px_34px_rgba(0,0,0,0.40)]"
+              )}
+            >
+              <div aria-hidden className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_30%_0%,rgba(255,255,255,0.55),transparent_60%)] opacity-[0.08] dark:bg-[radial-gradient(circle_at_30%_0%,rgba(255,255,255,0.18),transparent_60%)]" />
+              {!isWalletConnected ? (
+                <div className="px-6 py-10 text-sm font-mono text-[#7C7468] text-center">
+                  Sign in to view your activity.
                 </div>
-              </div>
-
-              {/* Stats Grid */}
-              <div className="grid grid-cols-2 gap-3 mb-4">
-                <div className="bg-slate-800/40 rounded-xl p-3 border border-slate-700/30">
-                  <p className="text-xs text-gray-400 mb-1">Total Volume</p>
-                  <p className="text-lg font-bold text-white">
-                    ${(userTransactions.reduce((sum, tx) => sum + (Number(tx.amount) || 0), 0)).toFixed(2)}
-                  </p>
+              ) : userTransactions.length === 0 ? (
+                <div className="px-6 py-10 text-sm font-mono text-[#7C7468] text-center flex flex-col items-center">
+                  <Clock className="w-8 h-8 mb-2 text-[#7C7468]/50" />
+                  No activities yet
                 </div>
-                <div className="bg-slate-800/40 rounded-xl p-3 border border-slate-700/30">
-                  <p className="text-xs text-gray-400 mb-1">Transactions</p>
-                  <p className="text-lg font-bold text-white">{userTransactions.length}</p>
-                </div>
-              </div>
-
-              {/* Status Breakdown */}
-              <div className="grid grid-cols-3 gap-2">
-                <div className="bg-green-500/10 rounded-lg p-2 border border-green-500/20 text-center">
-                  <p className="text-sm font-bold text-green-400">{userTransactions.filter(tx => {
-                    const s = (tx.status || '').toLowerCase();
-                    return s === 'completed' || s === 'success' || s === 'settled';
-                  }).length}</p>
-                  <p className="text-[10px] text-green-300">Completed</p>
-                </div>
-                <div className="bg-yellow-500/10 rounded-lg p-2 border border-yellow-500/20 text-center">
-                  <p className="text-sm font-bold text-yellow-400">{userTransactions.filter(tx => {
-                    const s = (tx.status || '').toLowerCase();
-                    return s === 'pending';
-                  }).length}</p>
-                  <p className="text-[10px] text-yellow-300">Pending</p>
-                </div>
-                <div className="bg-blue-500/10 rounded-lg p-2 border border-blue-500/20 text-center">
-                  <p className="text-sm font-bold text-blue-400">{userTransactions.filter(tx => {
-                    const s = (tx.status || '').toLowerCase();
-                    return s === 'failed' || s === 'refunded' || s === 'expired';
-                  }).length}</p>
-                  <p className="text-[10px] text-blue-300">Other</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Recent Transactions */}
-            {transactionsLoading ? (
-              <div className="text-center py-8">
-                <div className="w-12 h-12 border-3 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                <p className="text-gray-400 text-sm">Loading transactions...</p>
-              </div>
-            ) : userTransactions.length === 0 ? (
-              <div className="text-center py-8 bg-[#151925] rounded-2xl border border-slate-800/50">
-                <div className="w-16 h-16 bg-slate-800/50 rounded-full flex items-center justify-center mx-auto mb-4 border border-slate-700/50">
-                  <DocumentTextIcon className="w-8 h-8 text-gray-500" />
-                </div>
-                <h3 className="text-white font-bold mb-1">No transactions yet</h3>
-                <p className="text-gray-400 text-sm">Your transaction history will appear here</p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                <p className="text-xs text-gray-400 font-semibold px-2">Recent Transactions</p>
-                {userTransactions.slice(0, 5).map((tx) => (
-                  <div key={tx.id} className="bg-[#151925] rounded-xl p-3 border border-slate-800/50 flex justify-between items-center">
-                    <div>
-                      <p className="text-sm text-white font-semibold">{tx.amount} USD</p>
-                      <p className="text-xs text-gray-500">{new Date(tx.createdAt).toLocaleDateString()}</p>
+              ) : (
+                <div className="p-3 space-y-2 overflow-hidden min-w-0 w-full max-w-full">
+                  {userTransactions.map((tx) => (
+                    <div
+                      key={tx.id}
+                      className={cn(
+                        "block rounded-xl px-4 py-3 backdrop-blur-xl cursor-pointer transition-colors w-full max-w-full min-w-0 overflow-hidden",
+                        "bg-foreground/[0.02] hover:bg-foreground/[0.04] active:bg-foreground/10",
+                        "border border-gray-400/20",
+                      )}
+                    >
+                      <div className="flex items-start justify-between gap-2 sm:gap-3 min-w-0 max-w-full">
+                        <div className="min-w-0 flex-1 overflow-hidden">
+                          <div className="flex items-center gap-2 min-w-0 w-full">
+                            <span className={cn(
+                              "text-[10px] px-1.5 py-0.5 rounded font-medium shrink-0",
+                              isLight ? "bg-[#D8D1C6] text-[#1C1917]" : "bg-slate-700/50 text-slate-300"
+                            )}>
+                              {tx.type === 'send' ? 'Sent' : tx.type === 'pay' ? 'Payment' : tx.type === 'deposit' ? 'Deposit' : 'Tx'}
+                            </span>
+                          </div>
+                          <p className="text-sm font-mono font-medium text-[#1C1917] mt-1 min-w-0 break-words [overflow-wrap:anywhere] line-clamp-2 leading-snug">
+                            {tx.type === 'send' ? `Sent to ${tx.recipient || 'recipient'}` : 
+                             tx.type === 'pay' ? 'Payment processed' : 
+                             tx.type === 'deposit' ? 'Deposit received' : 'Transaction'}
+                          </p>
+                        </div>
+                        <div className="shrink-0 pt-0.5 text-right">
+                          <div className={`text-sm font-mono font-semibold ${tx.type === 'send' || tx.type === 'pay' ? 'text-red-500' : 'text-green-500'}`}>
+                            {tx.type === 'send' || tx.type === 'pay' ? '-' : '+'}{tx.amount} USD
+                          </div>
+                          <div className="text-[11px] font-mono text-[#7C7468] whitespace-nowrap tabular-nums">
+                            {new Date(tx.createdAt).toLocaleDateString()}
+                          </div>
+                        </div>
+                      </div>
                     </div>
-                    <span className={`text-xs px-2 py-1 rounded-full font-semibold ${tx.status?.toLowerCase() === 'completed' || tx.status?.toLowerCase() === 'success' || tx.status?.toLowerCase() === 'settled'
-                      ? 'bg-green-500/20 text-green-400'
-                      : tx.status?.toLowerCase() === 'pending'
-                        ? 'bg-yellow-500/20 text-yellow-400'
-                        : 'bg-blue-500/20 text-blue-400'
-                      }`}>{tx.status}</span>
-                  </div>
-                ))}
-              </div>
-            )}
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         );
       case 'settings':
         return (
           <div className="space-y-4">
-            <h2 className="text-white text-2xl font-bold px-2">Settings</h2>
-            <div className="bg-[#151925] rounded-2xl p-4 border border-slate-800/50">
+            <h2 className={cn("text-2xl font-bold px-2", isLight ? "text-[#1C1917]" : "text-white")}>Settings</h2>
+            <div className={cn(
+              "rounded-2xl p-4 border",
+              isLight
+                ? "bg-gradient-to-br from-[#F4EFE6] to-[#E2D9C8] ring-1 ring-inset ring-black/[0.03] border-transparent [box-shadow:0_4px_20px_rgba(0,0,0,0.06),0_1px_0_rgba(255,255,255,0.6)_inset]"
+                : "bg-[#151925] border-slate-800/50"
+            )}>
               <div className="flex items-center gap-4 mb-6">
-                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-2xl font-bold">
+                <div className={cn(
+                  "w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-2xl font-bold",
+                )}>
                   {farcasterProfile?.username?.[0]?.toUpperCase() || 'U'}
                 </div>
                 <div>
-                  <h3 className="text-white font-bold text-lg">@{farcasterProfile?.username || 'User'}</h3>
-                  <p className="text-gray-400 text-sm font-mono">{walletAddress?.slice(0, 6)}...{walletAddress?.slice(-4)}</p>
+                  <h3 className={cn("font-bold text-lg", isLight ? "text-[#1C1917]" : "text-white")}>@{farcasterProfile?.username || 'User'}</h3>
+                  <p className={cn("text-sm font-mono", isLight ? "text-[#7C7468]" : "text-gray-400")}>{walletAddress?.slice(0, 6)}...{walletAddress?.slice(-4)}</p>
                 </div>
               </div>
 
               <div className="space-y-2">
                 {['Account', 'Security', 'Notifications', 'Help & Support'].map((item) => (
-                  <button key={item} className="w-full flex items-center justify-between p-3 hover:bg-white/5 rounded-xl transition-colors">
-                    <span className="text-white font-medium">{item}</span>
-                    <ArrowRightIcon className="w-4 h-4 text-gray-500" />
+                  <button 
+                    key={item} 
+                    className={cn(
+                      "w-full flex items-center justify-between p-3 rounded-xl transition-colors",
+                      isLight 
+                        ? "hover:bg-black/5 text-[#1C1917]" 
+                        : "hover:bg-white/5 text-white"
+                    )}
+                  >
+                    <span className="font-medium">{item}</span>
+                    <ArrowRightIcon className={cn("w-4 h-4", isLight ? "text-[#7C7468]" : "text-gray-500")} />
                   </button>
                 ))}
               </div>
@@ -5681,10 +4217,6 @@ export default function FarcasterMiniApp() {
         return renderDepositTab();
       case 'link':
         return renderLinkTab();
-      // case 'swap': // Temporarily hidden
-      //   return renderSwapTab();
-      case 'invoice':
-        return renderInvoiceTab();
       case 'withdraw':
         return (
           <WithdrawFlow
@@ -5704,17 +4236,18 @@ export default function FarcasterMiniApp() {
   };
 
   return (
-    <div className={`min-h-screen p-2 relative overflow-hidden transition-colors duration-500 text-white`}>
-      {/* Background Effects */}
-      <div className="absolute top-[-20%] right-[-20%] w-[500px] h-[500px] bg-purple-900/10 rounded-full blur-[128px] pointer-events-none" />
-      <div className="absolute bottom-[-10%] left-[-10%] w-[400px] h-[400px] bg-blue-900/10 rounded-full blur-[128px] pointer-events-none" />
+    <div className="relative min-h-[100dvh] pb-24 overflow-hidden font-sans bg-[#EDE8DF]">
+      {/* Background Effects - Light Mode Only */}
+      <div aria-hidden className="pointer-events-none fixed inset-0 -z-10">
+        <div className="absolute inset-0 opacity-[0.15] [background-image:linear-gradient(to_right,rgba(0,0,0,0.1)_1px,transparent_1px),linear-gradient(to_bottom,rgba(0,0,0,0.1)_1px,transparent_1px)] [background-size:28px_28px]" />
+      </div>
 
-      <div className="w-full mx-auto relative z-10">
+      <div className="w-full mx-auto relative z-10 px-4">
         {/* Clean Header - Compact */}
         <div className="flex items-center justify-between mb-6 w-full px-1 pt-2 !overflow-visible z-50">
           {/* Left - Logo */}
           <div className="flex items-center gap-2">
-            <div className="relative w-8 h-8 rounded-xl overflow-hidden shadow-lg shadow-blue-500/20">
+            <div className="relative w-8 h-8 rounded-xl overflow-hidden shadow-lg shadow-blue-500/10">
               <Image
                 src="/NEDApayLogo.png"
                 alt="NedaPay"
@@ -5722,7 +4255,7 @@ export default function FarcasterMiniApp() {
                 className="object-cover"
               />
             </div>
-            <span className="text-white font-bold text-lg tracking-tight">NEDApay</span>
+            <span className="font-bold text-lg tracking-tight text-[#1C1917]">NEDApay</span>
           </div>
 
           {/* Right Section - Profile + Menu */}
@@ -5776,10 +4309,7 @@ export default function FarcasterMiniApp() {
                     alert('Failed to connect wallet. Please try again.');
                   }
                 }}
-                className={`relative px-4 py-2 rounded-xl font-bold text-xs transition-all duration-300 flex items-center gap-2 shadow-lg hover:scale-105 ${isCeloToken
-                  ? 'bg-gradient-to-r from-[#FCFF52] to-[#FDFF8B] text-slate-900 shadow-[#FCFF52]/20'
-                  : 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-blue-600/20'
-                  }`}
+                className="relative px-4 py-2 rounded-xl font-semibold text-xs transition-all duration-200 flex items-center gap-2 bg-[#EDE8DF] border border-[#C8C1B4] text-[#1C1917] hover:bg-[#E4DDD3] shadow-[0_1px_3px_rgba(0,0,0,0.08)]"
               >
                 <WalletIcon className="w-4 h-4" />
                 <span>Connect</span>
@@ -5787,7 +4317,7 @@ export default function FarcasterMiniApp() {
             ) : (
               <>
                 {/* Profile Display - Expanded */}
-                <div className="flex items-center gap-2 bg-[#151925] rounded-xl px-3 py-1.5 border border-white/5 shadow-lg">
+                <div className="flex items-center gap-2 bg-[#E4DDD3] rounded-xl px-3 py-1.5 border border-[#C8C1B4] shadow-sm">
                   {/* Green dot */}
                   <div className="w-2 h-2 bg-green-400 rounded-full flex-shrink-0 animate-pulse" />
 
@@ -5800,10 +4330,10 @@ export default function FarcasterMiniApp() {
                         className="w-5 h-5 rounded-full object-cover border border-white/10 flex-shrink-0"
                         onError={(e) => { (e.target as HTMLImageElement).src = '/default-avatar.svg'; }}
                       />
-                      <span className="text-white text-xs font-semibold">@{farcasterProfile?.username || farcasterUser?.username}</span>
+                      <span className="text-[#1C1917] text-xs font-semibold">@{farcasterProfile?.username || farcasterUser?.username}</span>
                     </div>
                   ) : (
-                    <span className="text-white text-xs font-mono font-medium">
+                    <span className="text-[#1C1917] text-xs font-mono font-medium">
                       {walletAddress?.slice(0, 6)}...{walletAddress?.slice(-4)}
                     </span>
                   )}
@@ -5815,11 +4345,11 @@ export default function FarcasterMiniApp() {
             <div className="relative">
               <button
                 onClick={() => setShowNotifications(!showNotifications)}
-                className="relative p-2 rounded-xl hover:bg-white/5 transition-colors group"
+                className="relative p-2 rounded-xl transition-colors group hover:bg-black/5 text-[#7C7468] hover:text-[#1C1917]"
               >
-                <BellIcon className="w-5 h-5 text-gray-400 group-hover:text-white transition-colors" />
+                <BellIcon className="w-5 h-5 transition-colors" />
                 {notifications.filter(n => !n.read).length > 0 && (
-                  <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border border-[#050B14]"></span>
+                  <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border border-[#EDE8DF]"></span>
                 )}
               </button>
             </div>
@@ -5827,9 +4357,9 @@ export default function FarcasterMiniApp() {
             {/* Menu Button */}
             <button
               onClick={() => setIsSideMenuOpen(true)}
-              className="p-2 rounded-xl bg-[#151925] border border-white/5 hover:bg-[#1c2230] transition-colors group shadow-lg"
+              className="p-2 rounded-xl transition-colors group bg-[#E4DDD3] border border-[#C8C1B4] hover:bg-[#DDD7CD] text-[#7C7468] hover:text-[#1C1917]"
             >
-              <svg className="w-5 h-5 text-gray-400 group-hover:text-white transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-5 h-5 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
               </svg>
             </button>
@@ -5956,44 +4486,52 @@ export default function FarcasterMiniApp() {
           </div>
         )}
 
-        {/* Floating Rates Ticker */}
-        <CurrencyTicker />
-
         {/* Main Content - with bottom padding for fixed nav */}
         <div className="px-2 py-4 pb-32">
           {renderTabContent()}
         </div>
       </div>
 
-      {/* Bottom Navigation - Pill Style */}
-      <div className="fixed bottom-0 left-0 right-0 z-40 px-6 pb-[calc(env(safe-area-inset-bottom)+1.5rem)] flex justify-center pointer-events-none">
-        <div className="w-full max-w-[400px] pointer-events-auto">
-          <div className="bg-slate-800/95 backdrop-blur-3xl border border-white/10 rounded-2xl px-2 py-3 shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
-            <div className="flex justify-around items-center">
-              {[
-                { key: 'home' as Tab, label: 'Home', icon: HomeIcon },
-                { key: 'invoice' as Tab, label: 'Invoice', icon: WalletIcon },
-                { key: 'profile' as Tab, label: 'Profile', icon: ListBulletIcon },
-                { key: 'settings' as Tab, label: 'Settings', icon: Cog6ToothIcon },
-              ].map(({ key, label, icon: Icon }) => (
-                <button
-                  key={key}
-                  onClick={() => setActiveTab(key)}
-                  className={`flex flex-col items-center justify-center flex-1 transition-all duration-300 ${activeTab === key
-                    ? 'text-white'
-                    : 'text-slate-250 hover:text-gray-400'
-                    }`}
-                >
-                  <Icon className={`w-6 h-6 mb-1 transition-all duration-300 ${activeTab === key
-                    ? 'stroke-[2.5] scale-110'
-                    : 'stroke-[1.5]'
-                    }`} />
-                  <span className={`text-[10px] font-bold tracking-tight transition-all duration-300 ${activeTab === key ? 'opacity-100' : 'opacity-60'
-                    }`}>
-                    {label}
-                  </span>
-                </button>
-              ))}
+      {/* Bottom Navigation - WalletHome Style */}
+      <div className="fixed left-0 right-0 bottom-0 z-40">
+        <div className="mx-auto max-w-md px-4 pb-6">
+          <div className={cn(
+            "relative overflow-hidden rounded-[2rem] border backdrop-blur-xl",
+            isLight
+              ? 'bg-[#EDE8DF]/95 border-[#C8C1B4] shadow-[0_20px_48px_rgba(0,0,0,0.10)]'
+              : 'bg-background/40 border-gray-600/30 shadow-[0_18px_48px_rgba(0,0,0,0.55)]'
+          )}>
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_30%_0%,rgba(255,255,255,0.55),transparent_60%)] opacity-[0.10] dark:bg-[radial-gradient(circle_at_30%_0%,rgba(255,255,255,0.18),transparent_60%)]"
+            />
+            <div className="px-3 py-2">
+              <div className="grid grid-cols-3 gap-1">
+                {[
+                  { key: 'home' as Tab, label: 'Home', icon: Home },
+                  { key: 'activity' as Tab, label: 'Activity', icon: List },
+                  { key: 'settings' as Tab, label: 'Settings', icon: Settings },
+                ].map(({ key, label, icon: Icon }) => (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => setActiveTab(key)}
+                    className={cn(
+                      "flex flex-col items-center gap-1 rounded-xl py-2 text-[10px] sm:text-xs font-mono font-medium transition-colors",
+                      activeTab === key
+                        ? "text-[#1C1917] bg-[#1C1917]/[0.06]"
+                        : "text-[#7C7468] hover:text-[#1C1917] hover:bg-[#1C1917]/[0.03]"
+                    )}
+                    aria-label={label}
+                  >
+                    <Icon className={cn(
+                      "h-5 w-5",
+                      activeTab === key ? "text-[#1C1917]" : "text-[#7C7468]"
+                    )} />
+                    <span>{label}</span>
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         </div>
@@ -6011,10 +4549,8 @@ export default function FarcasterMiniApp() {
       <Sidebar
         isOpen={isSideMenuOpen}
         onClose={() => setIsSideMenuOpen(false)}
-        authenticated={authenticated || isWalletConnected}
+        authenticated={isWalletConnected}
         onOpenFAQ={() => setShowFAQModal(true)}
-        onOpenProfile={() => { loadUserTransactions(); setShowProfileModal(true); }}
-        onOpenTransactions={() => { loadUserTransactions(); setShowTransactionsModal(true); }}
       />
 
       {/* FAQ Modal */}
@@ -6048,177 +4584,6 @@ export default function FarcasterMiniApp() {
                   <p className="px-3 pb-3 text-gray-400 text-sm">{faq.a}</p>
                 </details>
               ))}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Profile Modal */}
-      {showProfileModal && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center">
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowProfileModal(false)} />
-          <div className="relative w-full max-w-lg bg-slate-900 rounded-t-3xl max-h-[85vh] overflow-hidden animate-slide-up">
-            <div className="sticky top-0 bg-slate-900 border-b border-slate-700/50 p-4 flex items-center justify-between">
-              <h2 className="text-lg font-bold text-white">My Profile</h2>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={loadUserTransactions}
-                  className={`p-2 hover:bg-slate-800 rounded-full ${transactionsLoading ? 'animate-spin' : ''}`}
-                  disabled={transactionsLoading}
-                >
-                  <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                  </svg>
-                </button>
-                <button onClick={() => setShowProfileModal(false)} className="p-2 hover:bg-slate-800 rounded-full">
-                  <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-            </div>
-            <div className="p-4 overflow-y-auto max-h-[calc(85vh-60px)]">
-              <div className="flex items-center gap-4 mb-6">
-                {farcasterProfile?.pfpUrl ? (
-                  <img src={farcasterProfile.pfpUrl} alt="Profile" className="w-14 h-14 rounded-full border-2 border-purple-400" />
-                ) : (
-                  <div className="w-14 h-14 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center">
-                    <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                    </svg>
-                  </div>
-                )}
-                <div>
-                  <h3 className="text-white font-bold">{farcasterProfile?.username ? `@${farcasterProfile.username}` : 'User'}</h3>
-                  <p className="text-gray-400 text-xs font-mono">{walletAddress?.slice(0, 8)}...{walletAddress?.slice(-6)}</p>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3 mb-4">
-                <div className="bg-slate-800/60 rounded-xl p-3 border border-slate-700/50">
-                  <p className="text-xs text-gray-400 mb-1">Total Volume</p>
-                  <p className="text-lg font-bold text-white">
-                    ${(userTransactions.reduce((sum, tx) => sum + (Number(tx.amount) || 0), 0)).toFixed(2)}
-                  </p>
-                </div>
-                <div className="bg-slate-800/60 rounded-xl p-3 border border-slate-700/50">
-                  <p className="text-xs text-gray-400 mb-1">Transactions</p>
-                  <p className="text-lg font-bold text-white">{userTransactions.length}</p>
-                </div>
-              </div>
-              <div className="grid grid-cols-3 gap-2 mb-4">
-                <div className="bg-green-500/10 rounded-lg p-2 border border-green-500/20 text-center">
-                  <p className="text-xs text-green-400">{userTransactions.filter(tx => {
-                    const s = (tx.status || '').toLowerCase();
-                    return s === 'completed' || s === 'success' || s === 'settled';
-                  }).length}</p>
-                  <p className="text-[10px] text-green-300">Completed</p>
-                </div>
-                <div className="bg-yellow-500/10 rounded-lg p-2 border border-yellow-500/20 text-center">
-                  <p className="text-xs text-yellow-400">{userTransactions.filter(tx => {
-                    const s = (tx.status || '').toLowerCase();
-                    return s === 'pending';
-                  }).length}</p>
-                  <p className="text-[10px] text-yellow-300">Pending</p>
-                </div>
-                <div className="bg-red-500/10 rounded-lg p-2 border border-red-500/20 text-center">
-                  <p className="text-xs text-red-400">{userTransactions.filter(tx => {
-                    const s = (tx.status || '').toLowerCase();
-                    return s === 'failed' || s === 'refunded' || s === 'expired';
-                  }).length}</p>
-                  <p className="text-[10px] text-red-300">Failed</p>
-                </div>
-              </div>
-              {transactionsLoading ? (
-                <p className="text-center text-gray-500 text-sm py-4">Loading transactions...</p>
-              ) : userTransactions.length === 0 ? (
-                <p className="text-center text-gray-500 text-sm py-4">No transactions yet</p>
-              ) : (
-                <div className="space-y-2">
-                  <p className="text-xs text-gray-400 font-medium">Recent Transactions</p>
-                  {userTransactions.slice(0, 5).map((tx) => (
-                    <div key={tx.id} className="bg-slate-800/40 rounded-lg p-3 border border-slate-700/30 flex justify-between items-center">
-                      <div>
-                        <p className="text-sm text-white font-medium">{tx.amount} USD</p>
-                        <p className="text-xs text-gray-500">{new Date(tx.createdAt).toLocaleDateString()}</p>
-                      </div>
-                      <span className={`text-xs px-2 py-1 rounded-full ${tx.status?.toLowerCase().includes('settled') || tx.status?.toLowerCase().includes('completed') || tx.status?.toLowerCase().includes('success')
-                        ? 'bg-green-500/20 text-green-400'
-                        : tx.status?.toLowerCase().includes('pending') || tx.status?.toLowerCase().includes('processing')
-                          ? 'bg-yellow-500/20 text-yellow-400'
-                          : tx.status?.toLowerCase().includes('failed') || tx.status?.toLowerCase().includes('refunded')
-                            ? 'bg-red-500/20 text-red-400'
-                            : 'bg-gray-500/20 text-gray-400'
-                        }`}>{tx.status}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Transactions Modal */}
-      {showTransactionsModal && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center">
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowTransactionsModal(false)} />
-          <div className="relative w-full max-w-lg bg-slate-900 rounded-t-3xl max-h-[85vh] overflow-hidden animate-slide-up">
-            <div className="sticky top-0 bg-slate-900 border-b border-slate-700/50 p-4 flex items-center justify-between">
-              <h2 className="text-lg font-bold text-white">Transaction History</h2>
-              <button onClick={() => setShowTransactionsModal(false)} className="p-2 hover:bg-slate-800 rounded-full">
-                <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-            <div className="p-4 overflow-y-auto max-h-[calc(85vh-60px)]">
-              {transactionsLoading ? (
-                <div className="text-center py-8">
-                  <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
-                  <p className="text-gray-400 text-sm">Loading transactions...</p>
-                </div>
-              ) : userTransactions.length === 0 ? (
-                <div className="text-center py-8">
-                  <svg className="w-12 h-12 text-gray-600 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                  </svg>
-                  <p className="text-gray-400 text-sm">No transactions yet</p>
-                  <p className="text-gray-500 text-xs mt-1">Your transaction history will appear here</p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {userTransactions.map((tx) => (
-                    <div key={tx.id} className="bg-slate-800/60 rounded-xl p-4 border border-slate-700/50">
-                      <div className="flex justify-between items-start mb-2">
-                        <div>
-                          <p className="text-white font-bold">{tx.amount} USD</p>
-                          <p className="text-xs text-gray-500">{tx.type || 'Transaction'}</p>
-                        </div>
-                        <span className={`text-xs px-2 py-1 rounded-full ${tx.status === 'Completed' || tx.status === 'Success' ? 'bg-green-500/20 text-green-400' :
-                          tx.status === 'Pending' ? 'bg-yellow-500/20 text-yellow-400' :
-                            'bg-red-500/20 text-red-400'
-                          }`}>{tx.status}</span>
-                      </div>
-                      <div className="flex justify-between items-center text-xs">
-                        <span className="text-gray-500">{new Date(tx.createdAt).toLocaleString()}</span>
-                        {tx.txHash && (
-                          <a
-                            href={`https://basescan.org/tx/${tx.txHash}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-blue-400 hover:text-blue-300 flex items-center gap-1"
-                          >
-                            View
-                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                            </svg>
-                          </a>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
             </div>
           </div>
         </div>
