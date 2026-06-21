@@ -331,6 +331,14 @@ export default function FarcasterMiniApp() {
       referrer.includes('warpcast.com') ||
       referrer.includes('farcaster.xyz');
 
+    // Check for Base App (also uses the Farcaster mini app protocol)
+    const isBaseAppOfficial =
+      referrer.includes('base.org') ||
+      referrer.includes('base.app') ||
+      referrer.includes('base.dev') ||
+      url.includes('base.org') ||
+      url.includes('base.app');
+
     // Check for MiniKit SDK presence
     const hasMiniKit = typeof (window as any).MiniKit !== 'undefined';
 
@@ -339,16 +347,17 @@ export default function FarcasterMiniApp() {
       userAgent.includes('webview') ||
       (userAgent.includes('mobile') && !userAgent.includes('safari'));
 
-    // AGGRESSIVE mobile detection - if mobile and not our main site, assume Farcaster
+    // AGGRESSIVE mobile detection - if mobile and not our main site, assume Farcaster/Base
     const isMobileFarcaster = isMobile && (
       isFarcasterOfficial ||
+      isBaseAppOfficial ||
       hasMiniKit ||
       isMobileWebview ||
-      // If mobile and not our main domain, likely Farcaster
+      // If mobile and not our main domain, likely Farcaster or Base App
       (!url.includes('miniapp.nedapay.xyz') && !url.includes('localhost'))
     );
 
-    const result = isFarcasterOfficial || hasMiniKit || isMobileWebview || isMobileFarcaster;
+    const result = isFarcasterOfficial || isBaseAppOfficial || hasMiniKit || isMobileWebview || isMobileFarcaster;
 
     console.log('🔍 Environment Detection:', {
       url: window.location.href,
@@ -356,6 +365,7 @@ export default function FarcasterMiniApp() {
       userAgent: navigator.userAgent,
       isMobile,
       isFarcasterOfficial,
+      isBaseAppOfficial,
       hasMiniKit,
       isMobileWebview,
       isMobileFarcaster,
@@ -877,17 +887,15 @@ export default function FarcasterMiniApp() {
     console.log('===================');
   }, [connectedWallet, isConnected, address, connectors.length, walletClient, isBaseApp, context]);
 
-  // MiniKit initialization - signal when app is ready
+  // MiniKit initialization - signal when app is ready (Farcaster and Base App)
   useEffect(() => {
-    if (isSmartWalletEnvironment && setFrameReady) {
-      // Add a small delay to ensure everything is loaded
+    if ((isSmartWalletEnvironment || isBaseApp) && setFrameReady) {
       const timer = setTimeout(() => {
         setFrameReady();
       }, 1000);
-
       return () => clearTimeout(timer);
     }
-  }, [isSmartWalletEnvironment, setFrameReady]);
+  }, [isSmartWalletEnvironment, isBaseApp, setFrameReady]);
 
   // MiniKit handles wallet connections automatically - no manual tracking needed
 
@@ -1110,10 +1118,15 @@ export default function FarcasterMiniApp() {
     }
   }, [setFrameReady, isFrameReady]);
 
-  // Smart wallet auto-connection for Farcaster/Coinbase environments
+  // Smart wallet auto-connection for Farcaster/Base App environments
   useEffect(() => {
+    // isBaseApp from MiniKit context is the authoritative check for Base App
+    const inMiniAppEnv = isSmartWalletEnvironment || isBaseApp;
+
     console.log('🔍 Smart Wallet Environment Check:', {
       isSmartWalletEnvironment,
+      isBaseApp,
+      inMiniAppEnv,
       isFrameReady,
       isConnected,
       hasAddress: !!address,
@@ -1121,17 +1134,14 @@ export default function FarcasterMiniApp() {
       connectError: connectError?.message
     });
 
-    // In smart wallet environments, don't force connection attempts
-    if (isSmartWalletEnvironment) {
+    if (inMiniAppEnv) {
       if (isConnected && address) {
         console.log('✅ Smart wallet already connected:', address);
         return;
       }
 
-      // Only attempt auto-connection if MiniKit is ready and no connection errors
       if (isFrameReady && !isWalletConnected && !connectError && connectors.length > 0) {
-        console.log('🔗 Attempting smart wallet auto-connection...');
-        // Use a timeout to prevent immediate popup blocking
+        console.log('🔗 Attempting smart wallet auto-connection (env: ' + (isBaseApp ? 'Base App' : 'Farcaster') + ')...');
         setTimeout(() => {
           if (!isWalletConnected) {
             try {
@@ -1145,7 +1155,7 @@ export default function FarcasterMiniApp() {
     } else {
       console.log('💻 Desktop environment - wallet connection handled normally');
     }
-  }, [isFrameReady, isConnected, connectors, connect, address, isSmartWalletEnvironment, connectError]);
+  }, [isFrameReady, isConnected, connectors, connect, address, isSmartWalletEnvironment, isBaseApp, connectError, isWalletConnected]);
 
   // Geolocation detection to reorder countries based on user location
   useEffect(() => {
@@ -3998,7 +4008,7 @@ export default function FarcasterMiniApp() {
                     "relative h-8 w-8 overflow-hidden rounded-full shadow-sm ring-2 z-10",
                     isLight ? "bg-[#E6DECD] ring-[#F4EFE6]" : "bg-background/70 ring-white dark:bg-background/30 dark:ring-white/10"
                   )}>
-                    <Image src="/celo.png" alt="" width={20} height={20} className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full object-cover" />
+                    <Image src="/celo.png" alt="" fill sizes="32px" className="rounded-full object-cover" />
                   </div>
                   <div className={cn(
                     "relative flex h-8 w-8 items-center justify-center overflow-hidden rounded-full text-[10px] font-mono font-semibold shadow-sm ring-2 z-0",
@@ -4252,6 +4262,7 @@ export default function FarcasterMiniApp() {
                 src="/NEDApayLogo.png"
                 alt="NedaPay"
                 fill
+                sizes="32px"
                 className="object-cover"
               />
             </div>

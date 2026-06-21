@@ -7,6 +7,10 @@ import { farcasterMiniApp as miniAppConnector } from '@farcaster/miniapp-wagmi-c
 import { WagmiProvider, createConfig, http } from 'wagmi';
 import { coinbaseWallet, metaMask, walletConnect } from 'wagmi/connectors';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { Attribution } from 'ox/erc8021';
+
+// Base Builder Code — appended automatically to all on-chain transactions for attribution
+const DATA_SUFFIX = Attribution.toDataSuffix({ codes: ['bc_ly695041'] });
 
 // Create wagmi config with optimized connector loading
 export const config = createConfig({
@@ -15,6 +19,7 @@ export const config = createConfig({
     [base.id]: http(),
     [celo.id]: http('https://forno.celo.org'),
   },
+  dataSuffix: DATA_SUFFIX,
   connectors: [
     // Farcaster MiniApp connector for Farcaster environment
     miniAppConnector(),
@@ -29,7 +34,7 @@ export const config = createConfig({
       dappMetadata: {
         name: 'NedaPay',
         url: process.env.NEXT_PUBLIC_URL || 'https://nedapayminiapp.vercel.app',
-        iconUrl: '/NEDApayLogo.png',
+        iconUrl: `${process.env.NEXT_PUBLIC_URL || 'https://nedapayminiapp.vercel.app'}/NEDApayLogo.png`,
       },
     }),
     // WalletConnect with optimized settings
@@ -77,7 +82,7 @@ export function MiniKitProvider({ children }: { children: ReactNode }) {
     const isFarcaster = window.location.href.includes('farcaster') || window.location.href.includes('warpcast') || 
                        document.referrer.includes('farcaster') || document.referrer.includes('warpcast');
     const isBaseApp = window.location.href.includes('base.org') || window.location.href.includes('base.dev');
-    const isSmartWalletEnv = isFarcaster; // Only apply smart wallet behavior for Farcaster, not Base.dev
+    const isSmartWalletEnv = isFarcaster || isBaseApp; // Both Farcaster and Base App use the mini app protocol
     
     console.log('🚀 MiniKit Provider Initializing:', {
       url: window.location.href,
