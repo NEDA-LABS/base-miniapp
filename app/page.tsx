@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useMiniKit, useOpenUrl, useComposeCast, useViewProfile } from '@coinbase/onchainkit/minikit';
 import { Identity, Name } from '@coinbase/onchainkit/identity';
 import { useAccount, useConnect, useDisconnect, useSwitchChain } from 'wagmi';
@@ -312,6 +312,19 @@ export default function FarcasterMiniApp() {
   const { data: walletClient } = useConnectorClient();
   const { switchChain } = useSwitchChain();
 
+  // Official SDK detection — true for both Farcaster and Base App
+  const [inMiniApp, setInMiniApp] = useState(false);
+  const miniAppChecked = useRef(false);
+  useEffect(() => {
+    if (miniAppChecked.current) return;
+    miniAppChecked.current = true;
+    import('@farcaster/miniapp-sdk').then(({ sdk: fcSdk }) => {
+      fcSdk.isInMiniApp().then((result: boolean) => {
+        console.log('🔍 sdk.isInMiniApp():', result);
+        setInMiniApp(result);
+      }).catch(() => {});
+    }).catch(() => {});
+  }, []);
 
   // Detect if we're in a smart wallet environment (Farcaster MiniApp) - enhanced detection
   const isSmartWalletEnvironment = useMemo(() => {
@@ -395,24 +408,22 @@ export default function FarcasterMiniApp() {
     });
   }, [isSmartWalletEnvironment, walletAddress, isWalletConnected]);
 
-  // Auto-connect smart wallet in Farcaster environment - MOBILE FOCUSED
+  // Auto-connect smart wallet in Farcaster/Base App environment
   useEffect(() => {
     let retryCount = 0;
     const maxRetries = 3;
-    const isMobile = /Mobile|Android|iPhone|iPad/i.test(navigator.userAgent);
 
     const autoConnectSmartWallet = async () => {
-      // Check if already connected
       if (isConnected) {
         console.log('✅ Already connected to wallet');
         return;
       }
 
-      // Simple but effective detection - focus on what works
-      const shouldAutoConnect = isSmartWalletEnvironment;
+      // isInMiniApp() is the authoritative check for both Farcaster and Base App
+      const shouldAutoConnect = inMiniApp || isSmartWalletEnvironment;
 
       console.log('🔍 Auto-connect check:', {
-        isMobile,
+        inMiniApp,
         isSmartWalletEnvironment,
         shouldAutoConnect,
         isConnected,
@@ -484,10 +495,9 @@ export default function FarcasterMiniApp() {
       }
     };
 
-    // Wait for environment detection to stabilize
     const timer = setTimeout(autoConnectSmartWallet, 2000);
     return () => clearTimeout(timer);
-  }, [isSmartWalletEnvironment, isConnected, connectors, connect]);
+  }, [inMiniApp, isSmartWalletEnvironment, isConnected, connectors, connect]);
 
 
 
@@ -889,13 +899,13 @@ export default function FarcasterMiniApp() {
 
   // MiniKit initialization - signal when app is ready (Farcaster and Base App)
   useEffect(() => {
-    if ((isSmartWalletEnvironment || isBaseApp) && setFrameReady) {
+    if ((inMiniApp || isSmartWalletEnvironment || isBaseApp) && setFrameReady) {
       const timer = setTimeout(() => {
         setFrameReady();
       }, 1000);
       return () => clearTimeout(timer);
     }
-  }, [isSmartWalletEnvironment, isBaseApp, setFrameReady]);
+  }, [inMiniApp, isSmartWalletEnvironment, isBaseApp, setFrameReady]);
 
   // MiniKit handles wallet connections automatically - no manual tracking needed
 
@@ -1120,10 +1130,10 @@ export default function FarcasterMiniApp() {
 
   // Smart wallet auto-connection for Farcaster/Base App environments
   useEffect(() => {
-    // isBaseApp from MiniKit context is the authoritative check for Base App
-    const inMiniAppEnv = isSmartWalletEnvironment || isBaseApp;
+    const inMiniAppEnv = inMiniApp || isSmartWalletEnvironment || isBaseApp;
 
     console.log('🔍 Smart Wallet Environment Check:', {
+      inMiniApp,
       isSmartWalletEnvironment,
       isBaseApp,
       inMiniAppEnv,
@@ -1141,7 +1151,8 @@ export default function FarcasterMiniApp() {
       }
 
       if (isFrameReady && !isWalletConnected && !connectError && connectors.length > 0) {
-        console.log('🔗 Attempting smart wallet auto-connection (env: ' + (isBaseApp ? 'Base App' : 'Farcaster') + ')...');
+        const env = isBaseApp ? 'Base App' : inMiniApp ? 'Mini App (SDK)' : 'Farcaster';
+        console.log(`🔗 Attempting smart wallet auto-connection (env: ${env})...`);
         setTimeout(() => {
           if (!isWalletConnected) {
             try {
@@ -1155,7 +1166,7 @@ export default function FarcasterMiniApp() {
     } else {
       console.log('💻 Desktop environment - wallet connection handled normally');
     }
-  }, [isFrameReady, isConnected, connectors, connect, address, isSmartWalletEnvironment, isBaseApp, connectError, isWalletConnected]);
+  }, [inMiniApp, isFrameReady, isConnected, connectors, connect, address, isSmartWalletEnvironment, isBaseApp, connectError, isWalletConnected]);
 
   // Geolocation detection to reorder countries based on user location
   useEffect(() => {
