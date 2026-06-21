@@ -837,6 +837,24 @@ export default function FarcasterMiniApp() {
     }
   }, [inMiniApp, isSmartWalletEnvironment, isBaseApp, setFrameReady]);
 
+  // Base App dedicated auto-connect using the definitive clientFid === 309857 signal.
+  // This fires when MiniKit context loads and confirms Base App — more reliable than
+  // URL heuristics or sdk.isInMiniApp() which may resolve before the host bridge is ready.
+  useEffect(() => {
+    if (!isBaseApp || isConnected || connectors.length === 0) return;
+    const farcasterConnector = connectors.find(c => c.id === 'farcaster') ?? connectors[0];
+    let attempt = 0;
+    const tryConnect = () => {
+      if (isConnected) return;
+      attempt++;
+      console.log(`🔗 [Base App] auto-connect attempt ${attempt} via ${farcasterConnector.name}`);
+      connect({ connector: farcasterConnector });
+      if (attempt < 3) setTimeout(tryConnect, 3000);
+    };
+    const timer = setTimeout(tryConnect, 500);
+    return () => clearTimeout(timer);
+  }, [isBaseApp, isConnected, connectors, connect]);
+
   // MiniKit handles wallet connections automatically - no manual tracking needed
 
   // Removed duplicate handleGeneratePaymentLink function - using the one defined later
