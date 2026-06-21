@@ -408,94 +408,24 @@ export default function FarcasterMiniApp() {
     });
   }, [isSmartWalletEnvironment, walletAddress, isWalletConnected]);
 
-  // Auto-connect smart wallet in Farcaster/Base App environment
+  // Single authoritative auto-connect for Farcaster + Base App
+  // inMiniApp (from sdk.isInMiniApp()) covers both Farcaster and Base App
   useEffect(() => {
-    let retryCount = 0;
-    const maxRetries = 3;
+    if (isConnected || connectors.length === 0) return;
+    if (!inMiniApp && !isSmartWalletEnvironment) return;
 
-    const autoConnectSmartWallet = async () => {
-      if (isConnected) {
-        console.log('✅ Already connected to wallet');
-        return;
-      }
+    const farcasterConnector = connectors.find(c => c.id === 'farcaster') ?? connectors[0];
+    let attempt = 0;
 
-      // isInMiniApp() is the authoritative check for both Farcaster and Base App
-      const shouldAutoConnect = inMiniApp || isSmartWalletEnvironment;
-
-      console.log('🔍 Auto-connect check:', {
-        inMiniApp,
-        isSmartWalletEnvironment,
-        shouldAutoConnect,
-        isConnected,
-        connectorsCount: connectors?.length || 0,
-        retryCount
-      });
-
-      if (shouldAutoConnect && connectors && connectors.length > 0 && !isConnected) {
-        console.log('🚀 Attempting auto-connect in smart wallet environment');
-        console.log('Available connectors:', connectors.map(c => ({ name: c.name, id: c.id })));
-
-        try {
-          // For Farcaster MiniApp, find the farcaster connector specifically
-          const farcasterConnector = connectors.find(c =>
-            c.name.toLowerCase().includes('farcaster') ||
-            c.id.toLowerCase().includes('farcaster') ||
-            c.name.toLowerCase().includes('miniapp')
-          );
-
-          if (farcasterConnector) {
-            console.log('🔌 Auto-connecting with Farcaster connector:', {
-              name: farcasterConnector.name,
-              id: farcasterConnector.id
-            });
-
-            try {
-              const result = await connect({ connector: farcasterConnector });
-              console.log('✅ Connect result:', result);
-
-              // Verify connection after a delay
-              setTimeout(() => {
-                console.log('🔍 Post-connect verification:', {
-                  isConnected,
-                  address,
-                  connector: farcasterConnector.name
-                });
-              }, 1000);
-            } catch (connectError) {
-              console.error('❌ Farcaster connector failed:', connectError);
-              // Try fallback to first available connector
-              if (connectors.length > 0) {
-                console.log('🔄 Trying fallback connector:', connectors[0].name);
-                await connect({ connector: connectors[0] });
-              }
-            }
-          } else {
-            console.log('⚠️ No Farcaster connector found for auto-connect');
-            // Try first available connector as fallback
-            if (connectors.length > 0) {
-              console.log('🔄 Using first available connector:', connectors[0].name);
-              await connect({ connector: connectors[0] });
-            }
-          }
-
-        } catch (error) {
-          console.error('❌ Auto-connect failed:', error);
-          retryCount++;
-          if (retryCount < maxRetries) {
-            console.log(`🔄 Retrying auto-connect (${retryCount}/${maxRetries}) in 2s...`);
-            setTimeout(autoConnectSmartWallet, 2000);
-          }
-        }
-      } else {
-        console.log('⏭️ Skipping auto-connect:', {
-          shouldAutoConnect,
-          isConnected,
-          hasConnectors: !!(connectors && connectors.length > 0)
-        });
-      }
+    const tryConnect = () => {
+      if (isConnected) return;
+      attempt++;
+      console.log(`🔗 Mini-app auto-connect attempt ${attempt} via ${farcasterConnector.name}`);
+      connect({ connector: farcasterConnector });
+      if (attempt < 3) setTimeout(tryConnect, 3000);
     };
 
-    const timer = setTimeout(autoConnectSmartWallet, 2000);
+    const timer = setTimeout(tryConnect, 1500);
     return () => clearTimeout(timer);
   }, [inMiniApp, isSmartWalletEnvironment, isConnected, connectors, connect]);
 
@@ -1122,51 +1052,6 @@ export default function FarcasterMiniApp() {
 
   // MiniKit initialization (already declared above)
 
-  useEffect(() => {
-    if (!isFrameReady) {
-      setFrameReady();
-    }
-  }, [setFrameReady, isFrameReady]);
-
-  // Smart wallet auto-connection for Farcaster/Base App environments
-  useEffect(() => {
-    const inMiniAppEnv = inMiniApp || isSmartWalletEnvironment || isBaseApp;
-
-    console.log('🔍 Smart Wallet Environment Check:', {
-      inMiniApp,
-      isSmartWalletEnvironment,
-      isBaseApp,
-      inMiniAppEnv,
-      isFrameReady,
-      isConnected,
-      hasAddress: !!address,
-      connectorsCount: connectors.length,
-      connectError: connectError?.message
-    });
-
-    if (inMiniAppEnv) {
-      if (isConnected && address) {
-        console.log('✅ Smart wallet already connected:', address);
-        return;
-      }
-
-      if (isFrameReady && !isWalletConnected && !connectError && connectors.length > 0) {
-        const env = isBaseApp ? 'Base App' : inMiniApp ? 'Mini App (SDK)' : 'Farcaster';
-        console.log(`🔗 Attempting smart wallet auto-connection (env: ${env})...`);
-        setTimeout(() => {
-          if (!isWalletConnected) {
-            try {
-              connect({ connector: connectors[0] });
-            } catch (error) {
-              console.log('🚫 Smart wallet connection attempt failed (this is normal):', error);
-            }
-          }
-        }, 1000);
-      }
-    } else {
-      console.log('💻 Desktop environment - wallet connection handled normally');
-    }
-  }, [inMiniApp, isFrameReady, isConnected, connectors, connect, address, isSmartWalletEnvironment, isBaseApp, connectError, isWalletConnected]);
 
   // Geolocation detection to reorder countries based on user location
   useEffect(() => {

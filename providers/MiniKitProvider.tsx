@@ -33,8 +33,8 @@ export const config = createConfig({
     metaMask({
       dappMetadata: {
         name: 'NedaPay',
-        url: process.env.NEXT_PUBLIC_URL || 'https://nedapayminiapp.vercel.app',
-        iconUrl: `${process.env.NEXT_PUBLIC_URL || 'https://nedapayminiapp.vercel.app'}/NEDApayLogo.png`,
+        url: process.env.NEXT_PUBLIC_URL || 'https://miniapp.nedapay.xyz',
+        iconUrl: `${process.env.NEXT_PUBLIC_URL || 'https://miniapp.nedapay.xyz'}/NEDApayLogo.png`,
       },
     }),
     // WalletConnect with optimized settings
@@ -43,7 +43,7 @@ export const config = createConfig({
       metadata: {
         name: 'NedaPay',
         description: 'Pay, Accept, Swap and On/Offramp your Stablecoins to Fiat in seconds.',
-        url: process.env.NEXT_PUBLIC_URL || 'https://nedapayminiapp.vercel.app',
+        url: process.env.NEXT_PUBLIC_URL || 'https://miniapp.nedapay.xyz',
         icons: ['/NEDApayLogo.png'],
       },
       // Optimize WalletConnect initialization

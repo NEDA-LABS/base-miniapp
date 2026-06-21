@@ -7,19 +7,19 @@
   "miniapp": {
     "version": "1",
     "name": "NedaPay",
-    "iconUrl": "https://nedapayminiapp.vercel.app/icon-512.png",
-    "homeUrl": "https://nedapayminiapp.vercel.app",
-    "splashImageUrl": "https://nedapayminiapp.vercel.app/splash.png",
+    "iconUrl": "https://miniapp.nedapay.xyz/icon-512.png",
+    "homeUrl": "https://miniapp.nedapay.xyz",
+    "splashImageUrl": "https://miniapp.nedapay.xyz/splash.png",
     "splashBackgroundColor": "#EDE8DF",
-    "webhookUrl": "https://nedapayminiapp.vercel.app/api/webhook",
+    "webhookUrl": "https://miniapp.nedapay.xyz/api/webhook",
     "subtitle": "Accept Stablecoins, Swap instantly, Cash Out Easily",
     "description": "NedaPay is a stablecoin payment solution for Africa. Send money to mobile money, create payment links, generate invoices, and accept crypto payments seamlessly.",
     "primaryCategory": "finance",
     "tags": ["payments", "stablecoins", "mobile-money", "africa", "crypto"],
     "screenshotUrls": [
-      "https://nedapayminiapp.vercel.app/screenshot-send.png",
-      "https://nedapayminiapp.vercel.app/screenshot-invoice.png",
-      "https://nedapayminiapp.vercel.app/screenshot-link.png"
+      "https://miniapp.nedapay.xyz/screenshot-send.png",
+      "https://miniapp.nedapay.xyz/screenshot-invoice.png",
+      "https://miniapp.nedapay.xyz/screenshot-link.png"
     ]
   }
 }

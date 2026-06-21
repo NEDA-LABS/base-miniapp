@@ -27,9 +27,15 @@ export function MiniKitProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const initializeMiniKit = async () => {
       console.log('🔍 Getting Farcaster context...');
-      
-      // sdk.context is synchronous in @farcaster/miniapp-sdk
-      const ctx: any = sdk.context;
+
+      // sdk.context is a function in @farcaster/miniapp-sdk v0.1.x — must be called, returns a Promise
+      let ctx: any = null;
+      try {
+        ctx = await (sdk.context as unknown as () => Promise<any>)();
+      } catch {
+        // sdk.context may not be a function in all environments; fall back to direct access
+        ctx = (sdk as any).context;
+      }
 
       setContext(ctx);
 

@@ -7,7 +7,7 @@ import { Providers } from './providers';
 import AppToaster from './components/Toaster';
 import { Analytics } from '@vercel/analytics/next';
 
-const URL = process.env.NEXT_PUBLIC_URL || 'https://nedapayminiapp.vercel.app';
+const URL = process.env.NEXT_PUBLIC_URL || 'https://miniapp.nedapay.xyz';
 const PROJECT_NAME = process.env.NEXT_PUBLIC_ONCHAINKIT_PROJECT_NAME || 'NedaPay';
 
 export async function generateMetadata(): Promise<Metadata> {
